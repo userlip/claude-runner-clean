@@ -150,12 +150,6 @@ php artisan config:cache'),
                     ->sortable(),
             ])
             ->recordActions([
-                Actions\Action::make('chat')
-                    ->label('Open Chat')
-                    ->icon('heroicon-o-chat-bubble-left-right')
-                    ->url(fn (Site $record) => Pages\SiteChat::getUrl(['record' => $record]))
-                    ->visible(fn (Site $record) => $record->isActive()),
-
                 Actions\ViewAction::make(),
             ])
             ->emptyStateActions([
@@ -169,7 +163,6 @@ php artisan config:cache'),
             'index' => Pages\ListSites::route('/'),
             'create' => Pages\CreateSite::route('/create'),
             'view' => Pages\ViewSite::route('/{record}'),
-            'chat' => Pages\SiteChat::route('/{record}/chat'),
         ];
     }
 }
