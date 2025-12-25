@@ -35,7 +35,7 @@ class RunClaudeMessageJob implements ShouldQueue
 
         try {
             $command = $this->buildCommand();
-            $workingDir = $this->task->site->path;
+            $workingDir = $this->task->working_directory;
 
             Log::info('Running Claude Code', [
                 'task_id' => $this->task->id,
