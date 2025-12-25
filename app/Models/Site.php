@@ -17,6 +17,7 @@ class Site extends Model
         'domain',
         'path',
         'ploi_site_id',
+        'branch',
         'php_version',
         'web_directory',
         'isolated_user',
@@ -24,12 +25,14 @@ class Site extends Model
         'deploy_script',
         'status',
         'error_message',
+        'synced_from_ploi',
     ];
 
     protected function casts(): array
     {
         return [
             'isolated_user' => 'boolean',
+            'synced_from_ploi' => 'boolean',
             'status' => SiteStatus::class,
         ];
     }

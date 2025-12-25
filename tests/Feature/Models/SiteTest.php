@@ -49,3 +49,22 @@ test('isActive returns true only for active sites', function () {
     expect($active->isActive())->toBeTrue();
     expect($pending->isActive())->toBeFalse();
 });
+
+test('site can exist without repository', function () {
+    $site = Site::factory()->create(['repository_id' => null]);
+
+    expect($site->repository)->toBeNull();
+    expect($site->exists)->toBeTrue();
+});
+
+test('site has branch field', function () {
+    $site = Site::factory()->create(['branch' => 'feature-auth']);
+
+    expect($site->branch)->toBe('feature-auth');
+});
+
+test('site has synced_from_ploi field', function () {
+    $site = Site::factory()->create(['synced_from_ploi' => true]);
+
+    expect($site->synced_from_ploi)->toBeTrue();
+});

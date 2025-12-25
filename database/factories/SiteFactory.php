@@ -17,6 +17,7 @@ class SiteFactory extends Factory
             'domain' => "{$subdomain}.marin.sh",
             'path' => null,
             'ploi_site_id' => null,
+            'branch' => null,
             'php_version' => '8.4',
             'web_directory' => '/public',
             'isolated_user' => false,
@@ -24,6 +25,7 @@ class SiteFactory extends Factory
             'deploy_script' => null,
             'status' => SiteStatus::Pending,
             'error_message' => null,
+            'synced_from_ploi' => false,
         ];
     }
 
@@ -53,6 +55,19 @@ class SiteFactory extends Factory
     {
         return $this->state(fn () => [
             'database_name' => 'db_'.fake()->slug(1),
+        ]);
+    }
+
+    public function withoutRepository(): static
+    {
+        return $this->state(['repository_id' => null]);
+    }
+
+    public function syncedFromPloi(): static
+    {
+        return $this->state([
+            'synced_from_ploi' => true,
+            'status' => SiteStatus::Active,
         ]);
     }
 }
