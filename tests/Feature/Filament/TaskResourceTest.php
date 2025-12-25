@@ -7,11 +7,14 @@ use App\Models\Repository;
 use App\Models\Site;
 use App\Models\Task;
 use App\Models\User;
+use Filament\Facades\Filament;
 use Illuminate\Support\Facades\Queue;
 
 use function Pest\Livewire\livewire;
 
 beforeEach(function () {
+    Filament::setCurrentPanel(Filament::getPanel('admin'));
+
     $this->user = User::factory()->create();
     $this->actingAs($this->user);
 });
