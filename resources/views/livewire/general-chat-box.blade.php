@@ -66,7 +66,7 @@
         <div style="border-top: 1px solid #e5e7eb; padding: 1rem;">
             <form wire:submit="sendMessage" style="display: flex; gap: 0.5rem;">
                 <textarea
-                    wire:model="prompt"
+                    wire:model.live="prompt"
                     placeholder="Type your message..."
                     rows="2"
                     style="flex: 1; border-radius: 0.5rem; border: 1px solid #d1d5db; padding: 0.5rem 1rem; font-size: 0.875rem; resize: none;"
