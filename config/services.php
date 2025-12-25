@@ -41,4 +41,8 @@ return [
         'redirect' => env('GITHUB_REDIRECT_URI', '/admin/github/callback'),
     ],
 
+    'ploi' => [
+        'server_id' => env('PLOI_SERVER_ID'),
+    ],
+
 ];
