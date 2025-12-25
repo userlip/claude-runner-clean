@@ -38,6 +38,11 @@ class GeneralChatMessage extends Model
         return $this->belongsTo(GeneralChat::class);
     }
 
+    public function chat(): BelongsTo
+    {
+        return $this->generalChat();
+    }
+
     public function isFromUser(): bool
     {
         return $this->role === MessageRole::User;
