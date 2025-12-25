@@ -15,7 +15,9 @@ class Task extends Model
 
     protected $fillable = [
         'uuid',
+        'repository_id',
         'site_id',
+        'workspace_path',
         'session_id',
         'status',
         'max_turns',
@@ -46,9 +48,28 @@ class Task extends Model
         return 'uuid';
     }
 
+    public function repository(): BelongsTo
+    {
+        return $this->belongsTo(Repository::class);
+    }
+
     public function site(): BelongsTo
     {
         return $this->belongsTo(Site::class);
+    }
+
+    public function getWorkingDirectoryAttribute(): ?string
+    {
+        if ($this->workspace_path) {
+            return $this->workspace_path;
+        }
+
+        return $this->site?->path;
+    }
+
+    public function isInWorkspace(): bool
+    {
+        return $this->workspace_path !== null;
     }
 
     public function messages(): HasMany

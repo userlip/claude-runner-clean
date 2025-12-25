@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Enums\TaskStatus;
+use App\Models\Repository;
 use App\Models\Site;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
@@ -13,7 +14,9 @@ class TaskFactory extends Factory
     {
         return [
             'uuid' => Str::uuid(),
-            'site_id' => Site::factory()->active(),
+            'repository_id' => Repository::factory(),
+            'site_id' => null,
+            'workspace_path' => '/home/ploi/workspaces/'.fake()->slug(1).'-'.Str::random(8),
             'session_id' => Str::uuid(),
             'status' => TaskStatus::Pending,
             'max_turns' => null,
@@ -51,5 +54,18 @@ class TaskFactory extends Factory
     public function withMaxTurns(int $turns): static
     {
         return $this->state(['max_turns' => $turns]);
+    }
+
+    public function onSite(?Site $site = null): static
+    {
+        return $this->state(function () use ($site) {
+            $site ??= Site::factory()->active()->create();
+
+            return [
+                'repository_id' => $site->repository_id,
+                'site_id' => $site->id,
+                'workspace_path' => null,
+            ];
+        });
     }
 }
