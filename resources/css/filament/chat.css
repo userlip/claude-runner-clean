@@ -1,6 +1,3 @@
-@import "tailwindcss";
-@source "../views";
-
 /* Chat interface styles - works with Filament dark mode */
 .chat-container {
     display: flex;
@@ -27,6 +24,7 @@
     font-size: 1.125rem;
     font-weight: 600;
     color: rgb(17 24 39);
+    margin: 0;
 }
 
 .dark .chat-header-title {
@@ -36,6 +34,7 @@
 .chat-header-subtitle {
     font-size: 0.875rem;
     color: rgb(107 114 128);
+    margin: 0;
 }
 
 .dark .chat-header-subtitle {
@@ -137,6 +136,16 @@
 
 .dark .chat-bubble-content pre {
     background-color: rgba(0, 0, 0, 0.3);
+}
+
+.chat-bubble-content ul,
+.chat-bubble-content ol {
+    margin: 0.5rem 0;
+    padding-left: 1.5rem;
+}
+
+.chat-bubble-content li {
+    margin: 0.25rem 0;
 }
 
 .chat-tool-calls {
@@ -271,8 +280,7 @@
 
 .chat-textarea:focus {
     outline: none;
-    ring: 2px;
-    ring-color: rgb(59 130 246);
+    box-shadow: 0 0 0 2px rgb(59 130 246);
     border-color: transparent;
 }
 
