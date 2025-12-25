@@ -3,9 +3,12 @@
     display: flex;
     flex-direction: column;
     height: 100%;
+    min-height: 0; /* Important for flex children to shrink */
+    overflow: hidden;
 }
 
 .chat-header {
+    flex-shrink: 0;
     margin-bottom: 1rem;
     display: flex;
     align-items: center;
@@ -47,7 +50,8 @@
     flex: 1;
     border-radius: 0.5rem;
     box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-    min-height: 400px;
+    min-height: 0; /* Important for flex children to shrink */
+    overflow: hidden;
     background-color: white;
 }
 
@@ -58,7 +62,9 @@
 .chat-messages {
     flex: 1;
     overflow-y: auto;
+    overflow-x: hidden;
     padding: 1rem;
+    min-height: 0; /* Important for flex children to shrink and scroll */
 }
 
 .chat-message {
@@ -248,6 +254,7 @@
 }
 
 .chat-input-area {
+    flex-shrink: 0;
     border-top: 1px solid rgb(229 231 235);
     padding: 1rem;
 }
@@ -313,6 +320,8 @@
     display: flex;
     flex-direction: column;
     height: 100%;
+    min-height: 0;
+    overflow: hidden;
     border-radius: 0.5rem;
     box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
     background-color: white;
@@ -323,6 +332,7 @@
 }
 
 .file-browser-header {
+    flex-shrink: 0;
     border-bottom: 1px solid rgb(229 231 235);
     padding: 0.75rem;
 }
@@ -358,7 +368,9 @@
 .file-browser-list {
     flex: 1;
     overflow-y: auto;
+    overflow-x: hidden;
     padding: 0.5rem;
+    min-height: 0;
 }
 
 .file-browser-item {
