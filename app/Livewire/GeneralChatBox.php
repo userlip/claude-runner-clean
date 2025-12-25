@@ -16,9 +16,14 @@ class GeneralChatBox extends Component
 
     public string $prompt = '';
 
+    public bool $waitingForResponse = false;
+
+    public int $lastMessageCount = 0;
+
     public function mount(GeneralChat $chat): void
     {
         $this->chat = $chat;
+        $this->lastMessageCount = $chat->messages()->count();
     }
 
     /**
@@ -34,6 +39,19 @@ class GeneralChatBox extends Component
     public function isRunning(): bool
     {
         return $this->chat->isRunning();
+    }
+
+    #[Computed]
+    public function shouldPoll(): bool
+    {
+        // Check if we got a response (message count increased)
+        $currentCount = $this->chat->messages()->count();
+        if ($this->waitingForResponse && $currentCount > $this->lastMessageCount) {
+            $this->waitingForResponse = false;
+            $this->lastMessageCount = $currentCount;
+        }
+
+        return $this->isRunning || $this->waitingForResponse;
     }
 
     #[Computed]
@@ -63,6 +81,8 @@ class GeneralChatBox extends Component
         );
 
         $this->prompt = '';
+        $this->waitingForResponse = true;
+        $this->lastMessageCount = $this->chat->messages()->count();
     }
 
     public function render()
