@@ -14,7 +14,8 @@ class PloiService
 
     public function __construct()
     {
-        $this->serverId = config('services.ploi.server_id');
+        $this->serverId = config('services.ploi.server_id')
+            ?? throw new \RuntimeException('Ploi server ID not configured');
     }
 
     public function syncSites(): int
@@ -105,6 +106,8 @@ class PloiService
     {
         // Try to match by domain name pattern (e.g., my-project.marin.sh -> my-project)
         $repoName = explode('.', $site->domain)[0];
+        // Escape LIKE pattern characters
+        $repoName = str_replace(['%', '_'], ['\%', '\_'], $repoName);
 
         $repository = Repository::where('name', 'like', "%{$repoName}%")
             ->orWhere('full_name', 'like', "%{$repoName}%")
