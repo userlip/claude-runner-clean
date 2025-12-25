@@ -40,4 +40,9 @@ class Repository extends Model
     {
         return $this->hasMany(Site::class);
     }
+
+    public function tasks(): HasMany
+    {
+        return $this->hasMany(Task::class);
+    }
 }
