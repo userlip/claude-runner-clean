@@ -120,10 +120,14 @@ class RunClaudeMessageJob implements ShouldQueue
         $prompt = escapeshellarg($this->userMessage->content);
         $sessionId = escapeshellarg($this->task->session_id);
 
-        $cmd = "claude -p {$prompt} --output-format stream-json --verbose --session-id {$sessionId}";
+        $cmd = "claude -p {$prompt} --output-format stream-json --verbose";
 
         if ($this->continue) {
-            $cmd .= ' --continue';
+            // Resume existing session
+            $cmd .= " --resume {$sessionId}";
+        } else {
+            // Start new session with specific ID
+            $cmd .= " --session-id {$sessionId}";
         }
 
         if ($this->task->max_turns) {
