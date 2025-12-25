@@ -72,3 +72,21 @@ test('does not show delete workspace button for site tasks', function () {
     Livewire::test(TaskChat::class, ['task' => $task])
         ->assertDontSee('Delete Workspace');
 });
+
+test('can deploy workspace to site', function () {
+    Queue::fake();
+
+    $repository = Repository::factory()->create(['user_id' => $this->user->id]);
+    $task = Task::factory()->create([
+        'repository_id' => $repository->id,
+        'workspace_path' => '/home/ploi/workspaces/test',
+    ]);
+
+    Livewire::test(TaskChat::class, ['task' => $task])
+        ->set('deploySubdomain', 'my-feature')
+        ->call('deployToSite');
+
+    Queue::assertPushed(\App\Jobs\DeployToSiteJob::class, function ($job) {
+        return $job->subdomain === 'my-feature';
+    });
+});

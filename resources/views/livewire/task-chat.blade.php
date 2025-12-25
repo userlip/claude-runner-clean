@@ -8,6 +8,12 @@
         <div class="flex gap-2">
             @if($task->isInWorkspace())
                 <button
+                    wire:click="openDeployModal"
+                    class="rounded-lg bg-green-600 px-4 py-2 text-sm text-white hover:bg-green-700"
+                >
+                    Deploy to Site
+                </button>
+                <button
                     wire:click="deleteWorkspace"
                     wire:confirm="Are you sure you want to delete this workspace? This cannot be undone."
                     class="rounded-lg bg-red-600 px-4 py-2 text-sm text-white hover:bg-red-700"
@@ -101,4 +107,81 @@
             </form>
         </div>
     </div>
+
+    {{-- Deploy Modal --}}
+    @if($showDeployModal)
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+        <div class="w-full max-w-md rounded-lg bg-white p-6 dark:bg-gray-800">
+            <h3 class="mb-4 text-lg font-semibold">Deploy to Site</h3>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium">Subdomain</label>
+                    <div class="mt-1 flex">
+                        <input
+                            type="text"
+                            wire:model="deploySubdomain"
+                            class="flex-1 rounded-l-lg border px-3 py-2 dark:bg-gray-700"
+                            placeholder="my-feature"
+                        >
+                        <span class="rounded-r-lg border border-l-0 bg-gray-100 px-3 py-2 dark:bg-gray-600">.marin.sh</span>
+                    </div>
+                </div>
+
+                <div class="text-sm text-gray-500">
+                    <p>Preview:</p>
+                    <ul class="ml-4 list-disc">
+                        <li>Branch: {{ $deploySubdomain ?: 'subdomain' }}</li>
+                        <li>PHP: {{ $deployPhpVersion }}</li>
+                        <li>Web directory: {{ $deployWebDirectory }}</li>
+                    </ul>
+                </div>
+
+                <button
+                    type="button"
+                    wire:click="$toggle('showAdvancedOptions')"
+                    class="text-sm text-primary-600"
+                >
+                    {{ $showAdvancedOptions ? '▼' : '▶' }} Advanced Options
+                </button>
+
+                @if($showAdvancedOptions)
+                    <div class="space-y-3 border-t pt-3">
+                        <div>
+                            <label class="block text-sm font-medium">PHP Version</label>
+                            <select wire:model="deployPhpVersion" class="mt-1 w-full rounded-lg border px-3 py-2 dark:bg-gray-700">
+                                <option value="8.4">8.4</option>
+                                <option value="8.3">8.3</option>
+                                <option value="8.2">8.2</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium">Web Directory</label>
+                            <input type="text" wire:model="deployWebDirectory" class="mt-1 w-full rounded-lg border px-3 py-2 dark:bg-gray-700">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium">Database Name (optional)</label>
+                            <input type="text" wire:model="deployDatabaseName" class="mt-1 w-full rounded-lg border px-3 py-2 dark:bg-gray-700">
+                        </div>
+                    </div>
+                @endif
+            </div>
+
+            <div class="mt-6 flex justify-end gap-2">
+                <button
+                    wire:click="closeDeployModal"
+                    class="rounded-lg border px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                    Cancel
+                </button>
+                <button
+                    wire:click="deployToSite"
+                    class="rounded-lg bg-green-600 px-4 py-2 text-white hover:bg-green-700"
+                >
+                    Deploy
+                </button>
+            </div>
+        </div>
+    </div>
+    @endif
 </div>
