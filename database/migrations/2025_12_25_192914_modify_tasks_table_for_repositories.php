@@ -26,11 +26,14 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('tasks', function (Blueprint $table) {
+            // Drop new foreign keys and columns
             $table->dropForeign(['repository_id']);
+            $table->dropForeign(['site_id']);
             $table->dropColumn(['repository_id', 'workspace_path']);
 
-            $table->dropForeign(['site_id']);
-            $table->foreignId('site_id')->constrained()->cascadeOnDelete()->change();
+            // Restore site_id as non-nullable with constraint
+            $table->foreignId('site_id')->nullable(false)->change();
+            $table->foreign('site_id')->references('id')->on('sites')->cascadeOnDelete();
         });
     }
 };
