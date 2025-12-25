@@ -6,6 +6,7 @@ use App\Filament\Resources\GeneralChatResource;
 use App\Models\GeneralChat;
 use Filament\Resources\Pages\Concerns\InteractsWithRecord;
 use Filament\Resources\Pages\Page;
+use Filament\Support\Enums\Width;
 
 class GeneralChatPage extends Page
 {
@@ -14,6 +15,11 @@ class GeneralChatPage extends Page
     protected static string $resource = GeneralChatResource::class;
 
     protected string $view = 'filament.resources.general-chat-resource.pages.general-chat-page';
+
+    public function getMaxContentWidth(): Width|string|null
+    {
+        return Width::Full;
+    }
 
     public function mount(int|string $record): void
     {

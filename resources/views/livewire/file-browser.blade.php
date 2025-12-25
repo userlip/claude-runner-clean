@@ -12,16 +12,21 @@
 
     {{-- File Preview Modal --}}
     @if($selectedFile)
-        <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" wire:click.self="closePreview">
-            <div class="flex max-h-[80vh] w-full max-w-4xl flex-col overflow-hidden rounded-lg bg-white dark:bg-gray-800">
-                <div class="flex items-center justify-between border-b p-4 dark:border-gray-700">
-                    <h3 class="font-mono text-sm">{{ $selectedFile }}</h3>
-                    <button wire:click="closePreview" class="text-gray-500 hover:text-gray-700">
-                        <x-heroicon-o-x-mark class="h-5 w-5" />
+        <div
+            wire:click.self="closePreview"
+            style="position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; background-color: rgba(0, 0, 0, 0.5);"
+        >
+            <div style="display: flex; flex-direction: column; max-height: 80vh; width: 100%; max-width: 56rem; overflow: hidden; border-radius: 0.5rem; background-color: white;">
+                <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #e5e7eb; padding: 1rem;">
+                    <h3 style="font-family: monospace; font-size: 0.875rem;">{{ $selectedFile }}</h3>
+                    <button wire:click="closePreview" style="color: #6b7280; cursor: pointer;">
+                        <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
                     </button>
                 </div>
-                <div class="flex-1 overflow-auto p-4">
-                    <pre class="whitespace-pre-wrap font-mono text-xs">{{ $fileContent }}</pre>
+                <div style="flex: 1; overflow: auto; padding: 1rem;">
+                    <pre style="white-space: pre-wrap; font-family: monospace; font-size: 0.75rem;">{{ $fileContent }}</pre>
                 </div>
             </div>
         </div>
