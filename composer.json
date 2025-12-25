@@ -1,0 +1,91 @@
+{
+    "name": "nxtyoudev/nxtyou-filament-starter",
+    "type": "project",
+    "description": "NXT YOU Filament Starter",
+    "keywords": ["laravel", "framework"],
+    "license": "proprietary",
+    "require": {
+        "php": "^8.3",
+        "bezhansalleh/filament-shield": "^4.0",
+        "darkaonline/l5-swagger": "^9.0",
+        "filament/filament": "^4.0",
+        "jeffgreco13/filament-breezy": "^3.0",
+        "laravel/framework": "^12.0",
+        "laravel/telescope": "^5.1",
+        "laravel/tinker": "^2.9",
+        "sentry/sentry-laravel": "^4.20",
+        "spatie/laravel-permission": "^6.9",
+        "spatie/laravel-query-builder": "^6.2",
+        "stechstudio/filament-impersonate": "^4.0",
+        "symfony/http-client": "^7.1.8",
+        "symfony/postmark-mailer": "^7.1",
+        "tomatophp/filament-pwa": "^4.0",
+        "tomatophp/filament-translations": "^4.0"
+    },
+    "require-dev": {
+        "fakerphp/faker": "^1.23",
+        "itsgoingd/clockwork": "^5.3",
+        "laravel/boost": "^1.0",
+        "laravel/pint": "^1.13",
+        "laravel/sail": "^1.26",
+        "mockery/mockery": "^1.6",
+        "nunomaduro/collision": "^8.0",
+        "pestphp/pest": "^4.0",
+        "pestphp/pest-plugin-laravel": "^4.0",
+        "pestphp/pest-plugin-livewire": "^4.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/",
+            "Database\\Factories\\": "database/factories/",
+            "Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "post-autoload-dump": [
+            "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
+            "@php artisan package:discover --ansi",
+            "@php artisan filament:upgrade"
+        ],
+        "post-update-cmd": [
+            "@php artisan vendor:publish --tag=laravel-assets --ansi --force"
+        ],
+        "post-install-cmd": [
+            "@composer setup-hooks --ansi"
+        ],
+        "setup-hooks": [
+            "cp .github/hooks/pre-commit .git/hooks/pre-commit",
+            "chmod +x .git/hooks/pre-commit"
+        ],
+        "post-root-package-install": [
+            "@php -r \"file_exists('.env') || copy('.env.example', '.env');\""
+        ],
+        "post-create-project-cmd": [
+            "@php artisan key:generate --ansi",
+            "@php -r \"file_exists('database/database.sqlite') || touch('database/database.sqlite');\"",
+            "@php artisan migrate --graceful --ansi",
+            "@composer setup-hooks"
+        ]
+    },
+    "extra": {
+        "laravel": {
+            "dont-discover": []
+        }
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "preferred-install": "dist",
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true,
+            "php-http/discovery": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

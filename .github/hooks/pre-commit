@@ -1,0 +1,25 @@
+#!/bin/sh
+
+# Run Pint on staged PHP files
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM -z | tr '\0' '\n' | grep '\.php$')
+
+if [ -n "$STAGED_FILES" ]; then
+    if [ ! -f ./vendor/bin/pint ]; then
+        echo "Warning: Pint not found. Run 'composer install' first."
+        exit 1
+    fi
+
+    echo "Running Pint on staged files..."
+
+    if ! echo "$STAGED_FILES" | xargs -I {} ./vendor/bin/pint "{}"; then
+        echo "Pint failed. Please fix the issues and try again."
+        exit 1
+    fi
+
+    # Add the formatted files back to staging
+    echo "$STAGED_FILES" | while IFS= read -r file; do
+        git add "$file"
+    done
+fi
+
+exit 0
