@@ -120,7 +120,7 @@ class RunClaudeMessageJob implements ShouldQueue
         $prompt = escapeshellarg($this->userMessage->content);
         $sessionId = escapeshellarg($this->task->session_id);
 
-        $cmd = "claude -p {$prompt} --output-format stream-json --session-id {$sessionId}";
+        $cmd = "claude -p {$prompt} --output-format stream-json --verbose --session-id {$sessionId}";
 
         if ($this->continue) {
             $cmd .= ' --continue';
