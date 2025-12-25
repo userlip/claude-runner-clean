@@ -1,39 +1,39 @@
-<div style="display: flex; flex-direction: column; height: 100%;">
+<div class="flex flex-col h-full">
     {{-- Header --}}
-    <div style="margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; border-radius: 0.5rem; background-color: white; padding: 1rem; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);">
+    <div class="mb-4 flex items-center justify-between rounded-lg bg-white dark:bg-gray-800 p-4 shadow">
         <div>
-            <h2 style="font-size: 1.125rem; font-weight: 600;">{{ $this->chatTitle }}</h2>
-            <p style="font-size: 0.875rem; color: #6b7280;">{{ $chat->working_directory }}</p>
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{{ $this->chatTitle }}</h2>
+            <p class="text-sm text-gray-500 dark:text-gray-400">{{ $chat->working_directory }}</p>
         </div>
     </div>
 
     {{-- Chat Area --}}
-    <div style="display: flex; flex-direction: column; flex: 1; border-radius: 0.5rem; background-color: white; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1); min-height: 400px;">
+    <div class="flex flex-col flex-1 rounded-lg bg-white dark:bg-gray-800 shadow" style="min-height: 400px;">
         {{-- Messages --}}
-        <div style="flex: 1; overflow-y: auto; padding: 1rem;" @if($this->shouldPoll) wire:poll.1s="$refresh" @endif>
+        <div class="flex-1 overflow-y-auto p-4" @if($this->shouldPoll) wire:poll.1s="$refresh" @endif>
             @forelse($this->chatMessages as $message)
-                <div wire:key="message-{{ $message->id }}" style="display: flex; margin-bottom: 1rem; {{ $message->isFromUser() ? 'justify-content: flex-end;' : 'justify-content: flex-start;' }}">
-                    <div style="max-width: 80%; border-radius: 0.5rem; padding: 0.5rem 1rem; {{ $message->isFromUser() ? 'background-color: #2563eb; color: white;' : 'background-color: #f3f4f6;' }}">
+                <div wire:key="message-{{ $message->id }}" class="flex mb-4 {{ $message->isFromUser() ? 'justify-end' : 'justify-start' }}">
+                    <div class="max-w-[80%] rounded-lg px-4 py-2 {{ $message->isFromUser() ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100' }}">
                         @if($message->isFromUser())
-                            <p style="white-space: pre-wrap; margin: 0;">{{ $message->content }}</p>
+                            <p class="whitespace-pre-wrap m-0">{{ $message->content }}</p>
                         @else
-                            <div style="font-size: 0.875rem;">
+                            <div class="text-sm prose dark:prose-invert max-w-none">
                                 {!! Str::markdown($message->content ?? '') !!}
                             </div>
 
                             @if($message->tool_calls)
-                                <div style="margin-top: 0.5rem;">
+                                <div class="mt-2">
                                     @foreach($message->tool_calls as $tool)
-                                        <details style="border-radius: 0.25rem; background-color: #e5e7eb; padding: 0.5rem; font-size: 0.75rem; margin-bottom: 0.5rem;">
-                                            <summary style="cursor: pointer; font-family: monospace;">{{ $tool['name'] ?? 'Tool' }}</summary>
-                                            <pre style="margin-top: 0.25rem; overflow-x: auto; font-size: 0.7rem;">{{ json_encode($tool['input'] ?? [], JSON_PRETTY_PRINT) }}</pre>
+                                        <details class="rounded bg-gray-200 dark:bg-gray-600 p-2 text-xs mb-2">
+                                            <summary class="cursor-pointer font-mono text-gray-700 dark:text-gray-200">{{ $tool['name'] ?? 'Tool' }}</summary>
+                                            <pre class="mt-1 overflow-x-auto text-[10px] text-gray-600 dark:text-gray-300">{{ json_encode($tool['input'] ?? [], JSON_PRETTY_PRINT) }}</pre>
                                         </details>
                                     @endforeach
                                 </div>
                             @endif
 
                             @if($message->tokens_in || $message->tokens_out)
-                                <div style="margin-top: 0.5rem; font-size: 0.75rem; color: #6b7280;">
+                                <div class="mt-2 text-xs text-gray-500 dark:text-gray-400">
                                     {{ number_format($message->tokens_in ?? 0) }} in /
                                     {{ number_format($message->tokens_out ?? 0) }} out
                                     @if($message->cost_usd)
@@ -45,17 +45,17 @@
                     </div>
                 </div>
             @empty
-                <div style="display: flex; height: 100%; min-height: 300px; align-items: center; justify-content: center; color: #6b7280;">
+                <div class="flex h-full items-center justify-center text-gray-500 dark:text-gray-400" style="min-height: 300px;">
                     <p>Start a conversation with Claude</p>
                 </div>
             @endforelse
 
             @if($this->isRunning)
-                <div style="display: flex; justify-content: flex-start; margin-bottom: 1rem;">
-                    <div style="border-radius: 0.5rem; background-color: #f3f4f6; padding: 0.5rem 1rem;">
-                        <div style="display: flex; align-items: center; gap: 0.5rem;">
-                            <div style="width: 0.5rem; height: 0.5rem; border-radius: 50%; background-color: #3b82f6; animation: pulse 2s infinite;"></div>
-                            <span style="font-size: 0.875rem; color: #6b7280;">Claude is thinking...</span>
+                <div class="flex justify-start mb-4">
+                    <div class="rounded-lg bg-gray-100 dark:bg-gray-700 px-4 py-2">
+                        <div class="flex items-center gap-2">
+                            <div class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
+                            <span class="text-sm text-gray-500 dark:text-gray-400">Claude is thinking...</span>
                         </div>
                     </div>
                 </div>
@@ -63,18 +63,18 @@
         </div>
 
         {{-- Input --}}
-        <div style="border-top: 1px solid #e5e7eb; padding: 1rem;">
-            <form wire:submit="sendMessage" style="display: flex; gap: 0.5rem;">
+        <div class="border-t border-gray-200 dark:border-gray-700 p-4">
+            <form wire:submit="sendMessage" class="flex gap-2">
                 <textarea
                     wire:model.live="prompt"
                     placeholder="Type your message..."
                     rows="2"
-                    style="flex: 1; border-radius: 0.5rem; border: 1px solid #d1d5db; padding: 0.5rem 1rem; font-size: 0.875rem; resize: none;"
+                    class="flex-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white px-4 py-2 text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     @disabled($this->isRunning)
                 ></textarea>
                 <button
                     type="submit"
-                    style="border-radius: 0.5rem; background-color: #2563eb; padding: 0.5rem 1rem; color: white; font-weight: 500; cursor: pointer; border: none;"
+                    class="rounded-lg bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 dark:disabled:bg-gray-600 px-4 py-2 text-white font-medium cursor-pointer border-none transition-colors"
                     @disabled($this->isRunning || empty($prompt))
                 >
                     Send
