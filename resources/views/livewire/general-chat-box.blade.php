@@ -10,7 +10,7 @@
     {{-- Chat Area --}}
     <div style="display: flex; flex-direction: column; flex: 1; border-radius: 0.5rem; background-color: white; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1); min-height: 400px;">
         {{-- Messages --}}
-        <div style="flex: 1; overflow-y: auto; padding: 1rem;" wire:poll.2s="$refresh">
+        <div style="flex: 1; overflow-y: auto; padding: 1rem;" @if($this->isRunning) wire:poll.2s="$refresh" @endif>
             @forelse($this->chatMessages as $message)
                 <div wire:key="message-{{ $message->id }}" style="display: flex; margin-bottom: 1rem; {{ $message->isFromUser() ? 'justify-content: flex-end;' : 'justify-content: flex-start;' }}">
                     <div style="max-width: 80%; border-radius: 0.5rem; padding: 0.5rem 1rem; {{ $message->isFromUser() ? 'background-color: #2563eb; color: white;' : 'background-color: #f3f4f6;' }}">

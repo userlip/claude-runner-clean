@@ -27,7 +27,7 @@
     {{-- Chat Area --}}
     <div class="flex flex-1 flex-col rounded-lg bg-white shadow dark:bg-gray-900">
         {{-- Messages --}}
-        <div class="flex-1 overflow-y-auto p-4 space-y-4" wire:poll.2s="$refresh">
+        <div class="flex-1 overflow-y-auto p-4 space-y-4" @if($this->isRunning) wire:poll.2s="$refresh" @endif>
             @forelse($this->chatMessages as $message)
                 <div wire:key="message-{{ $message->id }}" @class([
                     'flex',
