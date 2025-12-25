@@ -6,6 +6,7 @@ use App\Models\Repository;
 use App\Models\Site;
 use App\Models\User;
 use Filament\Facades\Filament;
+use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
 
@@ -62,4 +63,22 @@ test('domain must be unique', function () {
         ])
         ->call('create')
         ->assertHasFormErrors(['domain' => 'unique']);
+});
+
+test('can sync sites from ploi', function () {
+    Process::fake([
+        '*site:list*' => Process::result(
+            output: '+--------+--------+------------------------+--------------+---------------------+-------------+----------------+
+| ID     | Server | Domain                 | Project type | Last deploy at      | PHP version | Has repository |
++--------+--------+------------------------+--------------+---------------------+-------------+----------------+
+| 111111 | 105384 | synced-site.marin.sh   | laravel      | 2025-12-25 10:57:31 | 8.4         | No             |
++--------+--------+------------------------+--------------+---------------------+-------------+----------------+',
+        ),
+    ]);
+
+    Livewire::test(ListSites::class)
+        ->callAction('syncSites')
+        ->assertNotified();
+
+    expect(Site::where('domain', 'synced-site.marin.sh')->exists())->toBeTrue();
 });
