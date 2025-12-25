@@ -58,3 +58,20 @@ test('general chat default working directory is home', function () {
 
     expect($chat->working_directory)->toBe('/home/ploi');
 });
+
+test('it can check if running', function () {
+    $pendingChat = GeneralChat::factory()->create();
+    $runningChat = GeneralChat::factory()->running()->create();
+
+    expect($pendingChat->isRunning())->toBeFalse()
+        ->and($runningChat->isRunning())->toBeTrue();
+});
+
+test('it can mark as failed', function () {
+    $chat = GeneralChat::factory()->running()->create();
+
+    $chat->markAsFailed();
+
+    expect($chat->status)->toBe(GeneralChatStatus::Failed)
+        ->and($chat->completed_at)->not->toBeNull();
+});
