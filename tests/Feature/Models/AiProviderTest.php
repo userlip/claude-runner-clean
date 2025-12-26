@@ -32,7 +32,7 @@ test('it returns env array for glm', function () {
     $env = $provider->getEnvironmentVariables();
 
     expect($env)->toHaveKey('ANTHROPIC_BASE_URL')
-        ->and($env)->toHaveKey('ANTHROPIC_AUTH_TOKEN')
+        ->and($env)->toHaveKey('ANTHROPIC_API_KEY')
         ->and($env)->toHaveKey('ANTHROPIC_MODEL');
 });
 

@@ -98,7 +98,7 @@
         <div class="chat-input-area">
             <form wire:submit="sendMessage" class="chat-form">
                 <textarea
-                    wire:model="prompt"
+                    wire:model.live="prompt"
                     placeholder="Type your message..."
                     rows="2"
                     class="chat-textarea"

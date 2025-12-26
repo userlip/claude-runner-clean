@@ -53,7 +53,7 @@ class RunGeneralChatMessageJob implements ShouldQueue
                 array_merge($_ENV, $_SERVER, $this->getProviderEnvironment()),
                 fn ($value) => is_string($value)
             );
-            $process = proc_open($command, $descriptors, $pipes, $workingDir, $env);
+            $process = proc_open('/bin/bash -c '.escapeshellarg($command), $descriptors, $pipes, $workingDir, $env);
 
             if (! is_resource($process)) {
                 throw new \RuntimeException('Failed to start Claude process');
