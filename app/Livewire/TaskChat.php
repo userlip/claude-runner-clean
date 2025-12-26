@@ -127,6 +127,50 @@ class TaskChat extends Component
         return $this->envConfigs->firstWhere('is_default', true);
     }
 
+    #[Computed]
+    public function contextUsed(): int
+    {
+        $lastAssistantMessage = $this->task->messages()
+            ->where('role', MessageRole::Assistant)
+            ->whereNotNull('tokens_in')
+            ->latest()
+            ->first();
+
+        return $lastAssistantMessage?->tokens_in ?? 0;
+    }
+
+    #[Computed]
+    public function contextLimit(): int
+    {
+        return $this->task->aiProvider?->getContextWindow() ?? 200000;
+    }
+
+    #[Computed]
+    public function contextPercentage(): float
+    {
+        if ($this->contextLimit === 0) {
+            return 0;
+        }
+
+        return ($this->contextUsed / $this->contextLimit) * 100;
+    }
+
+    #[Computed]
+    public function contextColor(): string
+    {
+        $percentage = $this->contextPercentage;
+
+        if ($percentage >= 80) {
+            return 'bg-red-500';
+        }
+
+        if ($percentage >= 60) {
+            return 'bg-amber-500';
+        }
+
+        return 'bg-green-500';
+    }
+
     public function setProvider(int $providerId): void
     {
         $provider = AiProvider::where('is_active', true)->find($providerId);
