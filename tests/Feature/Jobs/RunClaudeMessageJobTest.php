@@ -1,6 +1,7 @@
 <?php
 
 use App\Jobs\RunClaudeMessageJob;
+use App\Models\AiProvider;
 use App\Models\Message;
 use App\Models\Site;
 use App\Models\Task;
@@ -103,4 +104,21 @@ test('job has single try', function () {
     $job = new RunClaudeMessageJob($task, $message);
 
     expect($job->tries)->toBe(1);
+});
+
+test('it uses task provider env vars', function () {
+    $provider = AiProvider::factory()->glm()->create();
+    $site = Site::factory()->active()->create();
+    $task = Task::factory()->create([
+        'site_id' => $site->id,
+        'ai_provider_id' => $provider->id,
+    ]);
+    $message = Message::factory()->user()->create(['task_id' => $task->id]);
+
+    $job = new RunClaudeMessageJob($task, $message);
+
+    $env = $job->getProviderEnvironment();
+
+    expect($env)->toHaveKey('ANTHROPIC_BASE_URL')
+        ->and($env['ANTHROPIC_MODEL'])->toBe('GLM-4.6');
 });

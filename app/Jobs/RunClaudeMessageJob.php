@@ -49,7 +49,8 @@ class RunClaudeMessageJob implements ShouldQueue
                 2 => ['pipe', 'w'],
             ];
 
-            $process = proc_open($command, $descriptors, $pipes, $workingDir);
+            $env = array_merge($_ENV, $_SERVER, $this->getProviderEnvironment());
+            $process = proc_open($command, $descriptors, $pipes, $workingDir, $env);
 
             if (! is_resource($process)) {
                 throw new \RuntimeException('Failed to start Claude process');
@@ -86,6 +87,14 @@ class RunClaudeMessageJob implements ShouldQueue
                             'tokens_out' => $parsed['usage']['output_tokens'] ?? null,
                             'cost_usd' => $parsed['usage']['cost_usd'] ?? null,
                         ]);
+
+                        // Track provider usage
+                        if ($this->task->aiProvider) {
+                            $this->task->aiProvider->incrementUsage(
+                                $parsed['usage']['input_tokens'] ?? 0,
+                                $parsed['usage']['output_tokens'] ?? 0
+                            );
+                        }
                     }
                 }
             }
@@ -135,6 +144,20 @@ class RunClaudeMessageJob implements ShouldQueue
         }
 
         return $cmd;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function getProviderEnvironment(): array
+    {
+        $provider = $this->task->aiProvider;
+
+        if (! $provider) {
+            return [];
+        }
+
+        return $provider->getEnvironmentVariables();
     }
 
     /**

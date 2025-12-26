@@ -17,6 +17,7 @@ class Task extends Model
         'uuid',
         'repository_id',
         'site_id',
+        'ai_provider_id',
         'workspace_path',
         'session_id',
         'status',
@@ -40,6 +41,7 @@ class Task extends Model
         static::creating(function (Task $task) {
             $task->uuid ??= Str::uuid();
             $task->session_id ??= Str::uuid();
+            $task->ai_provider_id ??= AiProvider::getDefault()?->id;
         });
     }
 
@@ -75,6 +77,11 @@ class Task extends Model
     public function messages(): HasMany
     {
         return $this->hasMany(Message::class);
+    }
+
+    public function aiProvider(): BelongsTo
+    {
+        return $this->belongsTo(AiProvider::class);
     }
 
     public function isRunning(): bool

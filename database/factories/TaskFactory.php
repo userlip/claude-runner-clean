@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Enums\TaskStatus;
+use App\Models\AiProvider;
 use App\Models\Repository;
 use App\Models\Site;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -16,6 +17,7 @@ class TaskFactory extends Factory
             'uuid' => Str::uuid(),
             'repository_id' => Repository::factory(),
             'site_id' => null,
+            'ai_provider_id' => null,
             'workspace_path' => '/home/ploi/workspaces/'.fake()->slug(1).'-'.Str::random(8),
             'session_id' => Str::uuid(),
             'status' => TaskStatus::Pending,
@@ -67,5 +69,10 @@ class TaskFactory extends Factory
                 'workspace_path' => null,
             ];
         });
+    }
+
+    public function withProvider(AiProvider $provider): static
+    {
+        return $this->state(['ai_provider_id' => $provider->id]);
     }
 }
