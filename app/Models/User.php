@@ -73,4 +73,9 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
     {
         return $this->hasMany(Repository::class);
     }
+
+    public function snippets(): HasMany
+    {
+        return $this->hasMany(Snippet::class)->orderBy('sort_order');
+    }
 }
