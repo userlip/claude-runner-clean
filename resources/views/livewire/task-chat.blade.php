@@ -35,9 +35,20 @@
     </div>
 
     {{-- Chat Area --}}
-    <div class="chat-area">
+    <div class="chat-area"
+        x-data="{
+            scrollToBottom() {
+                this.$refs.messages.scrollTop = this.$refs.messages.scrollHeight;
+            },
+            init() {
+                this.scrollToBottom();
+                const observer = new MutationObserver(() => this.$nextTick(() => this.scrollToBottom()));
+                observer.observe(this.$refs.messages, { childList: true, subtree: true });
+            }
+        }"
+    >
         {{-- Messages --}}
-        <div class="chat-messages" @if($this->shouldPoll) wire:poll.1s="$refresh" @endif>
+        <div class="chat-messages" x-ref="messages" @if($this->shouldPoll) wire:poll.1s="$refresh" @endif>
             @forelse($this->chatMessages as $message)
                 <div wire:key="message-{{ $message->id }}" class="chat-message {{ $message->isFromUser() ? 'chat-message-user' : 'chat-message-assistant' }}">
                     <div class="chat-bubble {{ $message->isFromUser() ? 'chat-bubble-user' : 'chat-bubble-assistant' }}">
