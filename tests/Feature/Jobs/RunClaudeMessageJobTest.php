@@ -58,7 +58,7 @@ test('buildCommand includes max turns when set', function () {
     expect($command)->toContain('--max-turns 5');
 });
 
-test('buildCommand includes continue flag', function () {
+test('buildCommand includes resume flag', function () {
     $site = Site::factory()->active()->create();
     $task = Task::factory()->create(['site_id' => $site->id]);
     $message = Message::factory()->user()->create(['task_id' => $task->id]);
@@ -66,7 +66,7 @@ test('buildCommand includes continue flag', function () {
     $job = new RunClaudeMessageJob($task, $message, continue: true);
     $command = $job->buildCommand();
 
-    expect($command)->toContain('--continue');
+    expect($command)->toContain('--resume');
 });
 
 test('buildCommand escapes prompt correctly', function () {
