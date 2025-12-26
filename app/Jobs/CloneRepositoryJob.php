@@ -34,12 +34,14 @@ class CloneRepositoryJob implements ShouldQueue
             mkdir($parentDir, 0755, true);
         }
 
-        // Clone the repository
+        // Clone the repository (use authenticated URL for private repos)
+        $cloneUrl = $repository->getAuthenticatedCloneUrl();
+
         $result = Process::timeout(300)->run([
             'git', 'clone',
             '--branch', $repository->default_branch ?? 'main',
             '--single-branch',
-            $repository->clone_url,
+            $cloneUrl,
             $workspacePath,
         ]);
 
@@ -55,5 +57,18 @@ class CloneRepositoryJob implements ShouldQueue
             'task_id' => $this->task->id,
             'workspace' => $workspacePath,
         ]);
+
+        // Auto-copy default .env if one exists
+        $defaultEnvConfig = $repository->defaultEnvConfig();
+        if ($defaultEnvConfig) {
+            $envPath = $workspacePath.'/.env';
+            file_put_contents($envPath, $defaultEnvConfig->content);
+
+            Log::info('Default .env config copied to workspace', [
+                'task_id' => $this->task->id,
+                'env_config' => $defaultEnvConfig->name,
+                'env_path' => $envPath,
+            ]);
+        }
     }
 }
