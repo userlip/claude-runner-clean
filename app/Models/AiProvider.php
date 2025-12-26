@@ -17,6 +17,7 @@ class AiProvider extends Model
         'base_url',
         'api_key',
         'model',
+        'context_window',
         'is_active',
         'is_default',
         'quota_limit',
@@ -104,5 +105,10 @@ class AiProvider extends Model
             QuotaPeriod::FiveHour => now()->addHours(5),
             default => now()->startOfMonth()->addMonth(),
         };
+    }
+
+    public function getContextWindow(): int
+    {
+        return $this->context_window ?? 200000;
     }
 }
