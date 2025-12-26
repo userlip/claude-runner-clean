@@ -66,6 +66,11 @@ class RepositoryResource extends Resource
                 //     ->color(Color::Blue)
                 //     ->url(fn (Repository $record) => route('filament.admin.resources.sites.create', ['repository' => $record->id])),
 
+                Actions\Action::make('manageEnv')
+                    ->label('Manage .env')
+                    ->icon('heroicon-o-cog-6-tooth')
+                    ->url(fn (Repository $record) => static::getUrl('view', ['record' => $record])),
+
                 Actions\Action::make('github')
                     ->label('GitHub')
                     ->icon('heroicon-o-arrow-top-right-on-square')
@@ -132,6 +137,7 @@ class RepositoryResource extends Resource
     {
         return [
             'index' => Pages\ListRepositories::route('/'),
+            'view' => Pages\ViewRepository::route('/{record}'),
         ];
     }
 }
