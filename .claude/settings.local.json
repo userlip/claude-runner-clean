@@ -3,7 +3,8 @@
     "allow": [
       "Skill(superpowers:brainstorming)",
       "Bash(cat:*)",
-      "Bash(claude --version)"
+      "Bash(claude --version)",
+      "Bash(php artisan tinker:*)"
     ],
     "deny": [
       "Bash(php artisan migrate:fresh)",
