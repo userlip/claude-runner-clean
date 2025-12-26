@@ -134,6 +134,12 @@ class RunClaudeMessageJob implements ShouldQueue
 
         $cmd = "claude -p {$prompt} --output-format stream-json --verbose --dangerously-skip-permissions";
 
+        // Add MCP servers (Playwright for browser automation)
+        $mcpConfig = $this->getMcpConfig();
+        if ($mcpConfig) {
+            $cmd .= ' --mcp-config '.escapeshellarg($mcpConfig);
+        }
+
         if ($this->continue) {
             // Resume existing session
             $cmd .= " --resume {$sessionId}";
@@ -147,6 +153,18 @@ class RunClaudeMessageJob implements ShouldQueue
         }
 
         return $cmd;
+    }
+
+    protected function getMcpConfig(): ?string
+    {
+        $mcpServers = [
+            'playwright' => [
+                'command' => 'npx',
+                'args' => ['@playwright/mcp@latest'],
+            ],
+        ];
+
+        return json_encode(['mcpServers' => $mcpServers]);
     }
 
     /**
