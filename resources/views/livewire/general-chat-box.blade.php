@@ -31,6 +31,21 @@
                     </button>
                 @endforeach
             </div>
+            {{-- Context Usage Indicator --}}
+            <div
+                class="flex items-center gap-2"
+                title="{{ number_format($this->contextUsed) }} tokens used of {{ number_format($this->contextLimit) }} ({{ number_format($this->contextPercentage, 1) }}%)"
+            >
+                <div class="w-24 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                    <div
+                        class="{{ $this->contextColor }} h-full transition-all duration-300"
+                        style="width: {{ min($this->contextPercentage, 100) }}%"
+                    ></div>
+                </div>
+                <span class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                    {{ number_format($this->contextUsed / 1000, 0) }}K / {{ number_format($this->contextLimit / 1000, 0) }}K
+                </span>
+            </div>
         </div>
     </div>
 
