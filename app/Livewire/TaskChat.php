@@ -423,19 +423,20 @@ class TaskChat extends Component
             return;
         }
 
-        $conversationSummary = $messages->map(function ($message) {
-            $role = $message->role === MessageRole::User ? 'User' : 'Assistant';
+        // Get first user message for context
+        $firstUserMessage = $messages->first(fn ($m) => $m->role === MessageRole::User);
+        $messageContent = $firstUserMessage?->content ?? '';
+        // Truncate to first 300 chars
+        $messageContent = substr($messageContent, 0, 300);
 
-            return "{$role}: ".substr($message->content ?? '', 0, 500);
-        })->join("\n\n");
-
-        $prompt = "Based on this conversation, generate a short title (max 6 words, no quotes). Just respond with the title, nothing else.\n\n{$conversationSummary}";
+        $prompt = "Generate a 3-5 word title for a chat that starts with this message. Reply with ONLY the title, nothing else. No quotes, no explanation, no punctuation at the end.\n\nMessage: {$messageContent}\n\nTitle:";
 
         try {
             // Use Claude Code CLI which is already authenticated
             $claudePath = config('services.claude.path', '/usr/bin/claude');
             $escapedPrompt = escapeshellarg($prompt);
 
+            // Run in temp dir to avoid picking up workspace context
             $process = proc_open(
                 "{$claudePath} -p {$escapedPrompt} --output-format text --max-turns 1",
                 [
@@ -444,7 +445,7 @@ class TaskChat extends Component
                     2 => ['pipe', 'w'],
                 ],
                 $pipes,
-                $this->task->workspace_path ?? sys_get_temp_dir()
+                sys_get_temp_dir()
             );
 
             if (is_resource($process)) {
@@ -456,9 +457,13 @@ class TaskChat extends Component
 
                 if ($exitCode === 0 && ! empty($output)) {
                     $title = trim($output, " \n\r\t\v\0\"'");
-                    // Limit to reasonable length
-                    if (strlen($title) > 100) {
-                        $title = substr($title, 0, 100);
+                    // Take only the first line in case Claude added extra content
+                    $title = strtok($title, "\n");
+                    // Remove any trailing punctuation
+                    $title = rtrim($title, '.!?:');
+                    // Limit to 50 chars max
+                    if (strlen($title) > 50) {
+                        $title = substr($title, 0, 50);
                     }
 
                     $this->task->update(['title' => $title]);
