@@ -85,4 +85,23 @@ class GeneralChatBoxTest extends TestCase
         Livewire::test(GeneralChatBox::class, ['chat' => $chat])
             ->assertSee('General Chat');
     }
+
+    public function test_can_insert_snippet_into_prompt(): void
+    {
+        $chat = GeneralChat::factory()->create();
+
+        Livewire::test(GeneralChatBox::class, ['chat' => $chat])
+            ->dispatch('insert-snippet', content: 'Inserted snippet text')
+            ->assertSet('prompt', 'Inserted snippet text');
+    }
+
+    public function test_appends_snippet_to_existing_prompt_with_newlines(): void
+    {
+        $chat = GeneralChat::factory()->create();
+
+        Livewire::test(GeneralChatBox::class, ['chat' => $chat])
+            ->set('prompt', 'Existing text')
+            ->dispatch('insert-snippet', content: 'Inserted snippet')
+            ->assertSet('prompt', "Existing text\n\nInserted snippet");
+    }
 }

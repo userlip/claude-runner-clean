@@ -90,3 +90,22 @@ test('can deploy workspace to site', function () {
         return $job->subdomain === 'my-feature';
     });
 });
+
+test('can insert snippet into prompt', function () {
+    $repository = Repository::factory()->create(['user_id' => $this->user->id]);
+    $task = Task::factory()->create(['repository_id' => $repository->id]);
+
+    Livewire::test(TaskChat::class, ['task' => $task])
+        ->dispatch('insert-snippet', content: 'Inserted snippet text')
+        ->assertSet('prompt', 'Inserted snippet text');
+});
+
+test('appends snippet to existing prompt with newlines', function () {
+    $repository = Repository::factory()->create(['user_id' => $this->user->id]);
+    $task = Task::factory()->create(['repository_id' => $repository->id]);
+
+    Livewire::test(TaskChat::class, ['task' => $task])
+        ->set('prompt', 'Existing text')
+        ->dispatch('insert-snippet', content: 'Inserted snippet')
+        ->assertSet('prompt', "Existing text\n\nInserted snippet");
+});
