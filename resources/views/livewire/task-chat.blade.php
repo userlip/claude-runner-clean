@@ -19,6 +19,52 @@
             </div>
             @if($task->isInWorkspace())
                 <div class="chat-action-buttons">
+                    @if($this->hasEnvConfigs)
+                        <div x-data="{ open: false }" class="relative">
+                            <div class="inline-flex rounded-lg shadow-sm">
+                                <button
+                                    type="button"
+                                    wire:click="copyEnvConfig"
+                                    class="inline-flex items-center gap-1 rounded-l-lg bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+                                >
+                                    <x-heroicon-o-document-duplicate class="h-4 w-4" />
+                                    Copy .env
+                                </button>
+                                <button
+                                    type="button"
+                                    @click="open = !open"
+                                    class="inline-flex items-center rounded-r-lg border-l border-gray-300 bg-gray-100 px-2 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+                                >
+                                    <x-heroicon-o-chevron-down class="h-4 w-4" />
+                                </button>
+                            </div>
+
+                            <div
+                                x-show="open"
+                                @click.away="open = false"
+                                x-transition
+                                class="absolute right-0 z-10 mt-1 w-48 origin-top-right rounded-lg bg-white shadow-lg ring-1 ring-black ring-opacity-5 dark:bg-gray-800 dark:ring-gray-700"
+                            >
+                                <div class="py-1">
+                                    @foreach($this->envConfigs as $config)
+                                        <button
+                                            type="button"
+                                            wire:click="copyEnvConfig({{ $config->id }})"
+                                            @click="open = false"
+                                            class="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+                                        >
+                                            @if($config->is_default)
+                                                <x-heroicon-o-star class="h-4 w-4 text-yellow-500" />
+                                            @else
+                                                <span class="h-4 w-4"></span>
+                                            @endif
+                                            {{ $config->name }}
+                                        </button>
+                                    @endforeach
+                                </div>
+                            </div>
+                        </div>
+                    @endif
                     <button wire:click="openDeployModal" class="chat-action-btn chat-action-btn-success">
                         Deploy to Site
                     </button>
