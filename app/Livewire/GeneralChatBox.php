@@ -4,9 +4,10 @@ namespace App\Livewire;
 
 use App\Enums\MessageRole;
 use App\Jobs\RunGeneralChatMessageJob;
+use App\Models\AiProvider;
 use App\Models\GeneralChat;
 use App\Models\GeneralChatMessage;
-use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
@@ -27,10 +28,10 @@ class GeneralChatBox extends Component
     }
 
     /**
-     * @return Collection<int, GeneralChatMessage>
+     * @return EloquentCollection<int, GeneralChatMessage>
      */
     #[Computed]
-    public function chatMessages(): Collection
+    public function chatMessages(): EloquentCollection
     {
         return $this->chat->messages()->oldest()->get();
     }
@@ -58,6 +59,31 @@ class GeneralChatBox extends Component
     public function chatTitle(): string
     {
         return $this->chat->title ?? 'General Chat';
+    }
+
+    /**
+     * @return EloquentCollection<int, AiProvider>
+     */
+    #[Computed]
+    public function availableProviders(): EloquentCollection
+    {
+        return AiProvider::where('is_active', true)->get();
+    }
+
+    #[Computed]
+    public function currentProvider(): ?AiProvider
+    {
+        return $this->chat->aiProvider;
+    }
+
+    public function setProvider(int $providerId): void
+    {
+        $provider = AiProvider::where('is_active', true)->find($providerId);
+
+        if ($provider) {
+            $this->chat->update(['ai_provider_id' => $provider->id]);
+            $this->chat->refresh();
+        }
     }
 
     public function sendMessage(): void

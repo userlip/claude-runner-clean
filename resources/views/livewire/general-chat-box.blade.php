@@ -5,6 +5,17 @@
             <h2 class="chat-header-title">{{ $this->chatTitle }}</h2>
             <p class="chat-header-subtitle">{{ $chat->working_directory }}</p>
         </div>
+        <div class="chat-provider-selector">
+            @foreach($this->availableProviders as $provider)
+                <button
+                    wire:click="setProvider({{ $provider->id }})"
+                    class="chat-provider-btn {{ $this->currentProvider?->id === $provider->id ? 'chat-provider-btn-active' : '' }}"
+                    @disabled($this->isRunning)
+                >
+                    {{ $provider->display_name }}
+                </button>
+            @endforeach
+        </div>
     </div>
 
     {{-- Chat Area --}}
