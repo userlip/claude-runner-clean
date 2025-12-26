@@ -58,3 +58,16 @@ test('it can update quota limits', function () {
 
     expect($claude->fresh()->quota_limit)->toBe(5000000);
 });
+
+test('it can reset quota', function () {
+    $user = User::factory()->create();
+    $claude = AiProvider::factory()->claude()->create(['quota_used' => 5000000]);
+    AiProvider::factory()->glm()->create();
+
+    Livewire::actingAs($user)
+        ->test(AiProviderSettings::class)
+        ->call('resetQuota', 'claude')
+        ->assertNotified();
+
+    expect($claude->fresh()->quota_used)->toBe(0);
+});

@@ -22,7 +22,7 @@ class AiProviderSettings extends Page
 
     protected string $view = 'filament.pages.ai-provider-settings';
 
-    public ?string $glmApiKey = '';
+    public string $glmApiKey = '';
 
     public ?int $glmQuotaLimit = null;
 

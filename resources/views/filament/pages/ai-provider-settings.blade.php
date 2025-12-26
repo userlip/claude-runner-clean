@@ -26,6 +26,7 @@
                     <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Monthly Quota Limit (tokens)</label>
                     <input
                         type="number"
+                        min="0"
                         wire:model="claudeQuotaLimit"
                         class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
                         placeholder="10000000"
@@ -104,6 +105,7 @@
                     <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Quota Limit (tokens per 5-hour cycle)</label>
                     <input
                         type="number"
+                        min="0"
                         wire:model="glmQuotaLimit"
                         class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
                         placeholder="50000000"
