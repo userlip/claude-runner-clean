@@ -9,7 +9,7 @@ use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\Concerns\InteractsWithRecord;
 use Filament\Resources\Pages\Page;
-use Filament\Tables;
+use Filament\Tables\Columns;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
@@ -87,25 +87,25 @@ class ViewRepository extends Page implements HasTable
         return $table
             ->query(fn (): Builder => RepositoryEnvConfig::query()->where('repository_id', $this->record->id))
             ->columns([
-                Tables\Columns\TextColumn::make('name')
+                Columns\TextColumn::make('name')
                     ->label('Name')
                     ->searchable()
                     ->sortable(),
 
-                Tables\Columns\IconColumn::make('is_default')
+                Columns\IconColumn::make('is_default')
                     ->label('Default')
                     ->boolean()
                     ->trueIcon('heroicon-o-star')
                     ->falseIcon('heroicon-o-minus')
                     ->trueColor('warning'),
 
-                Tables\Columns\TextColumn::make('updated_at')
+                Columns\TextColumn::make('updated_at')
                     ->label('Last Updated')
                     ->since()
                     ->sortable(),
             ])
             ->actions([
-                Tables\Actions\Action::make('setDefault')
+                Actions\Action::make('setDefault')
                     ->label('Set Default')
                     ->icon('heroicon-o-star')
                     ->visible(fn (RepositoryEnvConfig $record): bool => ! $record->is_default)
@@ -118,7 +118,7 @@ class ViewRepository extends Page implements HasTable
                             ->send();
                     }),
 
-                Tables\Actions\Action::make('edit')
+                Actions\Action::make('edit')
                     ->label('Edit')
                     ->icon('heroicon-o-pencil')
                     ->form([
@@ -152,8 +152,8 @@ class ViewRepository extends Page implements HasTable
                             ->send();
                     }),
 
-                Tables\Actions\DeleteAction::make()
-                    ->before(function (RepositoryEnvConfig $record, Tables\Actions\DeleteAction $action): void {
+                Actions\DeleteAction::make()
+                    ->before(function (RepositoryEnvConfig $record, Actions\DeleteAction $action): void {
                         $count = $record->repository->envConfigs()->count();
                         if ($count === 1) {
                             Notification::make()
@@ -169,7 +169,7 @@ class ViewRepository extends Page implements HasTable
             ->emptyStateHeading('No env configs')
             ->emptyStateDescription('Add your first .env configuration for this repository.')
             ->emptyStateActions([
-                Tables\Actions\Action::make('addFirst')
+                Actions\Action::make('addFirst')
                     ->label('Add Env Config')
                     ->icon('heroicon-o-plus')
                     ->form([
