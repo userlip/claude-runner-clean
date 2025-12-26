@@ -103,7 +103,20 @@ class GeneralChatBox extends Component
             'prompt' => 'required|string|min:1|max:100000',
         ]);
 
-        $isFirstMessage = $this->chat->messages()->count() === 0;
+        // Handle slash commands locally
+        if ($this->handleSlashCommand($this->prompt)) {
+            $this->prompt = '';
+
+            return;
+        }
+
+        // Check if there's a successful assistant response to continue from
+        $hasSuccessfulResponse = $this->chat->messages()
+            ->where('role', MessageRole::Assistant)
+            ->whereNotNull('content')
+            ->where('content', '!=', '')
+            ->where('content', 'not like', 'Error:%')
+            ->exists();
 
         $userMessage = GeneralChatMessage::create([
             'general_chat_id' => $this->chat->id,
@@ -114,12 +127,106 @@ class GeneralChatBox extends Component
         RunGeneralChatMessageJob::dispatch(
             $this->chat,
             $userMessage,
-            continue: ! $isFirstMessage
+            continue: $hasSuccessfulResponse
         );
 
         $this->prompt = '';
         $this->waitingForResponse = true;
         $this->lastMessageCount = $this->chat->messages()->count();
+    }
+
+    /**
+     * Handle slash commands locally without sending to Claude.
+     */
+    protected function handleSlashCommand(string $prompt): bool
+    {
+        $command = strtolower(trim($prompt));
+
+        if ($command === '/usage') {
+            $this->handleUsageCommand();
+
+            return true;
+        }
+
+        if ($command === '/clear') {
+            $this->handleClearCommand();
+
+            return true;
+        }
+
+        if ($command === '/help') {
+            $this->handleHelpCommand();
+
+            return true;
+        }
+
+        return false;
+    }
+
+    protected function handleUsageCommand(): void
+    {
+        $stats = $this->chat->messages()
+            ->where('role', MessageRole::Assistant)
+            ->selectRaw('SUM(tokens_in) as total_in, SUM(tokens_out) as total_out, SUM(cost_usd) as total_cost')
+            ->first();
+
+        $totalIn = $stats->total_in ?? 0;
+        $totalOut = $stats->total_out ?? 0;
+        $totalCost = $stats->total_cost ?? 0;
+        $messageCount = $this->chat->messages()->count();
+
+        $content = "## Session Usage\n\n";
+        $content .= "| Metric | Value |\n";
+        $content .= "|--------|-------|\n";
+        $content .= "| Messages | {$messageCount} |\n";
+        $content .= '| Input Tokens | '.number_format($totalIn)." |\n";
+        $content .= '| Output Tokens | '.number_format($totalOut)." |\n";
+        $content .= '| Total Tokens | '.number_format($totalIn + $totalOut)." |\n";
+        $content .= '| Cost | $'.number_format($totalCost, 4)." |\n";
+
+        GeneralChatMessage::create([
+            'general_chat_id' => $this->chat->id,
+            'role' => MessageRole::User,
+            'content' => '/usage',
+        ]);
+
+        GeneralChatMessage::create([
+            'general_chat_id' => $this->chat->id,
+            'role' => MessageRole::Assistant,
+            'content' => $content,
+        ]);
+    }
+
+    protected function handleClearCommand(): void
+    {
+        $this->chat->messages()->delete();
+        $this->lastMessageCount = 0;
+
+        $this->dispatch('notify', [
+            'message' => 'Conversation cleared.',
+        ]);
+    }
+
+    protected function handleHelpCommand(): void
+    {
+        $content = "## Available Commands\n\n";
+        $content .= "| Command | Description |\n";
+        $content .= "|---------|-------------|\n";
+        $content .= "| `/usage` | Show token usage and cost for this session |\n";
+        $content .= "| `/clear` | Clear all messages in this conversation |\n";
+        $content .= "| `/help` | Show this help message |\n";
+
+        GeneralChatMessage::create([
+            'general_chat_id' => $this->chat->id,
+            'role' => MessageRole::User,
+            'content' => '/help',
+        ]);
+
+        GeneralChatMessage::create([
+            'general_chat_id' => $this->chat->id,
+            'role' => MessageRole::Assistant,
+            'content' => $content,
+        ]);
     }
 
     public function generateTitle(): void

@@ -37,6 +37,10 @@ class RunGeneralChatMessageJob implements ShouldQueue
             $command = $this->buildCommand();
             $workingDir = $this->chat->working_directory;
 
+            if (! is_dir($workingDir)) {
+                throw new \RuntimeException("Working directory does not exist: {$workingDir}");
+            }
+
             Log::info('Running Claude Code (General Chat)', [
                 'chat_id' => $this->chat->id,
                 'command' => $command,
@@ -50,7 +54,10 @@ class RunGeneralChatMessageJob implements ShouldQueue
             ];
 
             $env = array_filter(
-                array_merge($_ENV, $_SERVER, $this->getProviderEnvironment()),
+                array_merge($_ENV, $_SERVER, $this->getProviderEnvironment(), [
+                    'PATH' => '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
+                    'HOME' => getenv('HOME') ?: '/home/ploi',
+                ]),
                 fn ($value) => is_string($value)
             );
             $process = proc_open($command, $descriptors, $pipes, $workingDir, $env);
@@ -132,7 +139,7 @@ class RunGeneralChatMessageJob implements ShouldQueue
         $prompt = escapeshellarg($this->userMessage->content);
         $sessionId = escapeshellarg($this->chat->session_id);
 
-        $cmd = "claude -p {$prompt} --output-format stream-json --verbose --dangerously-skip-permissions";
+        $cmd = "/usr/bin/claude -p {$prompt} --output-format stream-json --verbose --dangerously-skip-permissions";
 
         // Add MCP servers (Playwright for browser automation)
         $mcpConfig = $this->getMcpConfig();

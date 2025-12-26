@@ -22,7 +22,7 @@ class ViewRepository extends Page implements HasTable
 
     protected static string $resource = RepositoryResource::class;
 
-    protected static string $view = 'filament.resources.repository-resource.pages.view-repository';
+    protected string $view = 'filament.resources.repository-resource.pages.view-repository';
 
     public function mount(int|string $record): void
     {
