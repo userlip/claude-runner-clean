@@ -53,7 +53,7 @@ class RunGeneralChatMessageJob implements ShouldQueue
                 array_merge($_ENV, $_SERVER, $this->getProviderEnvironment()),
                 fn ($value) => is_string($value)
             );
-            $process = proc_open('/bin/bash -c '.escapeshellarg($command), $descriptors, $pipes, $workingDir, $env);
+            $process = proc_open($command, $descriptors, $pipes, $workingDir, $env);
 
             if (! is_resource($process)) {
                 throw new \RuntimeException('Failed to start Claude process');
@@ -132,7 +132,7 @@ class RunGeneralChatMessageJob implements ShouldQueue
         $prompt = escapeshellarg($this->userMessage->content);
         $sessionId = escapeshellarg($this->chat->session_id);
 
-        $cmd = "/usr/bin/claude -p {$prompt} --output-format stream-json --verbose --dangerously-skip-permissions";
+        $cmd = "claude -p {$prompt} --output-format stream-json --verbose --dangerously-skip-permissions";
 
         if ($this->continue) {
             // Resume existing session
