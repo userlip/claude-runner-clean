@@ -43,6 +43,7 @@ return [
 
     'ploi' => [
         'server_id' => env('PLOI_SERVER_ID'),
+        'server_name' => env('PLOI_SERVER_NAME'),
     ],
 
 ];

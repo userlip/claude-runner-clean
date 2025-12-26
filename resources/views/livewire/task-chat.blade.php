@@ -2,7 +2,21 @@
     {{-- Header --}}
     <div class="chat-header">
         <div class="chat-header-info">
-            <h2 class="chat-header-title">{{ $task->repository->name }}</h2>
+            <div class="chat-header-title-row">
+                <h2 class="chat-header-title">{{ $task->title ?? $task->repository->name }}</h2>
+                @if($this->chatMessages->isNotEmpty())
+                    <button
+                        wire:click="generateTitle"
+                        wire:loading.attr="disabled"
+                        wire:target="generateTitle"
+                        title="Generate title from conversation"
+                        class="chat-generate-title-btn"
+                    >
+                        <span wire:loading.remove wire:target="generateTitle">Name</span>
+                        <span wire:loading wire:target="generateTitle">...</span>
+                    </button>
+                @endif
+            </div>
             <p class="chat-header-subtitle">{{ $this->locationLabel }}</p>
         </div>
         <div class="chat-header-controls">
@@ -42,7 +56,7 @@
                                     wire:click="copyEnvConfig"
                                     class="inline-flex items-center gap-1 rounded-l-lg bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
                                 >
-                                    <x-heroicon-o-document-duplicate class="h-4 w-4" />
+                                    <x-heroicon-o-document-duplicate style="width: 1rem; height: 1rem;" />
                                     Copy .env
                                 </button>
                                 <button
@@ -50,7 +64,7 @@
                                     @click="open = !open"
                                     class="inline-flex items-center rounded-r-lg border-l border-gray-300 bg-gray-100 px-2 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
                                 >
-                                    <x-heroicon-o-chevron-down class="h-4 w-4" />
+                                    <x-heroicon-o-chevron-down style="width: 1rem; height: 1rem;" />
                                 </button>
                             </div>
 
@@ -69,9 +83,9 @@
                                             class="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
                                         >
                                             @if($config->is_default)
-                                                <x-heroicon-o-star class="h-4 w-4 text-yellow-500" />
+                                                <x-heroicon-o-star style="width: 1rem; height: 1rem; color: #eab308;" />
                                             @else
-                                                <span class="h-4 w-4"></span>
+                                                <span style="width: 1rem; height: 1rem; display: inline-block;"></span>
                                             @endif
                                             {{ $config->name }}
                                         </button>
@@ -114,21 +128,53 @@
                 <div wire:key="message-{{ $message->id }}" class="chat-message {{ $message->isFromUser() ? 'chat-message-user' : 'chat-message-assistant' }}">
                     <div class="chat-bubble {{ $message->isFromUser() ? 'chat-bubble-user' : 'chat-bubble-assistant' }}">
                         @if($message->isFromUser())
-                            <p style="white-space: pre-wrap; margin: 0;">{{ $message->content }}</p>
-                        @else
-                            <div class="chat-bubble-content">
-                                {!! Str::markdown($message->content ?? '') !!}
-                            </div>
-
-                            @if($message->tool_calls)
-                                <div class="chat-tool-calls">
-                                    @foreach($message->tool_calls as $tool)
-                                        <details class="chat-tool-call">
-                                            <summary>{{ $tool['name'] ?? 'Tool' }}</summary>
-                                            <pre>{{ json_encode($tool['input'] ?? [], JSON_PRETTY_PRINT) }}</pre>
-                                        </details>
+                            @if($message->images && count($message->images) > 0)
+                                <div class="chat-message-images">
+                                    @foreach($message->images as $index => $image)
+                                        <img
+                                            src="{{ $image['data'] }}"
+                                            alt="{{ $image['name'] ?? 'Image' }}"
+                                            class="chat-message-image-thumb"
+                                            @click="$dispatch('open-image-modal', { src: '{{ $image['data'] }}', alt: '{{ $image['name'] ?? 'Image' }}' })"
+                                        >
                                     @endforeach
                                 </div>
+                            @endif
+                            @if($message->content)
+                                <p style="white-space: pre-wrap; margin: 0;">{{ $message->content }}</p>
+                            @endif
+                        @else
+                            @if($message->content_blocks && count($message->content_blocks) > 0)
+                                {{-- Render interleaved content blocks as separate bubbles --}}
+                                <div class="chat-bubble-content">
+                                    {!! Str::markdown($message->content_blocks[0]['text'] ?? '') !!}
+                                </div>
+                            @else
+                                {{-- Fallback for old messages without content_blocks --}}
+                                <div class="chat-bubble-content">
+                                    {!! Str::markdown($message->content ?? '') !!}
+                                </div>
+
+                                @if($message->tool_calls && count($message->tool_calls) > 0)
+                                    <div x-data="{ showTools: false }" class="chat-tool-calls-container">
+                                        <button
+                                            type="button"
+                                            @click="showTools = !showTools"
+                                            class="chat-tool-toggle"
+                                        >
+                                            <span x-text="showTools ? '▼' : '▶'" class="chat-tool-toggle-icon"></span>
+                                            <span>{{ count($message->tool_calls) }} tool {{ Str::plural('call', count($message->tool_calls)) }}</span>
+                                        </button>
+                                        <div x-show="showTools" x-collapse class="chat-tool-calls">
+                                            @foreach($message->tool_calls as $tool)
+                                                <details class="chat-tool-call">
+                                                    <summary>{{ $tool['name'] ?? 'Tool' }}</summary>
+                                                    <pre>{{ json_encode($tool['input'] ?? [], JSON_PRETTY_PRINT) }}</pre>
+                                                </details>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @endif
                             @endif
 
                             @if($message->tokens_in || $message->tokens_out)
@@ -143,6 +189,32 @@
                         @endif
                     </div>
                 </div>
+                {{-- Render remaining content blocks as separate bubbles --}}
+                @if($message->isFromAssistant() && $message->content_blocks && count($message->content_blocks) > 1)
+                    @foreach($message->content_blocks as $index => $block)
+                        @if($index === 0)
+                            @continue
+                        @endif
+                        @if(($block['type'] ?? '') === 'text' && !empty($block['text']))
+                            <div wire:key="message-{{ $message->id }}-block-{{ $index }}" class="chat-message chat-message-assistant">
+                                <div class="chat-bubble chat-bubble-assistant">
+                                    <div class="chat-bubble-content">
+                                        {!! Str::markdown($block['text']) !!}
+                                    </div>
+                                </div>
+                            </div>
+                        @elseif(($block['type'] ?? '') === 'tool_use')
+                            <div wire:key="message-{{ $message->id }}-block-{{ $index }}" class="chat-message chat-message-assistant">
+                                <div class="chat-bubble chat-bubble-tool">
+                                    <div class="chat-tool-use">
+                                        <span class="chat-tool-use-icon">⚙</span>
+                                        <span class="chat-tool-use-name">{{ $block['tool']['name'] ?? 'Tool' }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
+                    @endforeach
+                @endif
             @empty
                 <div class="chat-empty">
                     <p>Start a conversation with Claude Code</p>
@@ -162,21 +234,68 @@
         </div>
 
         {{-- Input --}}
-        <div class="chat-input-area">
+        <div class="chat-input-area"
+            x-data="{
+                images: @entangle('images'),
+                handlePaste(e) {
+                    const items = e.clipboardData?.items;
+                    if (!items) return;
+
+                    for (const item of items) {
+                        if (item.type.startsWith('image/')) {
+                            e.preventDefault();
+                            const file = item.getAsFile();
+                            if (file) {
+                                const reader = new FileReader();
+                                reader.onload = (event) => {
+                                    this.images.push({
+                                        data: event.target.result,
+                                        name: file.name || 'pasted-image.png'
+                                    });
+                                };
+                                reader.readAsDataURL(file);
+                            }
+                        }
+                    }
+                },
+                removeImage(index) {
+                    this.images.splice(index, 1);
+                }
+            }"
+        >
             <form wire:submit="sendMessage" class="chat-form">
-                <textarea
-                    wire:model.live="prompt"
-                    placeholder="Type your message..."
-                    rows="2"
-                    class="chat-textarea"
-                    @disabled($this->isRunning)
-                ></textarea>
+                <div class="chat-input-wrapper">
+                    {{-- Image previews --}}
+                    <template x-if="images.length > 0">
+                        <div class="chat-image-preview">
+                            <template x-for="(image, index) in images" :key="index">
+                                <div class="chat-image-preview-item">
+                                    <img :src="image.data" :alt="image.name">
+                                    <button type="button" class="chat-image-preview-remove" @click="removeImage(index)">&times;</button>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+
+                    <textarea
+                        wire:model.live="prompt"
+                        placeholder="Type a message..."
+                        rows="1"
+                        class="chat-textarea"
+                        @paste="handlePaste($event)"
+                        @disabled($this->isRunning)
+                        @keydown.enter.prevent="if (!$event.shiftKey && !$wire.isRunning) $wire.sendMessage()"
+                    ></textarea>
+                </div>
                 <button
                     type="submit"
                     class="chat-submit"
                     @disabled($this->isRunning || empty($prompt))
+                    title="Send message"
                 >
-                    Send
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.25rem; height: 1.25rem;">
+                        <path d="M3.478 2.404a.75.75 0 0 0-.926.941l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.404Z" />
+                    </svg>
                 </button>
             </form>
         </div>
@@ -266,4 +385,23 @@
         </div>
     </div>
     @endif
+
+    {{-- Image Lightbox Modal --}}
+    <div
+        x-data="{ open: false, src: '', alt: '' }"
+        @open-image-modal.window="open = true; src = $event.detail.src; alt = $event.detail.alt"
+        @keydown.escape.window="open = false"
+    >
+        <template x-if="open">
+            <div
+                class="chat-image-lightbox-overlay"
+                @click.self="open = false"
+            >
+                <div class="chat-image-lightbox">
+                    <button class="chat-image-lightbox-close" @click="open = false">&times;</button>
+                    <img :src="src" :alt="alt" class="chat-image-lightbox-img">
+                </div>
+            </div>
+        </template>
+    </div>
 </div>

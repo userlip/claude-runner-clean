@@ -15,6 +15,8 @@ class Message extends Model
         'task_id',
         'role',
         'content',
+        'content_blocks',
+        'images',
         'raw_output',
         'tool_calls',
         'tokens_in',
@@ -26,11 +28,20 @@ class Message extends Model
     {
         return [
             'role' => MessageRole::class,
+            'content_blocks' => 'array',
+            'images' => 'array',
             'tool_calls' => 'array',
             'tokens_in' => 'integer',
             'tokens_out' => 'integer',
             'cost_usd' => 'decimal:6',
         ];
+    }
+
+    public function addContentBlock(array $block): void
+    {
+        $blocks = $this->content_blocks ?? [];
+        $blocks[] = $block;
+        $this->update(['content_blocks' => $blocks]);
     }
 
     public function task(): BelongsTo

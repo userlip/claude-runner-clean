@@ -12,10 +12,14 @@ class PloiService
 {
     protected string $serverId;
 
+    protected string $serverName;
+
     public function __construct()
     {
         $this->serverId = config('services.ploi.server_id')
             ?? throw new \RuntimeException('Ploi server ID not configured');
+        $this->serverName = config('services.ploi.server_name')
+            ?? throw new \RuntimeException('Ploi server name not configured');
     }
 
     public function syncSites(): int
@@ -53,7 +57,7 @@ class PloiService
     {
         $result = Process::run([
             'ploi', 'site:list',
-            '--server='.$this->serverId,
+            '--server='.$this->serverName,
             '--no-interaction',
         ]);
 

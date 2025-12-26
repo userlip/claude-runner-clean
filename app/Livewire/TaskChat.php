@@ -11,6 +11,7 @@ use App\Models\Task;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Http;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -20,6 +21,9 @@ class TaskChat extends Component
     public Task $task;
 
     public string $prompt = '';
+
+    /** @var array<int, array{data: string, name: string}> */
+    public array $images = [];
 
     public bool $waitingForResponse = false;
 
@@ -183,13 +187,24 @@ class TaskChat extends Component
 
     public function sendMessage(): void
     {
+        // Allow sending with just images (no text required)
+        $hasContent = ! empty(trim($this->prompt)) || ! empty($this->images);
+
+        if (! $hasContent) {
+            return;
+        }
+
         $this->validate([
-            'prompt' => 'required|string|min:1|max:10000',
+            'prompt' => 'nullable|string|max:10000',
+            'images' => 'array|max:10',
+            'images.*.data' => 'required|string',
+            'images.*.name' => 'required|string|max:255',
         ]);
 
         // Handle slash commands locally
-        if ($this->handleSlashCommand($this->prompt)) {
+        if (! empty($this->prompt) && $this->handleSlashCommand($this->prompt)) {
             $this->prompt = '';
+            $this->images = [];
 
             return;
         }
@@ -205,7 +220,8 @@ class TaskChat extends Component
         $userMessage = Message::create([
             'task_id' => $this->task->id,
             'role' => MessageRole::User,
-            'content' => $this->prompt,
+            'content' => $this->prompt ?: '',
+            'images' => ! empty($this->images) ? $this->images : null,
         ]);
 
         RunClaudeMessageJob::dispatch(
@@ -215,6 +231,7 @@ class TaskChat extends Component
         );
 
         $this->prompt = '';
+        $this->images = [];
         $this->waitingForResponse = true;
         $this->lastMessageCount = $this->task->messages()->count();
     }
@@ -391,6 +408,57 @@ class TaskChat extends Component
         $this->dispatch('notify', [
             'message' => "Deploying to {$this->deploySubdomain}.marin.sh...",
         ]);
+    }
+
+    public function generateTitle(): void
+    {
+        $messages = $this->task->messages()->oldest()->take(20)->get();
+
+        if ($messages->isEmpty()) {
+            return;
+        }
+
+        $provider = $this->task->aiProvider ?? AiProvider::getDefault();
+
+        if (! $provider) {
+            return;
+        }
+
+        $conversationSummary = $messages->map(function ($message) {
+            $role = $message->role === MessageRole::User ? 'User' : 'Assistant';
+
+            return "{$role}: ".substr($message->content ?? '', 0, 500);
+        })->join("\n\n");
+
+        $baseUrl = $provider->base_url ?: 'https://api.anthropic.com';
+        $apiKey = $provider->api_key ?: config('services.anthropic.api_key');
+        $model = $provider->model ?: 'claude-sonnet-4-20250514';
+
+        $response = Http::withHeaders([
+            'x-api-key' => $apiKey,
+            'anthropic-version' => '2023-06-01',
+            'content-type' => 'application/json',
+        ])->post("{$baseUrl}/v1/messages", [
+            'model' => $model,
+            'max_tokens' => 50,
+            'messages' => [
+                [
+                    'role' => 'user',
+                    'content' => "Based on this conversation, generate a short title (max 6 words, no quotes). Just respond with the title, nothing else.\n\n{$conversationSummary}",
+                ],
+            ],
+        ]);
+
+        if ($response->successful()) {
+            $data = $response->json();
+            $title = $data['content'][0]['text'] ?? null;
+
+            if ($title) {
+                $title = trim($title, " \n\r\t\v\0\"'");
+                $this->task->update(['title' => $title]);
+                $this->task->refresh();
+            }
+        }
     }
 
     public function render()

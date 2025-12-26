@@ -15,6 +15,7 @@ class Task extends Model
 
     protected $fillable = [
         'uuid',
+        'title',
         'repository_id',
         'site_id',
         'ai_provider_id',

@@ -70,6 +70,7 @@ class RunClaudeMessageJob implements ShouldQueue
 
             $output = '';
             $toolCalls = [];
+            $contentBlocks = [];
 
             while (! feof($pipes[1])) {
                 $line = fgets($pipes[1]);
@@ -84,11 +85,17 @@ class RunClaudeMessageJob implements ShouldQueue
                 if ($parsed) {
                     if (isset($parsed['tool_call'])) {
                         $toolCalls[] = $parsed['tool_call'];
-                        $assistantMessage->update(['tool_calls' => $toolCalls]);
+                        $contentBlocks[] = ['type' => 'tool_use', 'tool' => $parsed['tool_call']];
+                        $assistantMessage->update([
+                            'tool_calls' => $toolCalls,
+                            'content_blocks' => $contentBlocks,
+                        ]);
                     }
                     if (isset($parsed['content'])) {
+                        $contentBlocks[] = ['type' => 'text', 'text' => $parsed['content']];
                         $assistantMessage->update([
                             'content' => ($assistantMessage->content ?? '').$parsed['content'],
+                            'content_blocks' => $contentBlocks,
                         ]);
                     }
                     if (isset($parsed['usage'])) {
@@ -221,9 +228,16 @@ class RunClaudeMessageJob implements ShouldQueue
         }
 
         if (($data['type'] ?? '') === 'result') {
+            // Calculate total input tokens including cache reads
+            $usage = $data['usage'] ?? [];
+            $inputTokens = ($usage['input_tokens'] ?? 0)
+                + ($usage['cache_read_input_tokens'] ?? 0)
+                + ($usage['cache_creation_input_tokens'] ?? 0);
+            $outputTokens = $usage['output_tokens'] ?? 0;
+
             $result['usage'] = [
-                'input_tokens' => $data['total_input_tokens'] ?? null,
-                'output_tokens' => $data['total_output_tokens'] ?? null,
+                'input_tokens' => $inputTokens > 0 ? $inputTokens : null,
+                'output_tokens' => $outputTokens > 0 ? $outputTokens : null,
                 'cost_usd' => $data['total_cost_usd'] ?? null,
             ];
         }
