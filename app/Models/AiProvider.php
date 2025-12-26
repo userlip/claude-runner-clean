@@ -52,7 +52,7 @@ class AiProvider extends Model
 
         return array_filter([
             'ANTHROPIC_BASE_URL' => $this->base_url,
-            'ANTHROPIC_AUTH_TOKEN' => $this->api_key,
+            'ANTHROPIC_API_KEY' => $this->api_key,
             'ANTHROPIC_MODEL' => $this->model,
         ]);
     }

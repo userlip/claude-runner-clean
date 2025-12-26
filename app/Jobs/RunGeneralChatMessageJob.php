@@ -49,7 +49,10 @@ class RunGeneralChatMessageJob implements ShouldQueue
                 2 => ['pipe', 'w'],
             ];
 
-            $env = array_merge($_ENV, $_SERVER, $this->getProviderEnvironment());
+            $env = array_filter(
+                array_merge($_ENV, $_SERVER, $this->getProviderEnvironment()),
+                fn ($value) => is_string($value)
+            );
             $process = proc_open($command, $descriptors, $pipes, $workingDir, $env);
 
             if (! is_resource($process)) {
