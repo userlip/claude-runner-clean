@@ -45,4 +45,38 @@ class Repository extends Model
     {
         return $this->hasMany(Task::class);
     }
+
+    public function envConfigs(): HasMany
+    {
+        return $this->hasMany(RepositoryEnvConfig::class);
+    }
+
+    public function defaultEnvConfig(): ?RepositoryEnvConfig
+    {
+        return $this->envConfigs()->where('is_default', true)->first();
+    }
+
+    /**
+     * Get the clone URL with authentication token for private repos.
+     */
+    public function getAuthenticatedCloneUrl(): string
+    {
+        if (! $this->private) {
+            return $this->clone_url;
+        }
+
+        // Get the user's GitHub connection
+        $connection = GitHubConnection::where('user_id', $this->user_id)->first();
+
+        if (! $connection || ! $connection->access_token) {
+            return $this->clone_url;
+        }
+
+        // Insert token into HTTPS URL: https://TOKEN@github.com/user/repo.git
+        return str_replace(
+            'https://github.com/',
+            'https://'.$connection->access_token.'@github.com/',
+            $this->clone_url
+        );
+    }
 }
