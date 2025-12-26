@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(superpowers:brainstorming)",
+      "Bash(cat:*)",
+      "Bash(claude --version)"
+    ],
+    "deny": [
+      "Bash(php artisan migrate:fresh)",
+      "Bash(php artisan migrate:reset)",
+      "Bash(php artisan db:wipe)"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "laravel-boost",
+    "playwright"
+  ]
+}
