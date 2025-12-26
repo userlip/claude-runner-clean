@@ -1,40 +1,35 @@
 <div class="chat-container">
     {{-- Header --}}
     <div class="chat-header">
-        <div>
+        <div class="chat-header-info">
             <h2 class="chat-header-title">{{ $task->repository->name }}</h2>
             <p class="chat-header-subtitle">{{ $this->locationLabel }}</p>
         </div>
-        <div class="chat-provider-selector">
-            @foreach($this->availableProviders as $provider)
-                <button
-                    wire:click="setProvider({{ $provider->id }})"
-                    class="chat-provider-btn {{ $this->currentProvider?->id === $provider->id ? 'chat-provider-btn-active' : '' }}"
-                    @disabled($this->isRunning)
-                >
-                    {{ $provider->display_name }}
-                </button>
-            @endforeach
-        </div>
-        <div style="display: flex; gap: 0.5rem;">
+        <div class="chat-header-controls">
+            <div class="chat-provider-selector">
+                @foreach($this->availableProviders as $provider)
+                    <button
+                        wire:click="setProvider({{ $provider->id }})"
+                        class="chat-provider-btn {{ $this->currentProvider?->id === $provider->id ? 'chat-provider-btn-active' : '' }}"
+                        @disabled($this->isRunning)
+                    >
+                        {{ $provider->display_name }}
+                    </button>
+                @endforeach
+            </div>
             @if($task->isInWorkspace())
-                <button
-                    wire:click="openDeployModal"
-                    style="border-radius: 0.5rem; background-color: rgb(22 163 74); padding: 0.5rem 1rem; font-size: 0.875rem; color: white; border: none; cursor: pointer;"
-                    onmouseover="this.style.backgroundColor='rgb(21 128 61)'"
-                    onmouseout="this.style.backgroundColor='rgb(22 163 74)'"
-                >
-                    Deploy to Site
-                </button>
-                <button
-                    wire:click="deleteWorkspace"
-                    wire:confirm="Are you sure you want to delete this workspace? This cannot be undone."
-                    style="border-radius: 0.5rem; background-color: rgb(220 38 38); padding: 0.5rem 1rem; font-size: 0.875rem; color: white; border: none; cursor: pointer;"
-                    onmouseover="this.style.backgroundColor='rgb(185 28 28)'"
-                    onmouseout="this.style.backgroundColor='rgb(220 38 38)'"
-                >
-                    Delete Workspace
-                </button>
+                <div class="chat-action-buttons">
+                    <button wire:click="openDeployModal" class="chat-action-btn chat-action-btn-success">
+                        Deploy to Site
+                    </button>
+                    <button
+                        wire:click="deleteWorkspace"
+                        wire:confirm="Are you sure you want to delete this workspace? This cannot be undone."
+                        class="chat-action-btn chat-action-btn-danger"
+                    >
+                        Delete Workspace
+                    </button>
+                </div>
             @endif
         </div>
     </div>
