@@ -20,6 +20,10 @@ class TaskChat extends Component
 
     public string $prompt = '';
 
+    public bool $waitingForResponse = false;
+
+    public int $lastMessageCount = 0;
+
     public bool $showDeployModal = false;
 
     public string $deploySubdomain = '';
@@ -35,6 +39,7 @@ class TaskChat extends Component
     public function mount(Task $task): void
     {
         $this->task = $task;
+        $this->lastMessageCount = $task->messages()->count();
     }
 
     #[On('insert-snippet')]
@@ -59,6 +64,19 @@ class TaskChat extends Component
     public function isRunning(): bool
     {
         return $this->task->isRunning();
+    }
+
+    #[Computed]
+    public function shouldPoll(): bool
+    {
+        // Check if we got a response (message count increased)
+        $currentCount = $this->task->messages()->count();
+        if ($this->waitingForResponse && $currentCount > $this->lastMessageCount) {
+            $this->waitingForResponse = false;
+            $this->lastMessageCount = $currentCount;
+        }
+
+        return $this->isRunning || $this->waitingForResponse;
     }
 
     #[Computed]
@@ -117,6 +135,8 @@ class TaskChat extends Component
         );
 
         $this->prompt = '';
+        $this->waitingForResponse = true;
+        $this->lastMessageCount = $this->task->messages()->count();
     }
 
     public function deleteWorkspace(): void

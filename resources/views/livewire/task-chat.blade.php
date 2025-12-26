@@ -42,7 +42,7 @@
     {{-- Chat Area --}}
     <div class="chat-area">
         {{-- Messages --}}
-        <div class="chat-messages" @if($this->isRunning) wire:poll.2s="$refresh" @endif>
+        <div class="chat-messages" @if($this->shouldPoll) wire:poll.1s="$refresh" @endif>
             @forelse($this->chatMessages as $message)
                 <div wire:key="message-{{ $message->id }}" class="chat-message {{ $message->isFromUser() ? 'chat-message-user' : 'chat-message-assistant' }}">
                     <div class="chat-bubble {{ $message->isFromUser() ? 'chat-bubble-user' : 'chat-bubble-assistant' }}">
@@ -82,7 +82,7 @@
                 </div>
             @endforelse
 
-            @if($this->isRunning)
+            @if($this->shouldPoll)
                 <div class="chat-thinking">
                     <div class="chat-thinking-bubble">
                         <div class="chat-thinking-content">
