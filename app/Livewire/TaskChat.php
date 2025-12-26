@@ -4,9 +4,11 @@ namespace App\Livewire;
 
 use App\Enums\MessageRole;
 use App\Jobs\RunClaudeMessageJob;
+use App\Models\AiProvider;
 use App\Models\Message;
 use App\Models\Task;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\File;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -57,6 +59,31 @@ class TaskChat extends Component
         }
 
         return 'Workspace';
+    }
+
+    /**
+     * @return EloquentCollection<int, AiProvider>
+     */
+    #[Computed]
+    public function availableProviders(): EloquentCollection
+    {
+        return AiProvider::where('is_active', true)->get();
+    }
+
+    #[Computed]
+    public function currentProvider(): ?AiProvider
+    {
+        return $this->task->aiProvider;
+    }
+
+    public function setProvider(int $providerId): void
+    {
+        $provider = AiProvider::where('is_active', true)->find($providerId);
+
+        if ($provider) {
+            $this->task->update(['ai_provider_id' => $provider->id]);
+            $this->task->refresh();
+        }
     }
 
     public function sendMessage(): void

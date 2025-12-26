@@ -5,6 +5,17 @@
             <h2 class="text-lg font-semibold">{{ $task->repository->name }}</h2>
             <p class="text-sm text-gray-500">{{ $this->locationLabel }}</p>
         </div>
+        <div class="chat-provider-selector">
+            @foreach($this->availableProviders as $provider)
+                <button
+                    wire:click="setProvider({{ $provider->id }})"
+                    class="chat-provider-btn {{ $this->currentProvider?->id === $provider->id ? 'chat-provider-btn-active' : '' }}"
+                    @disabled($this->isRunning)
+                >
+                    {{ $provider->display_name }}
+                </button>
+            @endforeach
+        </div>
         <div class="flex gap-2">
             @if($task->isInWorkspace())
                 <button
