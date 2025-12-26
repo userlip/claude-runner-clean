@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\GeneralChatStatus;
+use App\Models\AiProvider;
 use App\Models\GeneralChat;
 use App\Models\GeneralChatMessage;
 use App\Models\User;
@@ -74,4 +75,20 @@ test('it can mark as failed', function () {
 
     expect($chat->status)->toBe(GeneralChatStatus::Failed)
         ->and($chat->completed_at)->not->toBeNull();
+});
+
+test('it belongs to ai provider', function () {
+    $provider = AiProvider::factory()->create();
+    $chat = GeneralChat::factory()->create(['ai_provider_id' => $provider->id]);
+
+    expect($chat->aiProvider)->toBeInstanceOf(AiProvider::class)
+        ->and($chat->aiProvider->id)->toBe($provider->id);
+});
+
+test('it uses default provider when none specified', function () {
+    AiProvider::factory()->claude()->create();
+    $chat = GeneralChat::factory()->create();
+
+    expect($chat->aiProvider)->not->toBeNull()
+        ->and($chat->aiProvider->name)->toBe('claude');
 });

@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Enums\GeneralChatStatus;
+use App\Models\AiProvider;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
@@ -14,6 +15,7 @@ class GeneralChatFactory extends Factory
         return [
             'uuid' => Str::uuid(),
             'user_id' => User::factory(),
+            'ai_provider_id' => null, // Will use default in model boot
             'session_id' => Str::uuid(),
             'title' => fake()->optional()->sentence(3),
             'working_directory' => '/home/ploi',
@@ -52,5 +54,10 @@ class GeneralChatFactory extends Factory
     public function withTitle(string $title): static
     {
         return $this->state(['title' => $title]);
+    }
+
+    public function withProvider(AiProvider $provider): static
+    {
+        return $this->state(['ai_provider_id' => $provider->id]);
     }
 }

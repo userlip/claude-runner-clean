@@ -16,6 +16,7 @@ class GeneralChat extends Model
     protected $fillable = [
         'uuid',
         'user_id',
+        'ai_provider_id',
         'session_id',
         'title',
         'working_directory',
@@ -39,6 +40,7 @@ class GeneralChat extends Model
             $chat->uuid ??= Str::uuid();
             $chat->session_id ??= Str::uuid();
             $chat->working_directory ??= '/home/ploi';
+            $chat->ai_provider_id ??= AiProvider::getDefault()?->id;
         });
     }
 
@@ -50,6 +52,11 @@ class GeneralChat extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function aiProvider(): BelongsTo
+    {
+        return $this->belongsTo(AiProvider::class);
     }
 
     public function messages(): HasMany
