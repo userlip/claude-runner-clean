@@ -8,6 +8,7 @@ use App\Models\AiProvider;
 use App\Models\GeneralChat;
 use App\Models\GeneralChatMessage;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Support\Facades\Http;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
@@ -109,6 +110,57 @@ class GeneralChatBox extends Component
         $this->prompt = '';
         $this->waitingForResponse = true;
         $this->lastMessageCount = $this->chat->messages()->count();
+    }
+
+    public function generateTitle(): void
+    {
+        $messages = $this->chat->messages()->oldest()->take(20)->get();
+
+        if ($messages->isEmpty()) {
+            return;
+        }
+
+        $provider = $this->chat->aiProvider ?? AiProvider::getDefault();
+
+        if (! $provider) {
+            return;
+        }
+
+        $conversationSummary = $messages->map(function ($message) {
+            $role = $message->role === MessageRole::User ? 'User' : 'Assistant';
+
+            return "{$role}: ".substr($message->content ?? '', 0, 500);
+        })->join("\n\n");
+
+        $baseUrl = $provider->base_url ?: 'https://api.anthropic.com';
+        $apiKey = $provider->api_key ?: config('services.anthropic.api_key');
+        $model = $provider->model ?: 'claude-sonnet-4-20250514';
+
+        $response = Http::withHeaders([
+            'x-api-key' => $apiKey,
+            'anthropic-version' => '2023-06-01',
+            'content-type' => 'application/json',
+        ])->post("{$baseUrl}/v1/messages", [
+            'model' => $model,
+            'max_tokens' => 50,
+            'messages' => [
+                [
+                    'role' => 'user',
+                    'content' => "Based on this conversation, generate a short title (max 6 words, no quotes). Just respond with the title, nothing else.\n\n{$conversationSummary}",
+                ],
+            ],
+        ]);
+
+        if ($response->successful()) {
+            $data = $response->json();
+            $title = $data['content'][0]['text'] ?? null;
+
+            if ($title) {
+                $title = trim($title, " \n\r\t\v\0\"'");
+                $this->chat->update(['title' => $title]);
+                $this->chat->refresh();
+            }
+        }
     }
 
     public function render()

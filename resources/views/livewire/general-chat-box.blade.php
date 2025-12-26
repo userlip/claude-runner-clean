@@ -1,9 +1,25 @@
 <div class="chat-container">
     {{-- Header --}}
     <div class="chat-header">
-        <div>
-            <h2 class="chat-header-title">{{ $this->chatTitle }}</h2>
-            <p class="chat-header-subtitle">{{ $chat->working_directory }}</p>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <div>
+                <h2 class="chat-header-title">{{ $this->chatTitle }}</h2>
+                <p class="chat-header-subtitle">{{ $chat->working_directory }}</p>
+            </div>
+            @if($this->chatMessages->isNotEmpty())
+                <button
+                    wire:click="generateTitle"
+                    wire:loading.attr="disabled"
+                    wire:target="generateTitle"
+                    title="Generate title from conversation"
+                    style="padding: 0.25rem 0.5rem; border-radius: 0.375rem; border: 1px solid rgb(209 213 219); background: white; cursor: pointer; font-size: 0.75rem; color: rgb(107 114 128);"
+                    onmouseover="this.style.backgroundColor='rgb(243 244 246)'"
+                    onmouseout="this.style.backgroundColor='white'"
+                >
+                    <span wire:loading.remove wire:target="generateTitle">✨ Name</span>
+                    <span wire:loading wire:target="generateTitle">...</span>
+                </button>
+            @endif
         </div>
         <div class="chat-provider-selector">
             @foreach($this->availableProviders as $provider)
