@@ -8,6 +8,7 @@ use App\Models\AiProvider;
 use App\Models\Message;
 use App\Models\RepositoryEnvConfig;
 use App\Models\Task;
+use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\File;
@@ -415,10 +416,10 @@ class TaskChat extends Component
         $messages = $this->task->messages()->oldest()->take(20)->get();
 
         if ($messages->isEmpty()) {
-            $this->dispatch('notify', [
-                'message' => 'No messages to generate title from.',
-                'type' => 'warning',
-            ]);
+            Notification::make()
+                ->title('No messages to generate title from')
+                ->warning()
+                ->send();
 
             return;
         }
@@ -426,10 +427,11 @@ class TaskChat extends Component
         $provider = $this->task->aiProvider ?? AiProvider::getDefault();
 
         if (! $provider) {
-            $this->dispatch('notify', [
-                'message' => 'No AI provider configured.',
-                'type' => 'error',
-            ]);
+            Notification::make()
+                ->title('No AI provider configured')
+                ->body('Please configure an AI provider in settings.')
+                ->danger()
+                ->send();
 
             return;
         }
@@ -469,21 +471,25 @@ class TaskChat extends Component
                     $this->task->update(['title' => $title]);
                     $this->task->refresh();
 
-                    $this->dispatch('notify', [
-                        'message' => "Title set: {$title}",
-                    ]);
+                    Notification::make()
+                        ->title('Title updated')
+                        ->body($title)
+                        ->success()
+                        ->send();
                 }
             } else {
-                $this->dispatch('notify', [
-                    'message' => 'Failed to generate title: '.$response->status(),
-                    'type' => 'error',
-                ]);
+                Notification::make()
+                    ->title('Failed to generate title')
+                    ->body('API returned status: '.$response->status())
+                    ->danger()
+                    ->send();
             }
         } catch (\Exception $e) {
-            $this->dispatch('notify', [
-                'message' => 'Error generating title: '.$e->getMessage(),
-                'type' => 'error',
-            ]);
+            Notification::make()
+                ->title('Error generating title')
+                ->body($e->getMessage())
+                ->danger()
+                ->send();
         }
     }
 
