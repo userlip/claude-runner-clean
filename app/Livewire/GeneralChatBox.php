@@ -89,7 +89,7 @@ class GeneralChatBox extends Component
     public function sendMessage(): void
     {
         $this->validate([
-            'prompt' => 'required|string|min:1|max:10000',
+            'prompt' => 'required|string|min:1|max:100000',
         ]);
 
         $isFirstMessage = $this->chat->messages()->count() === 0;

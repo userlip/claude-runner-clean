@@ -75,6 +75,11 @@
 
         {{-- Input --}}
         <div class="chat-input-area">
+            @error('prompt')
+                <div style="color: rgb(220 38 38); font-size: 0.875rem; margin-bottom: 0.5rem;">
+                    {{ $message }}
+                </div>
+            @enderror
             <form wire:submit="sendMessage" class="chat-form">
                 <textarea
                     wire:model.live="prompt"

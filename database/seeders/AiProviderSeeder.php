@@ -29,7 +29,7 @@ class AiProviderSeeder extends Seeder
             [
                 'display_name' => 'GLM (z.ai)',
                 'base_url' => 'https://api.z.ai/api/anthropic',
-                'model' => 'GLM-4.6',
+                'model' => 'GLM-4.7',
                 'is_active' => false,
                 'is_default' => false,
                 'quota_limit' => 50000000,

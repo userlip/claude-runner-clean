@@ -4,17 +4,24 @@ namespace App\Filament\Resources\Tasks\Pages;
 
 use App\Filament\Resources\Tasks\TaskResource;
 use App\Models\Task;
+use Filament\Resources\Pages\Concerns\InteractsWithRecord;
 use Filament\Resources\Pages\Page;
+use Filament\Support\Enums\Width;
 
 class TaskChat extends Page
 {
+    use InteractsWithRecord;
+
     protected static string $resource = TaskResource::class;
 
     protected string $view = 'filament.resources.tasks.task-resource.pages.task-chat';
 
-    public Task $record;
+    public function getMaxContentWidth(): Width|string|null
+    {
+        return Width::Full;
+    }
 
-    public function mount($record): void
+    public function mount(int|string $record): void
     {
         $this->record = $this->resolveRecord($record);
     }
