@@ -74,6 +74,12 @@ class TaskResource extends Resource
     {
         return $table
             ->columns([
+                Tables\Columns\TextColumn::make('title')
+                    ->label('Title')
+                    ->placeholder('Untitled')
+                    ->searchable()
+                    ->sortable()
+                    ->limit(40),
                 Tables\Columns\TextColumn::make('repository.full_name')
                     ->label('Repository')
                     ->searchable()

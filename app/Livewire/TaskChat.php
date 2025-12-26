@@ -415,12 +415,22 @@ class TaskChat extends Component
         $messages = $this->task->messages()->oldest()->take(20)->get();
 
         if ($messages->isEmpty()) {
+            $this->dispatch('notify', [
+                'message' => 'No messages to generate title from.',
+                'type' => 'warning',
+            ]);
+
             return;
         }
 
         $provider = $this->task->aiProvider ?? AiProvider::getDefault();
 
         if (! $provider) {
+            $this->dispatch('notify', [
+                'message' => 'No AI provider configured.',
+                'type' => 'error',
+            ]);
+
             return;
         }
 
@@ -430,34 +440,50 @@ class TaskChat extends Component
             return "{$role}: ".substr($message->content ?? '', 0, 500);
         })->join("\n\n");
 
-        $baseUrl = $provider->base_url ?: 'https://api.anthropic.com';
+        $baseUrl = rtrim($provider->base_url ?: 'https://api.anthropic.com', '/');
         $apiKey = $provider->api_key ?: config('services.anthropic.api_key');
         $model = $provider->model ?: 'claude-sonnet-4-20250514';
 
-        $response = Http::withHeaders([
-            'x-api-key' => $apiKey,
-            'anthropic-version' => '2023-06-01',
-            'content-type' => 'application/json',
-        ])->post("{$baseUrl}/v1/messages", [
-            'model' => $model,
-            'max_tokens' => 50,
-            'messages' => [
-                [
-                    'role' => 'user',
-                    'content' => "Based on this conversation, generate a short title (max 6 words, no quotes). Just respond with the title, nothing else.\n\n{$conversationSummary}",
+        try {
+            $response = Http::withHeaders([
+                'x-api-key' => $apiKey,
+                'anthropic-version' => '2023-06-01',
+                'content-type' => 'application/json',
+            ])->timeout(30)->post("{$baseUrl}/v1/messages", [
+                'model' => $model,
+                'max_tokens' => 50,
+                'messages' => [
+                    [
+                        'role' => 'user',
+                        'content' => "Based on this conversation, generate a short title (max 6 words, no quotes). Just respond with the title, nothing else.\n\n{$conversationSummary}",
+                    ],
                 ],
-            ],
-        ]);
+            ]);
 
-        if ($response->successful()) {
-            $data = $response->json();
-            $title = $data['content'][0]['text'] ?? null;
+            if ($response->successful()) {
+                $data = $response->json();
+                $title = $data['content'][0]['text'] ?? null;
 
-            if ($title) {
-                $title = trim($title, " \n\r\t\v\0\"'");
-                $this->task->update(['title' => $title]);
-                $this->task->refresh();
+                if ($title) {
+                    $title = trim($title, " \n\r\t\v\0\"'");
+                    $this->task->update(['title' => $title]);
+                    $this->task->refresh();
+
+                    $this->dispatch('notify', [
+                        'message' => "Title set: {$title}",
+                    ]);
+                }
+            } else {
+                $this->dispatch('notify', [
+                    'message' => 'Failed to generate title: '.$response->status(),
+                    'type' => 'error',
+                ]);
             }
+        } catch (\Exception $e) {
+            $this->dispatch('notify', [
+                'message' => 'Error generating title: '.$e->getMessage(),
+                'type' => 'error',
+            ]);
         }
     }
 

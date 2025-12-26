@@ -10,10 +10,10 @@
                         wire:loading.attr="disabled"
                         wire:target="generateTitle"
                         title="Generate title from conversation"
-                        class="chat-generate-title-btn"
+                        class="chat-rename-btn"
                     >
-                        <span wire:loading.remove wire:target="generateTitle">Name</span>
-                        <span wire:loading wire:target="generateTitle">...</span>
+                        <span wire:loading.remove wire:target="generateTitle">✨ Rename</span>
+                        <span wire:loading wire:target="generateTitle">✨ ...</span>
                     </button>
                 @endif
             </div>
