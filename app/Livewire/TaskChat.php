@@ -6,6 +6,7 @@ use App\Enums\MessageRole;
 use App\Jobs\RunClaudeMessageJob;
 use App\Models\AiProvider;
 use App\Models\Message;
+use App\Models\RepositoryEnvConfig;
 use App\Models\Task;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -104,6 +105,28 @@ class TaskChat extends Component
         return $this->task->aiProvider;
     }
 
+    #[Computed]
+    public function envConfigs(): EloquentCollection
+    {
+        if (! $this->task->repository) {
+            return new EloquentCollection;
+        }
+
+        return $this->task->repository->envConfigs()->orderByDesc('is_default')->get();
+    }
+
+    #[Computed]
+    public function hasEnvConfigs(): bool
+    {
+        return $this->envConfigs->isNotEmpty();
+    }
+
+    #[Computed]
+    public function defaultEnvConfig(): ?RepositoryEnvConfig
+    {
+        return $this->envConfigs->firstWhere('is_default', true);
+    }
+
     public function setProvider(int $providerId): void
     {
         $provider = AiProvider::where('is_active', true)->find($providerId);
@@ -120,7 +143,20 @@ class TaskChat extends Component
             'prompt' => 'required|string|min:1|max:10000',
         ]);
 
-        $isFirstMessage = $this->task->messages()->count() === 0;
+        // Handle slash commands locally
+        if ($this->handleSlashCommand($this->prompt)) {
+            $this->prompt = '';
+
+            return;
+        }
+
+        // Check if there's a successful assistant response to continue from
+        $hasSuccessfulResponse = $this->task->messages()
+            ->where('role', MessageRole::Assistant)
+            ->whereNotNull('content')
+            ->where('content', '!=', '')
+            ->where('content', 'not like', 'Error:%')
+            ->exists();
 
         $userMessage = Message::create([
             'task_id' => $this->task->id,
@@ -131,12 +167,139 @@ class TaskChat extends Component
         RunClaudeMessageJob::dispatch(
             $this->task,
             $userMessage,
-            continue: ! $isFirstMessage
+            continue: $hasSuccessfulResponse
         );
 
         $this->prompt = '';
         $this->waitingForResponse = true;
         $this->lastMessageCount = $this->task->messages()->count();
+    }
+
+    /**
+     * Handle slash commands locally without sending to Claude.
+     */
+    protected function handleSlashCommand(string $prompt): bool
+    {
+        $command = strtolower(trim($prompt));
+
+        if ($command === '/usage') {
+            $this->handleUsageCommand();
+
+            return true;
+        }
+
+        if ($command === '/clear') {
+            $this->handleClearCommand();
+
+            return true;
+        }
+
+        if ($command === '/help') {
+            $this->handleHelpCommand();
+
+            return true;
+        }
+
+        return false;
+    }
+
+    protected function handleUsageCommand(): void
+    {
+        $stats = $this->task->messages()
+            ->where('role', MessageRole::Assistant)
+            ->selectRaw('SUM(tokens_in) as total_in, SUM(tokens_out) as total_out, SUM(cost_usd) as total_cost')
+            ->first();
+
+        $totalIn = $stats->total_in ?? 0;
+        $totalOut = $stats->total_out ?? 0;
+        $totalCost = $stats->total_cost ?? 0;
+        $messageCount = $this->task->messages()->count();
+
+        $content = "## Session Usage\n\n";
+        $content .= "| Metric | Value |\n";
+        $content .= "|--------|-------|\n";
+        $content .= "| Messages | {$messageCount} |\n";
+        $content .= '| Input Tokens | '.number_format($totalIn)." |\n";
+        $content .= '| Output Tokens | '.number_format($totalOut)." |\n";
+        $content .= '| Total Tokens | '.number_format($totalIn + $totalOut)." |\n";
+        $content .= '| Cost | $'.number_format($totalCost, 4)." |\n";
+
+        // Create system message for usage
+        Message::create([
+            'task_id' => $this->task->id,
+            'role' => MessageRole::User,
+            'content' => '/usage',
+        ]);
+
+        Message::create([
+            'task_id' => $this->task->id,
+            'role' => MessageRole::Assistant,
+            'content' => $content,
+        ]);
+    }
+
+    protected function handleClearCommand(): void
+    {
+        $this->task->messages()->delete();
+        $this->lastMessageCount = 0;
+
+        $this->dispatch('notify', [
+            'message' => 'Conversation cleared.',
+        ]);
+    }
+
+    protected function handleHelpCommand(): void
+    {
+        $content = "## Available Commands\n\n";
+        $content .= "| Command | Description |\n";
+        $content .= "|---------|-------------|\n";
+        $content .= "| `/usage` | Show token usage and cost for this session |\n";
+        $content .= "| `/clear` | Clear all messages in this conversation |\n";
+        $content .= "| `/help` | Show this help message |\n";
+
+        Message::create([
+            'task_id' => $this->task->id,
+            'role' => MessageRole::User,
+            'content' => '/help',
+        ]);
+
+        Message::create([
+            'task_id' => $this->task->id,
+            'role' => MessageRole::Assistant,
+            'content' => $content,
+        ]);
+    }
+
+    public function copyEnvConfig(?int $configId = null): void
+    {
+        if (! $this->task->workspace_path || ! is_dir($this->task->workspace_path)) {
+            $this->dispatch('notify', [
+                'message' => 'Workspace does not exist.',
+                'type' => 'error',
+            ]);
+
+            return;
+        }
+
+        $config = $configId
+            ? $this->task->repository->envConfigs()->find($configId)
+            : $this->defaultEnvConfig;
+
+        if (! $config) {
+            $this->dispatch('notify', [
+                'message' => 'No .env config found.',
+                'type' => 'error',
+            ]);
+
+            return;
+        }
+
+        $envPath = $this->task->workspace_path.'/.env';
+        file_put_contents($envPath, $config->content);
+
+        $this->dispatch('notify', [
+            'message' => "Copied '{$config->name}' .env to workspace.",
+        ]);
     }
 
     public function deleteWorkspace(): void
