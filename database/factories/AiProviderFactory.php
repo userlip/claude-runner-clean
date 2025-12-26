@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\QuotaPeriod;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -25,7 +26,7 @@ class AiProviderFactory extends Factory
             'is_active' => true,
             'is_default' => true,
             'quota_limit' => 10000000,
-            'quota_period' => 'monthly',
+            'quota_period' => QuotaPeriod::Monthly,
             'quota_used' => 0,
             'quota_resets_at' => now()->startOfMonth()->addMonth(),
         ];
@@ -40,7 +41,7 @@ class AiProviderFactory extends Factory
             'api_key' => null,
             'model' => null,
             'is_default' => true,
-            'quota_period' => 'monthly',
+            'quota_period' => QuotaPeriod::Monthly,
         ]);
     }
 
@@ -53,7 +54,7 @@ class AiProviderFactory extends Factory
             'api_key' => 'test-api-key',
             'model' => 'GLM-4.6',
             'is_default' => false,
-            'quota_period' => '5-hour',
+            'quota_period' => QuotaPeriod::FiveHour,
             'quota_limit' => 50000000,
             'quota_resets_at' => now()->addHours(5),
         ]);

@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\QuotaPeriod;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -35,6 +37,7 @@ class AiProvider extends Model
             'quota_limit' => 'integer',
             'quota_used' => 'integer',
             'quota_resets_at' => 'datetime',
+            'quota_period' => QuotaPeriod::class,
         ];
     }
 
@@ -95,10 +98,10 @@ class AiProvider extends Model
         }
     }
 
-    public function calculateNextReset(): \DateTime
+    public function calculateNextReset(): Carbon
     {
         return match ($this->quota_period) {
-            '5-hour' => now()->addHours(5),
+            QuotaPeriod::FiveHour => now()->addHours(5),
             default => now()->startOfMonth()->addMonth(),
         };
     }
