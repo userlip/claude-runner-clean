@@ -10,6 +10,7 @@ use App\Models\GeneralChatMessage;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\Http;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 class GeneralChatBox extends Component
@@ -26,6 +27,15 @@ class GeneralChatBox extends Component
     {
         $this->chat = $chat;
         $this->lastMessageCount = $chat->messages()->count();
+    }
+
+    #[On('insert-snippet')]
+    public function insertSnippet(string $content): void
+    {
+        if (! empty($this->prompt)) {
+            $this->prompt .= "\n\n";
+        }
+        $this->prompt .= $content;
     }
 
     /**

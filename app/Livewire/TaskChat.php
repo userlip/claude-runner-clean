@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\File;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 class TaskChat extends Component
@@ -34,6 +35,15 @@ class TaskChat extends Component
     public function mount(Task $task): void
     {
         $this->task = $task;
+    }
+
+    #[On('insert-snippet')]
+    public function insertSnippet(string $content): void
+    {
+        if (! empty($this->prompt)) {
+            $this->prompt .= "\n\n";
+        }
+        $this->prompt .= $content;
     }
 
     /**
