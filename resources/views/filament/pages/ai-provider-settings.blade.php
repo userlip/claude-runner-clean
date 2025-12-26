@@ -37,6 +37,17 @@
                     />
                 </div>
 
+                <div>
+                    <label style="font-size: 0.875rem; font-weight: 500;">Context Window (tokens)</label>
+                    <input
+                        type="number"
+                        min="0"
+                        wire:model="claudeContextWindow"
+                        style="margin-top: 0.25rem; display: block; width: 100%; border-radius: 0.5rem; border: 1px solid rgb(209, 213, 219); padding: 0.5rem 0.75rem; font-size: 0.875rem;"
+                        placeholder="200000 (default)"
+                    />
+                </div>
+
                 @if($claude)
                     <div>
                         <label style="font-size: 0.875rem; font-weight: 500;">Current Usage</label>
@@ -109,6 +120,17 @@
                         wire:model="glmQuotaLimit"
                         style="margin-top: 0.25rem; display: block; width: 100%; border-radius: 0.5rem; border: 1px solid rgb(209, 213, 219); padding: 0.5rem 0.75rem; font-size: 0.875rem;"
                         placeholder="50000000"
+                    />
+                </div>
+
+                <div>
+                    <label style="font-size: 0.875rem; font-weight: 500;">Context Window (tokens)</label>
+                    <input
+                        type="number"
+                        min="0"
+                        wire:model="glmContextWindow"
+                        style="margin-top: 0.25rem; display: block; width: 100%; border-radius: 0.5rem; border: 1px solid rgb(209, 213, 219); padding: 0.5rem 0.75rem; font-size: 0.875rem;"
+                        placeholder="200000 (default)"
                     />
                 </div>
 

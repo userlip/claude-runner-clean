@@ -28,6 +28,10 @@ class AiProviderSettings extends Page
 
     public ?int $claudeQuotaLimit = null;
 
+    public ?int $claudeContextWindow = null;
+
+    public ?int $glmContextWindow = null;
+
     public function mount(): void
     {
         $glm = $this->getGlmProvider();
@@ -35,7 +39,9 @@ class AiProviderSettings extends Page
 
         $this->glmApiKey = $glm?->api_key ?? '';
         $this->glmQuotaLimit = $glm?->quota_limit;
+        $this->glmContextWindow = $glm?->context_window;
         $this->claudeQuotaLimit = $claude?->quota_limit;
+        $this->claudeContextWindow = $claude?->context_window;
     }
 
     public function getClaudeProvider(): ?AiProvider
@@ -55,6 +61,7 @@ class AiProviderSettings extends Page
         if ($claude) {
             $claude->update([
                 'quota_limit' => $this->claudeQuotaLimit,
+                'context_window' => $this->claudeContextWindow,
             ]);
         }
 
@@ -72,6 +79,7 @@ class AiProviderSettings extends Page
             $glm->update([
                 'api_key' => $this->glmApiKey ?: null,
                 'quota_limit' => $this->glmQuotaLimit,
+                'context_window' => $this->glmContextWindow,
                 'is_active' => ! empty($this->glmApiKey),
             ]);
         }
