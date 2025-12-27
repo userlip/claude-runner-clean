@@ -13,7 +13,7 @@ class RunGeneralChatMessageJob implements ShouldQueue
 {
     use Queueable;
 
-    public int $timeout = 600;
+    public int $timeout = 10800; // 3 hours for complex tasks
 
     public int $tries = 1;
 
@@ -182,6 +182,19 @@ class RunGeneralChatMessageJob implements ShouldQueue
         }
 
         return $provider->getEnvironmentVariables();
+    }
+
+    /**
+     * Handle a job failure (timeout, exception, etc.)
+     */
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('RunGeneralChatMessageJob failed', [
+            'chat_id' => $this->chat->id,
+            'exception' => $exception->getMessage(),
+        ]);
+
+        $this->chat->markAsFailed();
     }
 
     /**

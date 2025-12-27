@@ -1,5 +1,118 @@
-<div class="chat-container">
-    {{-- Header --}}
+<div class="chat-container" x-data="{ mobileMenuOpen: false }">
+    {{-- Mobile Header (shown only on mobile in immersive mode) --}}
+    <div class="chat-mobile-header">
+        <a href="{{ route('filament.admin.resources.tasks.index') }}" class="chat-mobile-back">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 1.5rem; height: 1.5rem;">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+            </svg>
+        </a>
+        <div class="chat-mobile-title-area">
+            <h1 class="chat-mobile-title">{{ $task->title ?? $task->repository->name }}</h1>
+            <p class="chat-mobile-subtitle">{{ $this->locationLabel }}</p>
+        </div>
+        {{-- Context indicator --}}
+        <div class="chat-mobile-context" title="{{ number_format($this->contextUsed) }} / {{ number_format($this->contextLimit) }} tokens">
+            <div class="chat-mobile-context-bar">
+                <div class="chat-mobile-context-fill {{ $this->contextColor }}" style="width: {{ min($this->contextPercentage, 100) }}%"></div>
+            </div>
+            <span class="chat-mobile-context-text">{{ number_format($this->contextPercentage, 0) }}%</span>
+        </div>
+        {{-- Menu button --}}
+        <button @click="mobileMenuOpen = !mobileMenuOpen" class="chat-mobile-menu">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 1.5rem; height: 1.5rem;">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 12.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 18.75a.75.75 0 110-1.5.75.75 0 010 1.5z" />
+            </svg>
+        </button>
+        {{-- Mobile Dropdown Menu --}}
+        <div
+            x-show="mobileMenuOpen"
+            @click.away="mobileMenuOpen = false"
+            x-transition:enter="transition ease-out duration-100"
+            x-transition:enter-start="opacity-0 scale-95"
+            x-transition:enter-end="opacity-100 scale-100"
+            x-transition:leave="transition ease-in duration-75"
+            x-transition:leave-start="opacity-100 scale-100"
+            x-transition:leave-end="opacity-0 scale-95"
+            class="chat-mobile-dropdown"
+            x-cloak
+        >
+            {{-- Provider selector --}}
+            <div class="chat-mobile-providers">
+                @foreach($this->availableProviders as $provider)
+                    <button
+                        wire:click="setProvider({{ $provider->id }})"
+                        @click="mobileMenuOpen = false"
+                        class="chat-provider-btn {{ $this->currentProvider?->id === $provider->id ? 'chat-provider-btn-active' : '' }}"
+                        @disabled($this->isRunning)
+                    >
+                        {{ $provider->display_name }}
+                    </button>
+                @endforeach
+            </div>
+            {{-- Actions --}}
+            @if($this->chatMessages->isNotEmpty())
+                <button
+                    wire:click="generateTitle"
+                    @click="mobileMenuOpen = false"
+                    wire:loading.attr="disabled"
+                    wire:target="generateTitle"
+                    class="chat-mobile-dropdown-item"
+                >
+                    <span>✨</span>
+                    <span wire:loading.remove wire:target="generateTitle">Rename Chat</span>
+                    <span wire:loading wire:target="generateTitle">Renaming...</span>
+                </button>
+            @endif
+            <button
+                @click="$dispatch('open-sidebar'); mobileMenuOpen = false"
+                class="chat-mobile-dropdown-item"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 1.25rem; height: 1.25rem;">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 00-1.883 2.542l.857 6a2.25 2.25 0 002.227 1.932H19.05a2.25 2.25 0 002.227-1.932l.857-6a2.25 2.25 0 00-1.883-2.542m-16.5 0V6A2.25 2.25 0 016 3.75h3.879a1.5 1.5 0 011.06.44l2.122 2.12a1.5 1.5 0 001.06.44H18A2.25 2.25 0 0120.25 9v.776" />
+                </svg>
+                <span>Files & Snippets</span>
+            </button>
+            @if($task->isInWorkspace())
+                <div class="chat-mobile-dropdown-divider"></div>
+                @if($this->hasEnvConfigs)
+                    <button
+                        wire:click="copyEnvConfig"
+                        @click="mobileMenuOpen = false"
+                        class="chat-mobile-dropdown-item"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 1.25rem; height: 1.25rem;">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75" />
+                        </svg>
+                        <span>Copy .env</span>
+                    </button>
+                @endif
+                <button
+                    wire:click="openDeployModal"
+                    @click="mobileMenuOpen = false"
+                    class="chat-mobile-dropdown-item"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 1.25rem; height: 1.25rem; color: rgb(22 163 74);">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
+                    </svg>
+                    <span>Deploy to Site</span>
+                </button>
+                <div class="chat-mobile-dropdown-divider"></div>
+                <button
+                    wire:click="deleteWorkspace"
+                    wire:confirm="Are you sure you want to delete this workspace? This cannot be undone."
+                    @click="mobileMenuOpen = false"
+                    class="chat-mobile-dropdown-item chat-mobile-dropdown-item-danger"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 1.25rem; height: 1.25rem;">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                    </svg>
+                    <span>Delete Workspace</span>
+                </button>
+            @endif
+        </div>
+    </div>
+
+    {{-- Desktop Header --}}
     <div class="chat-header">
         <div class="chat-header-info">
             <div class="chat-header-title-row">
@@ -190,27 +303,66 @@
                         @endif
                     </div>
                 </div>
-                {{-- Render remaining content blocks as separate bubbles --}}
+                {{-- Render remaining content blocks with tool calls grouped --}}
                 @if($message->isFromAssistant() && $message->content_blocks && count($message->content_blocks) > 1)
-                    @foreach($message->content_blocks as $index => $block)
-                        @if($index === 0)
-                            @continue
-                        @endif
+                    @php
+                        $blocks = collect($message->content_blocks)->skip(1)->values();
+                        $groupedBlocks = [];
+                        $currentToolGroup = [];
+
+                        foreach ($blocks as $block) {
+                            if (($block['type'] ?? '') === 'tool_use') {
+                                $currentToolGroup[] = $block;
+                            } else {
+                                if (count($currentToolGroup) > 0) {
+                                    $groupedBlocks[] = ['type' => 'tool_group', 'tools' => $currentToolGroup];
+                                    $currentToolGroup = [];
+                                }
+                                $groupedBlocks[] = $block;
+                            }
+                        }
+                        if (count($currentToolGroup) > 0) {
+                            $groupedBlocks[] = ['type' => 'tool_group', 'tools' => $currentToolGroup];
+                        }
+                    @endphp
+
+                    @foreach($groupedBlocks as $index => $block)
                         @if(($block['type'] ?? '') === 'text' && !empty($block['text']))
-                            <div wire:key="message-{{ $message->id }}-block-{{ $index }}" class="chat-message chat-message-assistant">
+                            <div wire:key="message-{{ $message->id }}-grouped-{{ $index }}" class="chat-message chat-message-assistant">
                                 <div class="chat-bubble chat-bubble-assistant">
                                     <div class="chat-bubble-content">
                                         {!! Str::markdown($block['text']) !!}
                                     </div>
                                 </div>
                             </div>
-                        @elseif(($block['type'] ?? '') === 'tool_use')
-                            <div wire:key="message-{{ $message->id }}-block-{{ $index }}" class="chat-message chat-message-assistant">
+                        @elseif(($block['type'] ?? '') === 'tool_group')
+                            <div wire:key="message-{{ $message->id }}-grouped-{{ $index }}" class="chat-message chat-message-assistant">
                                 <div class="chat-bubble chat-bubble-tool">
-                                    <div class="chat-tool-use">
-                                        <span class="chat-tool-use-icon">⚙</span>
-                                        <span class="chat-tool-use-name">{{ $block['tool']['name'] ?? 'Tool' }}</span>
-                                    </div>
+                                    @if(count($block['tools']) === 1)
+                                        <div class="chat-tool-use">
+                                            <span class="chat-tool-use-icon">⚙</span>
+                                            <span class="chat-tool-use-name">{{ $block['tools'][0]['tool']['name'] ?? 'Tool' }}</span>
+                                        </div>
+                                    @else
+                                        <div x-data="{ showTools: false }" class="chat-tool-calls-container">
+                                            <button
+                                                type="button"
+                                                @click="showTools = !showTools"
+                                                class="chat-tool-toggle"
+                                            >
+                                                <span x-text="showTools ? '▼' : '▶'" class="chat-tool-toggle-icon"></span>
+                                                <span>{{ count($block['tools']) }} tool {{ Str::plural('call', count($block['tools'])) }}</span>
+                                            </button>
+                                            <div x-show="showTools" x-collapse class="chat-tool-calls">
+                                                @foreach($block['tools'] as $tool)
+                                                    <div class="chat-tool-use" style="margin-bottom: 0.25rem;">
+                                                        <span class="chat-tool-use-icon">⚙</span>
+                                                        <span class="chat-tool-use-name">{{ $tool['tool']['name'] ?? 'Tool' }}</span>
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                        </div>
+                                    @endif
                                 </div>
                             </div>
                         @endif

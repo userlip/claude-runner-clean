@@ -1404,3 +1404,396 @@
     background-color: rgb(55 65 81);
     color: rgb(156 163 175);
 }
+
+/* ==========================================
+   Mobile Native Chat Experience
+   ========================================== */
+
+/* Mobile-only header for immersive mode */
+.chat-mobile-header {
+    display: none;
+}
+
+/* Mobile immersive mode styles */
+@media (max-width: 767px) {
+    /* Hide Filament chrome when in chat */
+    body.chat-immersive-mode .fi-topbar,
+    body.chat-immersive-mode .fi-sidebar,
+    body.chat-immersive-mode .fi-main-ctn > nav,
+    body.chat-immersive-mode [class*="fi-breadcrumbs"],
+    body.chat-immersive-mode .fi-header {
+        display: none !important;
+    }
+
+    /* Make main content full screen */
+    body.chat-immersive-mode .fi-main-ctn {
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    body.chat-immersive-mode .fi-main {
+        padding: 0 !important;
+        margin: 0 !important;
+        max-width: 100% !important;
+    }
+
+    body.chat-immersive-mode main {
+        padding: 0 !important;
+    }
+
+    /* Full viewport height for chat */
+    body.chat-immersive-mode .chat-page-layout {
+        height: 100vh;
+        height: 100dvh; /* Dynamic viewport height for mobile */
+    }
+
+    /* Show mobile header */
+    .chat-mobile-header {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem 1rem;
+        background-color: white;
+        border-bottom: 1px solid rgb(229 231 235);
+        flex-shrink: 0;
+        min-height: 3.5rem;
+        position: sticky;
+        top: 0;
+        z-index: 30;
+    }
+
+    .dark .chat-mobile-header {
+        background-color: rgb(17 24 39);
+        border-bottom-color: rgb(55 65 81);
+    }
+
+    .chat-mobile-back {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 2.5rem;
+        height: 2.5rem;
+        border-radius: 50%;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        color: rgb(59 130 246);
+        flex-shrink: 0;
+        margin-left: -0.5rem;
+        transition: background-color 0.15s;
+    }
+
+    .chat-mobile-back:active {
+        background-color: rgb(243 244 246);
+    }
+
+    .dark .chat-mobile-back {
+        color: rgb(96 165 250);
+    }
+
+    .dark .chat-mobile-back:active {
+        background-color: rgb(55 65 81);
+    }
+
+    .chat-mobile-title-area {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.125rem;
+    }
+
+    .chat-mobile-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: rgb(17 24 39);
+        margin: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .dark .chat-mobile-title {
+        color: white;
+    }
+
+    .chat-mobile-subtitle {
+        font-size: 0.75rem;
+        color: rgb(107 114 128);
+        margin: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .dark .chat-mobile-subtitle {
+        color: rgb(156 163 175);
+    }
+
+    .chat-mobile-menu {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 2.5rem;
+        height: 2.5rem;
+        border-radius: 50%;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        color: rgb(107 114 128);
+        flex-shrink: 0;
+        transition: background-color 0.15s;
+    }
+
+    .chat-mobile-menu:active {
+        background-color: rgb(243 244 246);
+    }
+
+    .dark .chat-mobile-menu {
+        color: rgb(156 163 175);
+    }
+
+    .dark .chat-mobile-menu:active {
+        background-color: rgb(55 65 81);
+    }
+
+    /* Hide desktop header on mobile in immersive mode */
+    body.chat-immersive-mode .chat-header {
+        display: none;
+    }
+
+    /* Chat container fills available space */
+    body.chat-immersive-mode .chat-container {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+
+    /* Fixed input at bottom with safe area */
+    body.chat-immersive-mode .chat-input-area {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        padding: 0.75rem 1rem;
+        padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+        background-color: white;
+        border-top: 1px solid rgb(229 231 235);
+        z-index: 20;
+    }
+
+    body.chat-immersive-mode .dark .chat-input-area {
+        background-color: rgb(17 24 39);
+        border-top-color: rgb(55 65 81);
+    }
+
+    /* Messages area accounts for fixed input */
+    body.chat-immersive-mode .chat-messages {
+        padding-bottom: 5rem;
+        padding-bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
+    }
+
+    /* Chat area takes remaining space */
+    body.chat-immersive-mode .chat-area {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* Hide the floating Files button in immersive mode */
+    body.chat-immersive-mode .chat-sidebar-toggle {
+        display: none;
+    }
+
+    /* Mobile action sheet (dropdown menu) */
+    .chat-mobile-dropdown {
+        position: absolute;
+        top: 100%;
+        right: 0.5rem;
+        margin-top: 0.25rem;
+        min-width: 12rem;
+        background-color: white;
+        border-radius: 0.75rem;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        border: 1px solid rgb(229 231 235);
+        overflow: hidden;
+        z-index: 50;
+    }
+
+    .dark .chat-mobile-dropdown {
+        background-color: rgb(31 41 55);
+        border-color: rgb(55 65 81);
+    }
+
+    .chat-mobile-dropdown-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        width: 100%;
+        padding: 0.875rem 1rem;
+        font-size: 0.9375rem;
+        text-align: left;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        color: rgb(55 65 81);
+        transition: background-color 0.15s;
+    }
+
+    .chat-mobile-dropdown-item:active {
+        background-color: rgb(243 244 246);
+    }
+
+    .dark .chat-mobile-dropdown-item {
+        color: rgb(209 213 219);
+    }
+
+    .dark .chat-mobile-dropdown-item:active {
+        background-color: rgb(55 65 81);
+    }
+
+    .chat-mobile-dropdown-item-danger {
+        color: rgb(220 38 38);
+    }
+
+    .dark .chat-mobile-dropdown-item-danger {
+        color: rgb(248 113 113);
+    }
+
+    .chat-mobile-dropdown-divider {
+        height: 1px;
+        background-color: rgb(229 231 235);
+        margin: 0.25rem 0;
+    }
+
+    .dark .chat-mobile-dropdown-divider {
+        background-color: rgb(55 65 81);
+    }
+
+    /* Provider selector in mobile dropdown */
+    .chat-mobile-providers {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.375rem;
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid rgb(229 231 235);
+    }
+
+    .dark .chat-mobile-providers {
+        border-bottom-color: rgb(55 65 81);
+    }
+
+    .chat-mobile-providers .chat-provider-btn {
+        padding: 0.375rem 0.75rem;
+        font-size: 0.8125rem;
+    }
+
+    /* Context indicator in mobile header */
+    .chat-mobile-context {
+        display: flex;
+        align-items: center;
+        gap: 0.375rem;
+        padding: 0.25rem 0.5rem;
+        background-color: rgb(243 244 246);
+        border-radius: 9999px;
+        flex-shrink: 0;
+    }
+
+    .dark .chat-mobile-context {
+        background-color: rgb(55 65 81);
+    }
+
+    .chat-mobile-context-bar {
+        width: 2rem;
+        height: 0.25rem;
+        background-color: rgb(209 213 219);
+        border-radius: 9999px;
+        overflow: hidden;
+    }
+
+    .dark .chat-mobile-context-bar {
+        background-color: rgb(75 85 99);
+    }
+
+    .chat-mobile-context-fill {
+        height: 100%;
+        transition: width 0.3s;
+    }
+
+    .chat-mobile-context-text {
+        font-size: 0.625rem;
+        color: rgb(107 114 128);
+        font-weight: 500;
+    }
+
+    .dark .chat-mobile-context-text {
+        color: rgb(156 163 175);
+    }
+}
+
+/* Touch optimizations */
+@media (max-width: 767px) {
+    /* Larger tap targets */
+    .chat-submit {
+        width: 2.75rem;
+        height: 2.75rem;
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    .chat-tool-toggle {
+        min-height: 44px;
+        padding: 0.5rem 0.75rem;
+    }
+
+    /* Smooth momentum scrolling */
+    .chat-messages {
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+    }
+
+    /* Remove hover states on touch */
+    @media (hover: none) {
+        .chat-submit:hover {
+            transform: none;
+            background-color: rgb(59 130 246);
+        }
+
+        .chat-submit:disabled:hover {
+            background-color: rgb(203 213 225);
+        }
+
+        .chat-bubble-user:hover,
+        .chat-bubble-assistant:hover {
+            transform: none;
+        }
+    }
+
+    /* Active states for touch feedback */
+    .chat-submit:active:not(:disabled) {
+        transform: scale(0.95);
+        background-color: rgb(37 99 235);
+    }
+
+    .chat-mobile-back:active,
+    .chat-mobile-menu:active {
+        transform: scale(0.95);
+    }
+
+    /* Prevent text selection on UI elements */
+    .chat-mobile-header,
+    .chat-submit,
+    .chat-tool-toggle,
+    .chat-provider-btn {
+        -webkit-user-select: none;
+        user-select: none;
+    }
+
+    /* Allow text selection in messages */
+    .chat-bubble-content,
+    .chat-bubble p {
+        -webkit-user-select: text;
+        user-select: text;
+    }
+}

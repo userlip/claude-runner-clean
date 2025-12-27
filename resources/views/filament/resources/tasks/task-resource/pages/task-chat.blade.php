@@ -1,5 +1,26 @@
 <x-filament-panels::page>
-    <div class="chat-page-layout" x-data="{ sidebarOpen: false }">
+    <div
+        class="chat-page-layout"
+        x-data="{
+            sidebarOpen: false,
+            isMobile: window.innerWidth < 768,
+            updateImmersiveMode() {
+                if (this.isMobile) {
+                    document.body.classList.add('chat-immersive-mode');
+                } else {
+                    document.body.classList.remove('chat-immersive-mode');
+                }
+            }
+        }"
+        x-init="
+            updateImmersiveMode();
+            window.addEventListener('resize', () => {
+                isMobile = window.innerWidth < 768;
+                updateImmersiveMode();
+            });
+        "
+        @open-sidebar.window="sidebarOpen = true"
+    >
         {{-- Mobile Sidebar Toggle --}}
         <button
             @click="sidebarOpen = true"

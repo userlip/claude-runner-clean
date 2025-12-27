@@ -74,14 +74,24 @@
                                 {!! Str::markdown($message->content ?? '') !!}
                             </div>
 
-                            @if($message->tool_calls)
-                                <div class="chat-tool-calls">
-                                    @foreach($message->tool_calls as $tool)
-                                        <details class="chat-tool-call">
-                                            <summary>{{ $tool['name'] ?? 'Tool' }}</summary>
-                                            <pre>{{ json_encode($tool['input'] ?? [], JSON_PRETTY_PRINT) }}</pre>
-                                        </details>
-                                    @endforeach
+                            @if($message->tool_calls && count($message->tool_calls) > 0)
+                                <div x-data="{ showTools: false }" class="chat-tool-calls-container">
+                                    <button
+                                        type="button"
+                                        @click="showTools = !showTools"
+                                        class="chat-tool-toggle"
+                                    >
+                                        <span x-text="showTools ? '▼' : '▶'" class="chat-tool-toggle-icon"></span>
+                                        <span>{{ count($message->tool_calls) }} tool {{ Str::plural('call', count($message->tool_calls)) }}</span>
+                                    </button>
+                                    <div x-show="showTools" x-collapse class="chat-tool-calls">
+                                        @foreach($message->tool_calls as $tool)
+                                            <details class="chat-tool-call">
+                                                <summary>{{ $tool['name'] ?? 'Tool' }}</summary>
+                                                <pre>{{ json_encode($tool['input'] ?? [], JSON_PRETTY_PRINT) }}</pre>
+                                            </details>
+                                        @endforeach
+                                    </div>
                                 </div>
                             @endif
 

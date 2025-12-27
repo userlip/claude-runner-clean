@@ -14,7 +14,7 @@ class RunClaudeMessageJob implements ShouldQueue
 {
     use Queueable;
 
-    public int $timeout = 600;
+    public int $timeout = 10800; // 3 hours for complex tasks
 
     public int $tries = 1;
 
@@ -277,6 +277,25 @@ class RunClaudeMessageJob implements ShouldQueue
         }
 
         return $provider->getEnvironmentVariables();
+    }
+
+    /**
+     * Handle a job failure (timeout, exception, etc.)
+     */
+    public function failed(\Throwable $exception): void
+    {
+        Log::error('RunClaudeMessageJob failed', [
+            'task_id' => $this->task->id,
+            'exception' => $exception->getMessage(),
+        ]);
+
+        $this->task->markAsFailed();
+
+        $this->sendPushNotification(
+            'Task Failed',
+            "Error: {$exception->getMessage()}",
+            false
+        );
     }
 
     /**
