@@ -12,7 +12,7 @@ class CloneRepositoryJob implements ShouldQueue
 {
     use Queueable;
 
-    public int $timeout = 300;
+    public int $timeout = 600;
 
     public int $tries = 1;
 
@@ -69,6 +69,64 @@ class CloneRepositoryJob implements ShouldQueue
                 'env_config' => $defaultEnvConfig->name,
                 'env_path' => $envPath,
             ]);
+        }
+
+        // Run composer install if composer.json exists
+        $this->runDependencyInstallation($workspacePath);
+    }
+
+    protected function runDependencyInstallation(string $workspacePath): void
+    {
+        // Run composer install if composer.json exists
+        if (file_exists($workspacePath.'/composer.json')) {
+            Log::info('Running composer install', ['task_id' => $this->task->id]);
+
+            $result = Process::timeout(300)
+                ->path($workspacePath)
+                ->run(['composer', 'install', '--no-interaction', '--no-progress']);
+
+            if ($result->successful()) {
+                Log::info('Composer install completed', ['task_id' => $this->task->id]);
+            } else {
+                Log::warning('Composer install failed', [
+                    'task_id' => $this->task->id,
+                    'error' => $result->errorOutput(),
+                ]);
+            }
+        }
+
+        // Run npm install and build if package.json exists
+        if (file_exists($workspacePath.'/package.json')) {
+            Log::info('Running npm install', ['task_id' => $this->task->id]);
+
+            $result = Process::timeout(300)
+                ->path($workspacePath)
+                ->run(['npm', 'install']);
+
+            if ($result->successful()) {
+                Log::info('npm install completed', ['task_id' => $this->task->id]);
+
+                // Run npm run build
+                Log::info('Running npm run build', ['task_id' => $this->task->id]);
+
+                $buildResult = Process::timeout(300)
+                    ->path($workspacePath)
+                    ->run(['npm', 'run', 'build']);
+
+                if ($buildResult->successful()) {
+                    Log::info('npm run build completed', ['task_id' => $this->task->id]);
+                } else {
+                    Log::warning('npm run build failed', [
+                        'task_id' => $this->task->id,
+                        'error' => $buildResult->errorOutput(),
+                    ]);
+                }
+            } else {
+                Log::warning('npm install failed', [
+                    'task_id' => $this->task->id,
+                    'error' => $result->errorOutput(),
+                ]);
+            }
         }
     }
 }
