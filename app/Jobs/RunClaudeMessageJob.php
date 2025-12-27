@@ -73,6 +73,7 @@ class RunClaudeMessageJob implements ShouldQueue
             $toolCalls = [];
             $contentBlocks = [];
 
+            $resultReceived = false;
             while (! feof($pipes[1])) {
                 $line = fgets($pipes[1]);
                 if ($line === false) {
@@ -113,28 +114,43 @@ class RunClaudeMessageJob implements ShouldQueue
                                 $parsed['usage']['output_tokens'] ?? 0
                             );
                         }
+
+                        // Result event received - Claude finished this response
+                        $resultReceived = true;
+                        break;
                     }
                 }
             }
 
-            $stderr = stream_get_contents($pipes[2]);
+            // For resumed sessions, Claude process stays running - don't wait for it
+            // Just close our pipes and mark as completed when we got the result
             fclose($pipes[1]);
             fclose($pipes[2]);
 
-            $exitCode = proc_close($process);
+            if ($resultReceived) {
+                // Claude finished responding - mark completed and notify
+                $this->task->markAsCompleted();
+                Log::debug('Task marked as completed (result received)', ['task_id' => $this->task->id]);
 
-            if ($exitCode !== 0) {
-                Log::warning("Claude exited with code {$exitCode}", ['stderr' => $stderr]);
+                $this->sendPushNotification(
+                    'Task Completed',
+                    $this->getNotificationBody($assistantMessage),
+                    true
+                );
+
+                // Kill the subprocess since we're done with it
+                // The main Claude session keeps running for future messages
+                proc_terminate($process);
+                proc_close($process);
+            } else {
+                // No result received - process may have exited unexpectedly
+                $exitCode = proc_close($process);
+                Log::warning('Claude process ended without result event', [
+                    'exit_code' => $exitCode,
+                    'task_id' => $this->task->id,
+                ]);
+                $this->task->markAsCompleted();
             }
-
-            $this->task->markAsCompleted();
-
-            // Send push notification on success
-            $this->sendPushNotification(
-                'Task Completed',
-                $this->getNotificationBody($assistantMessage),
-                true
-            );
 
         } catch (\Throwable $e) {
             Log::error("Claude execution failed: {$e->getMessage()}");
@@ -160,7 +176,15 @@ class RunClaudeMessageJob implements ShouldQueue
     {
         $user = $this->task->user;
 
+        Log::debug('sendPushNotification called', [
+            'user_id' => $user?->id,
+            'push_enabled' => $user?->push_notifications_enabled,
+            'title' => $title,
+        ]);
+
         if (! $user || ! $user->push_notifications_enabled) {
+            Log::debug('Push notification skipped - user not found or push disabled');
+
             return;
         }
 
@@ -177,6 +201,8 @@ class RunClaudeMessageJob implements ShouldQueue
                 ['action' => 'dismiss', 'title' => 'Dismiss'],
             ]
         );
+
+        Log::debug('SendPushNotificationJob dispatched', ['title' => $fullTitle]);
     }
 
     protected function getNotificationBody(Message $message): string
