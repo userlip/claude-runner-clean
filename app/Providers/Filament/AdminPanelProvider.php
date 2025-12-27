@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Livewire\PushNotificationSettings;
 use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -43,6 +44,9 @@ class AdminPanelProvider extends PanelProvider
                     ->myProfile(
                         hasAvatars: true
                     )
+                    ->myProfileComponents([
+                        'push_notifications' => PushNotificationSettings::class,
+                    ])
                     ->enableTwoFactorAuthentication(),
                 FilamentShieldPlugin::make(),
                 FilamentPWAPlugin::make()

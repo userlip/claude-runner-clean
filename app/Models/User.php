@@ -29,6 +29,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
         'email',
         'password',
         'avatar_url',
+        'push_notifications_enabled',
     ];
 
     /**
@@ -51,6 +52,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'push_notifications_enabled' => 'boolean',
         ];
     }
 
@@ -77,5 +79,10 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
     public function snippets(): HasMany
     {
         return $this->hasMany(Snippet::class)->orderBy('sort_order');
+    }
+
+    public function pushSubscriptions(): HasMany
+    {
+        return $this->hasMany(PushSubscription::class);
     }
 }

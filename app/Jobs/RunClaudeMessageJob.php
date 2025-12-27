@@ -8,6 +8,7 @@ use App\Models\Task;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class RunClaudeMessageJob implements ShouldQueue
 {
@@ -128,6 +129,13 @@ class RunClaudeMessageJob implements ShouldQueue
 
             $this->task->markAsCompleted();
 
+            // Send push notification on success
+            $this->sendPushNotification(
+                'Task Completed',
+                $this->getNotificationBody($assistantMessage),
+                true
+            );
+
         } catch (\Throwable $e) {
             Log::error("Claude execution failed: {$e->getMessage()}");
 
@@ -137,8 +145,52 @@ class RunClaudeMessageJob implements ShouldQueue
 
             $this->task->markAsFailed();
 
+            // Send push notification on failure
+            $this->sendPushNotification(
+                'Task Failed',
+                "Error: {$e->getMessage()}",
+                false
+            );
+
             throw $e;
         }
+    }
+
+    protected function sendPushNotification(string $title, string $body, bool $success): void
+    {
+        $user = $this->task->user;
+
+        if (! $user || ! $user->push_notifications_enabled) {
+            return;
+        }
+
+        $taskTitle = $this->task->title ?? 'Untitled Task';
+        $fullTitle = $success ? "Completed: {$taskTitle}" : "Failed: {$taskTitle}";
+
+        SendPushNotificationJob::dispatch(
+            $user,
+            $fullTitle,
+            Str::limit($body, 150),
+            route('filament.admin.pages.task-chat', ['task' => $this->task->id]),
+            [
+                ['action' => 'view', 'title' => 'View Task'],
+                ['action' => 'dismiss', 'title' => 'Dismiss'],
+            ]
+        );
+    }
+
+    protected function getNotificationBody(Message $message): string
+    {
+        $content = $message->content;
+
+        if (empty($content) && ! empty($message->tool_calls)) {
+            $toolCount = count($message->tool_calls);
+            $lastTool = $message->tool_calls[$toolCount - 1]['name'] ?? 'Unknown';
+
+            return "Used {$toolCount} tool(s). Last: {$lastTool}";
+        }
+
+        return $content ?: 'Task completed successfully.';
     }
 
     public function buildCommand(): string
