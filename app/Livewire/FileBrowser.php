@@ -5,6 +5,7 @@ namespace App\Livewire;
 use Illuminate\Support\Facades\File;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
+use Symfony\Component\Finder\Finder;
 
 class FileBrowser extends Component
 {
@@ -52,16 +53,21 @@ class FileBrowser extends Component
         }
 
         $items = [];
-        $contents = File::directories($path);
 
-        // Add directories first
-        foreach ($contents as $dir) {
-            $name = basename($dir);
+        // Add directories first (including dotfolders)
+        $dirFinder = (new Finder)
+            ->directories()
+            ->depth(0)
+            ->ignoreDotFiles(false)
+            ->in($path);
+
+        foreach ($dirFinder as $dir) {
+            $name = $dir->getFilename();
             if (in_array($name, $this->ignoredDirs)) {
                 continue;
             }
 
-            $relativePath = $this->getRelativePath($dir);
+            $relativePath = $this->getRelativePath($dir->getPathname());
             $items[] = [
                 'name' => $name,
                 'path' => $relativePath,
@@ -70,8 +76,14 @@ class FileBrowser extends Component
             ];
         }
 
-        // Add files
-        foreach (File::files($path) as $file) {
+        // Add files (including dotfiles)
+        $fileFinder = (new Finder)
+            ->files()
+            ->depth(0)
+            ->ignoreDotFiles(false)
+            ->in($path);
+
+        foreach ($fileFinder as $file) {
             $name = $file->getFilename();
             $items[] = [
                 'name' => $name,
