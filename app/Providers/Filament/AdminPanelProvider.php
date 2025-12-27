@@ -19,6 +19,7 @@ use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\AuthenticateSession;
 use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Jeffgreco13\FilamentBreezy\BreezyCore;
 use TomatoPHP\FilamentPWA\FilamentPWAPlugin;
@@ -88,6 +89,10 @@ class AdminPanelProvider extends PanelProvider
                     '<link rel="icon" type="image/png" sizes="32x32" href="'.asset('favicon-32x32.png').'">'.
                     '<link rel="icon" type="image/png" sizes="16x16" href="'.asset('favicon-16x16.png').'">'.
                     '<style>'.file_get_contents(resource_path('css/filament/chat.css')).'</style>',
+            )
+            ->renderHook(
+                PanelsRenderHook::SIDEBAR_FOOTER,
+                fn (): string => Blade::render('@livewire(\'recent-chats\')'),
             );
     }
 }
