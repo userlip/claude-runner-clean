@@ -20,12 +20,82 @@
         </div>
 
         @if($enabled)
-        <div class="rounded-lg bg-success-50 dark:bg-success-500/10 p-4 text-success-700 dark:text-success-400">
-            <div class="flex items-center gap-2">
-                <x-heroicon-o-check-circle class="w-5 h-5" />
-                <span>Push notifications are enabled. You'll be notified when tasks complete.</span>
+            @if($subscriptionEndpoint)
+            <div class="rounded-lg bg-success-50 dark:bg-success-500/10 p-4 text-success-700 dark:text-success-400">
+                <div class="flex items-center gap-2">
+                    <x-heroicon-o-check-circle class="w-5 h-5" />
+                    <span>Push notifications active on this device.</span>
+                </div>
             </div>
-        </div>
+            @else
+            <div class="rounded-lg bg-warning-50 dark:bg-warning-500/10 p-4 text-warning-700 dark:text-warning-400">
+                <div class="flex items-center gap-2">
+                    <x-heroicon-o-exclamation-triangle class="w-5 h-5" />
+                    <span>Click below to register this device for notifications.</span>
+                </div>
+            </div>
+            <button
+                type="button"
+                onclick="registerPushSubscription()"
+                class="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-500 transition"
+            >
+                Register This Device
+            </button>
+            @endif
         @endif
     </div>
+
+    <script>
+        async function registerPushSubscription() {
+            try {
+                const permission = await Notification.requestPermission();
+                if (permission !== 'granted') {
+                    alert('Please allow notifications to receive push alerts.');
+                    return;
+                }
+
+                const registration = await navigator.serviceWorker.ready;
+                const vapidKey = @js(config('services.vapid.public_key'));
+
+                const subscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ToUint8Array(vapidKey)
+                });
+
+                const response = await fetch('/api/push/subscribe', {
+                    method: 'POST',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                    },
+                    body: JSON.stringify(subscription.toJSON())
+                });
+
+                if (response.ok) {
+                    @this.subscriptionRegistered(subscription.endpoint);
+                    alert('Device registered successfully!');
+                } else {
+                    const text = await response.text();
+                    console.error('Failed to register:', response.status, text);
+                    alert('Failed to register device. Please try again.');
+                }
+            } catch (error) {
+                console.error('Registration error:', error);
+                alert('Error: ' + error.message);
+            }
+        }
+
+        function urlBase64ToUint8Array(base64String) {
+            const padding = '='.repeat((4 - base64String.length % 4) % 4);
+            const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+            const rawData = window.atob(base64);
+            const outputArray = new Uint8Array(rawData.length);
+            for (let i = 0; i < rawData.length; ++i) {
+                outputArray[i] = rawData.charCodeAt(i);
+            }
+            return outputArray;
+        }
+    </script>
 </x-filament::section>

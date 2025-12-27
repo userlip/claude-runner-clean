@@ -40,6 +40,12 @@ This application is a Laravel application and its main Laravel ecosystems packag
 ## Documentation Files
 - You must only create documentation files if explicitly requested by the user.
 
+## Database Safety - CRITICAL
+- NEVER modify user passwords, API keys, tokens, or other credentials in the database unless explicitly requested by the user.
+- NEVER modify sensitive user data (email, authentication fields) without explicit permission.
+- If you need to log into the application to debug something, ASK the user for credentials instead of modifying them.
+- Read-only database queries are fine for debugging, but writes to sensitive fields are forbidden.
+
 
 === boost rules ===
 
