@@ -112,12 +112,6 @@
                 },
 
                 async requestPermissionAndSubscribe() {
-                    try {
-                        await navigator.serviceWorker.register('/sw.js');
-                    } catch (error) {
-                        console.error('Service worker registration failed:', error);
-                    }
-
                     const permission = await Notification.requestPermission();
 
                     if (permission === 'denied') {
