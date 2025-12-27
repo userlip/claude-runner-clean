@@ -80,20 +80,11 @@ class TaskChat extends Component
         // Refresh task status
         $this->task->refresh();
 
-        // Check if we got a response (message count increased)
-        $currentCount = $this->task->messages()->count();
-        if ($this->waitingForResponse && $currentCount > $this->lastMessageCount) {
-            $this->waitingForResponse = false;
-            $this->lastMessageCount = $currentCount;
-        }
-
-        // Also stop waiting if task is no longer running
+        // Only stop waiting when task is no longer running
+        // (message count check is unreliable since empty assistant message is created immediately)
         if ($this->waitingForResponse && ! $this->task->isRunning()) {
-            // Check if we actually have a new message
-            if ($currentCount > $this->lastMessageCount) {
-                $this->waitingForResponse = false;
-                $this->lastMessageCount = $currentCount;
-            }
+            $this->waitingForResponse = false;
+            $this->lastMessageCount = $this->task->messages()->count();
         }
     }
 
