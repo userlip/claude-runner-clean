@@ -15,6 +15,8 @@ class GeneralChatMessage extends Model
         'general_chat_id',
         'role',
         'content',
+        'images',
+        'content_blocks',
         'raw_output',
         'tool_calls',
         'tokens_in',
@@ -26,11 +28,20 @@ class GeneralChatMessage extends Model
     {
         return [
             'role' => MessageRole::class,
+            'images' => 'array',
+            'content_blocks' => 'array',
             'tool_calls' => 'array',
             'tokens_in' => 'integer',
             'tokens_out' => 'integer',
             'cost_usd' => 'decimal:6',
         ];
+    }
+
+    public function addContentBlock(array $block): void
+    {
+        $blocks = $this->content_blocks ?? [];
+        $blocks[] = $block;
+        $this->update(['content_blocks' => $blocks]);
     }
 
     public function generalChat(): BelongsTo

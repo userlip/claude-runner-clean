@@ -486,6 +486,62 @@
     background-color: rgb(55 65 81);
 }
 
+/* Hidden file input */
+.chat-file-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Attachment button */
+.chat-attach-btn {
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 50%;
+    background-color: transparent;
+    color: rgb(107 114 128);
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.chat-attach-btn svg {
+    width: 1.5rem;
+    height: 1.5rem;
+}
+
+.chat-attach-btn:hover {
+    background-color: rgb(243 244 246);
+    color: rgb(55 65 81);
+}
+
+.chat-attach-btn:active {
+    background-color: rgb(229 231 235);
+}
+
+.dark .chat-attach-btn {
+    color: rgb(156 163 175);
+}
+
+.dark .chat-attach-btn:hover {
+    background-color: rgb(55 65 81);
+    color: rgb(209 213 219);
+}
+
+.dark .chat-attach-btn:active {
+    background-color: rgb(75 85 99);
+}
+
 /* Image preview in input */
 .chat-image-preview {
     display: flex;
@@ -1405,6 +1461,16 @@
     color: rgb(156 163 175);
 }
 
+.recent-chat-badge-general {
+    background-color: rgb(219 234 254);
+    color: rgb(59 130 246);
+}
+
+.dark .recent-chat-badge-general {
+    background-color: rgb(30 58 138 / 0.3);
+    color: rgb(147 197 253);
+}
+
 /* ==========================================
    Mobile Native Chat Experience
    ========================================== */
@@ -1447,19 +1513,36 @@
         height: 100dvh; /* Dynamic viewport height for mobile */
     }
 
-    /* Show mobile header */
+    /* Show mobile header - use transform for GPU acceleration and better iOS keyboard handling */
     .chat-mobile-header {
         display: flex;
         align-items: center;
         gap: 0.75rem;
         padding: 0.75rem 1rem;
+        padding-top: calc(0.75rem + env(safe-area-inset-top, 0px));
         background-color: white;
         border-bottom: 1px solid rgb(229 231 235);
         flex-shrink: 0;
         min-height: 3.5rem;
-        position: sticky;
+        position: fixed;
         top: 0;
-        z-index: 30;
+        left: 0;
+        right: 0;
+        z-index: 100;
+        /* Force new stacking context for iOS */
+        transform: translateZ(0);
+        -webkit-transform: translateZ(0);
+    }
+
+    /* Extend header background into safe area to prevent black gap */
+    .chat-mobile-header::before {
+        content: '';
+        position: absolute;
+        top: calc(-1 * env(safe-area-inset-top, 0px));
+        left: 0;
+        right: 0;
+        height: env(safe-area-inset-top, 0px);
+        background-color: inherit;
     }
 
     .dark .chat-mobile-header {
@@ -1575,14 +1658,20 @@
         bottom: 0;
         left: 0;
         right: 0;
-        padding: 0.75rem 1rem;
-        padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+        padding: 0.5rem 1rem;
+        padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));
         background-color: white;
         border-top: 1px solid rgb(229 231 235);
         z-index: 20;
     }
 
-    body.chat-immersive-mode .dark .chat-input-area {
+    /* When keyboard is visible, reduce bottom padding */
+    body.chat-immersive-mode.keyboard-visible .chat-input-area {
+        padding-bottom: 0.5rem;
+    }
+
+    .dark body.chat-immersive-mode .chat-input-area,
+    body.chat-immersive-mode.dark .chat-input-area {
         background-color: rgb(17 24 39);
         border-top-color: rgb(55 65 81);
     }
@@ -1599,6 +1688,18 @@
         min-height: 0;
         display: flex;
         flex-direction: column;
+        /* Account for fixed header height + safe area */
+        padding-top: calc(3.5rem + env(safe-area-inset-top, 0px));
+    }
+
+    /* Set body background to match header in safe area */
+    body.chat-immersive-mode {
+        background-color: white;
+    }
+
+    .dark body.chat-immersive-mode,
+    body.chat-immersive-mode.dark {
+        background-color: rgb(17 24 39);
     }
 
     /* Hide the floating Files button in immersive mode */

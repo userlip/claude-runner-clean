@@ -7,8 +7,8 @@ use App\Jobs\RunGeneralChatMessageJob;
 use App\Models\AiProvider;
 use App\Models\GeneralChat;
 use App\Models\GeneralChatMessage;
+use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
-use Illuminate\Support\Facades\Http;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -18,6 +18,9 @@ class GeneralChatBox extends Component
     public GeneralChat $chat;
 
     public string $prompt = '';
+
+    /** @var array<int, array{data: string, name: string}> */
+    public array $images = [];
 
     public bool $waitingForResponse = false;
 
@@ -53,16 +56,25 @@ class GeneralChatBox extends Component
         return $this->chat->isRunning();
     }
 
+    /**
+     * Called by wire:poll to check if we should continue polling.
+     * This method updates the waitingForResponse state.
+     */
+    public function checkPolling(): void
+    {
+        // Refresh chat status
+        $this->chat->refresh();
+
+        // Only stop waiting when chat is no longer running
+        if ($this->waitingForResponse && ! $this->chat->isRunning()) {
+            $this->waitingForResponse = false;
+            $this->lastMessageCount = $this->chat->messages()->count();
+        }
+    }
+
     #[Computed]
     public function shouldPoll(): bool
     {
-        // Check if we got a response (message count increased)
-        $currentCount = $this->chat->messages()->count();
-        if ($this->waitingForResponse && $currentCount > $this->lastMessageCount) {
-            $this->waitingForResponse = false;
-            $this->lastMessageCount = $currentCount;
-        }
-
         return $this->isRunning || $this->waitingForResponse;
     }
 
@@ -143,13 +155,24 @@ class GeneralChatBox extends Component
 
     public function sendMessage(): void
     {
+        // Allow sending with just images (no text required)
+        $hasContent = ! empty(trim($this->prompt)) || ! empty($this->images);
+
+        if (! $hasContent) {
+            return;
+        }
+
         $this->validate([
-            'prompt' => 'required|string|min:1|max:100000',
+            'prompt' => 'nullable|string|max:100000',
+            'images' => 'array|max:10',
+            'images.*.data' => 'required|string',
+            'images.*.name' => 'required|string|max:255',
         ]);
 
         // Handle slash commands locally
-        if ($this->handleSlashCommand($this->prompt)) {
+        if (! empty($this->prompt) && $this->handleSlashCommand($this->prompt)) {
             $this->prompt = '';
+            $this->images = [];
 
             return;
         }
@@ -165,7 +188,8 @@ class GeneralChatBox extends Component
         $userMessage = GeneralChatMessage::create([
             'general_chat_id' => $this->chat->id,
             'role' => MessageRole::User,
-            'content' => $this->prompt,
+            'content' => $this->prompt ?: '',
+            'images' => ! empty($this->images) ? $this->images : null,
         ]);
 
         RunGeneralChatMessageJob::dispatch(
@@ -175,6 +199,7 @@ class GeneralChatBox extends Component
         );
 
         $this->prompt = '';
+        $this->images = [];
         $this->waitingForResponse = true;
         $this->lastMessageCount = $this->chat->messages()->count();
     }
@@ -278,49 +303,84 @@ class GeneralChatBox extends Component
         $messages = $this->chat->messages()->oldest()->take(20)->get();
 
         if ($messages->isEmpty()) {
+            Notification::make()
+                ->title('No messages to generate title from')
+                ->warning()
+                ->send();
+
             return;
         }
 
-        $provider = $this->chat->aiProvider ?? AiProvider::getDefault();
+        // Get first user message for context
+        $firstUserMessage = $messages->first(fn ($m) => $m->role === MessageRole::User);
+        $messageContent = $firstUserMessage?->content ?? '';
+        // Truncate to first 300 chars
+        $messageContent = substr($messageContent, 0, 300);
 
-        if (! $provider) {
-            return;
-        }
+        $prompt = "Generate a 3-5 word title for a chat that starts with this message. Reply with ONLY the title, nothing else. No quotes, no explanation, no punctuation at the end.\n\nMessage: {$messageContent}\n\nTitle:";
 
-        $conversationSummary = $messages->map(function ($message) {
-            $role = $message->role === MessageRole::User ? 'User' : 'Assistant';
+        try {
+            // Use Claude Code CLI which is already authenticated
+            $claudePath = config('services.claude.path', '/usr/bin/claude');
+            $escapedPrompt = escapeshellarg($prompt);
 
-            return "{$role}: ".substr($message->content ?? '', 0, 500);
-        })->join("\n\n");
-
-        $baseUrl = $provider->base_url ?: 'https://api.anthropic.com';
-        $apiKey = $provider->api_key ?: config('services.anthropic.api_key');
-        $model = $provider->model ?: 'claude-sonnet-4-20250514';
-
-        $response = Http::withHeaders([
-            'x-api-key' => $apiKey,
-            'anthropic-version' => '2023-06-01',
-            'content-type' => 'application/json',
-        ])->post("{$baseUrl}/v1/messages", [
-            'model' => $model,
-            'max_tokens' => 50,
-            'messages' => [
+            // Run in temp dir to avoid picking up workspace context
+            $process = proc_open(
+                "{$claudePath} -p {$escapedPrompt} --output-format text --max-turns 1",
                 [
-                    'role' => 'user',
-                    'content' => "Based on this conversation, generate a short title (max 6 words, no quotes). Just respond with the title, nothing else.\n\n{$conversationSummary}",
+                    0 => ['pipe', 'r'],
+                    1 => ['pipe', 'w'],
+                    2 => ['pipe', 'w'],
                 ],
-            ],
-        ]);
+                $pipes,
+                sys_get_temp_dir()
+            );
 
-        if ($response->successful()) {
-            $data = $response->json();
-            $title = $data['content'][0]['text'] ?? null;
+            if (is_resource($process)) {
+                fclose($pipes[0]);
+                $output = stream_get_contents($pipes[1]);
+                fclose($pipes[1]);
+                fclose($pipes[2]);
+                $exitCode = proc_close($process);
 
-            if ($title) {
-                $title = trim($title, " \n\r\t\v\0\"'");
-                $this->chat->update(['title' => $title]);
-                $this->chat->refresh();
+                if ($exitCode === 0 && ! empty($output)) {
+                    $title = trim($output, " \n\r\t\v\0\"'");
+                    // Take only the first line in case Claude added extra content
+                    $title = strtok($title, "\n");
+                    // Remove any trailing punctuation
+                    $title = rtrim($title, '.!?:');
+                    // Limit to 50 chars max
+                    if (strlen($title) > 50) {
+                        $title = substr($title, 0, 50);
+                    }
+
+                    $this->chat->update(['title' => $title]);
+                    $this->chat->refresh();
+
+                    Notification::make()
+                        ->title('Title updated')
+                        ->body($title)
+                        ->success()
+                        ->send();
+                } else {
+                    Notification::make()
+                        ->title('Failed to generate title')
+                        ->body('Claude Code returned an error')
+                        ->danger()
+                        ->send();
+                }
+            } else {
+                Notification::make()
+                    ->title('Failed to start Claude Code')
+                    ->danger()
+                    ->send();
             }
+        } catch (\Exception $e) {
+            Notification::make()
+                ->title('Error generating title')
+                ->body($e->getMessage())
+                ->danger()
+                ->send();
         }
     }
 

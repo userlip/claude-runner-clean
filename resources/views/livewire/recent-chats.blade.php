@@ -3,13 +3,19 @@
         <span>Recent Chats</span>
     </div>
     <ul class="recent-chats-list">
-        @forelse($this->recentTasks as $task)
+        @forelse($this->recentChats as $chat)
             <li>
-                <a href="{{ $this->getTaskUrl($task) }}" class="recent-chat-item" wire:navigate>
-                    <span class="recent-chat-status recent-chat-status-{{ $task->status->value }}"></span>
-                    <span class="recent-chat-title">{{ Str::limit($task->title ?? 'Untitled', 30) }}</span>
-                    @if($task->repository)
-                        <span class="recent-chat-badge">{{ Str::limit($task->repository->name, 12) }}</span>
+                <a href="{{ $this->getChatUrl($chat) }}" class="recent-chat-item" wire:navigate>
+                    @if($chat['type'] === 'task')
+                        <span class="recent-chat-status recent-chat-status-{{ $chat['model']->status->value }}"></span>
+                    @else
+                        <span class="recent-chat-status recent-chat-status-{{ $chat['model']->status->value }}"></span>
+                    @endif
+                    <span class="recent-chat-title">{{ Str::limit($this->getChatTitle($chat), 40) }}</span>
+                    @if($badge = $this->getChatBadge($chat))
+                        <span class="recent-chat-badge">{{ Str::limit($badge, 12) }}</span>
+                    @elseif($chat['type'] === 'general')
+                        <span class="recent-chat-badge recent-chat-badge-general">General</span>
                     @endif
                 </a>
             </li>

@@ -85,7 +85,8 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->renderHook(
                 PanelsRenderHook::HEAD_END,
-                fn (): string => '<link rel="apple-touch-icon" sizes="180x180" href="'.asset('apple-touch-icon.png').'">'.
+                fn (): string => '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">'.
+                    '<link rel="apple-touch-icon" sizes="180x180" href="'.asset('apple-touch-icon.png').'">'.
                     '<link rel="icon" type="image/png" sizes="32x32" href="'.asset('favicon-32x32.png').'">'.
                     '<link rel="icon" type="image/png" sizes="16x16" href="'.asset('favicon-16x16.png').'">'.
                     '<style>'.file_get_contents(resource_path('css/filament/chat.css')).'</style>',

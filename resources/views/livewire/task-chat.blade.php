@@ -1,4 +1,30 @@
-<div class="chat-container" x-data="{ mobileMenuOpen: false }">
+<div class="chat-container" x-data="{
+    mobileMenuOpen: false,
+    init() {
+        // Handle iOS keyboard showing/hiding
+        if (window.visualViewport) {
+            const header = this.$el.querySelector('.chat-mobile-header');
+            const initialHeight = window.visualViewport.height;
+
+            const handleViewportChange = () => {
+                // Detect keyboard by checking if viewport shrunk significantly (>150px for keyboard)
+                const heightDiff = initialHeight - window.visualViewport.height;
+                const keyboardVisible = heightDiff > 150;
+
+                // Toggle keyboard class for CSS adjustments
+                document.body.classList.toggle('keyboard-visible', keyboardVisible);
+
+                // Keep header at top of visual viewport
+                if (header) {
+                    header.style.top = window.visualViewport.offsetTop + 'px';
+                }
+            };
+
+            window.visualViewport.addEventListener('resize', handleViewportChange);
+            window.visualViewport.addEventListener('scroll', handleViewportChange);
+        }
+    }
+}">
     {{-- Mobile Header (shown only on mobile in immersive mode) --}}
     <div class="chat-mobile-header">
         <a href="{{ route('filament.admin.resources.tasks.index') }}" class="chat-mobile-back">
@@ -397,24 +423,65 @@
                             e.preventDefault();
                             const file = item.getAsFile();
                             if (file) {
-                                const reader = new FileReader();
-                                reader.onload = (event) => {
-                                    this.images.push({
-                                        data: event.target.result,
-                                        name: file.name || 'pasted-image.png'
-                                    });
-                                };
-                                reader.readAsDataURL(file);
+                                this.processFile(file);
                             }
                         }
                     }
                 },
+                handleFileSelect(e) {
+                    const files = e.target.files;
+                    if (!files) return;
+
+                    for (const file of files) {
+                        if (file.type.startsWith('image/')) {
+                            this.processFile(file);
+                        }
+                    }
+                    // Reset input so same file can be selected again
+                    e.target.value = '';
+                },
+                processFile(file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        this.images.push({
+                            data: event.target.result,
+                            name: file.name || 'image.png'
+                        });
+                    };
+                    reader.readAsDataURL(file);
+                },
                 removeImage(index) {
                     this.images.splice(index, 1);
+                },
+                openFilePicker() {
+                    this.$refs.fileInput.click();
                 }
             }"
         >
+            {{-- Hidden file input for mobile attachment --}}
+            <input
+                type="file"
+                x-ref="fileInput"
+                @change="handleFileSelect($event)"
+                accept="image/*"
+                multiple
+                class="chat-file-input"
+            >
+
             <form wire:submit="sendMessage" class="chat-form">
+                {{-- Attachment button (primarily for mobile) --}}
+                <button
+                    type="button"
+                    @click="openFilePicker()"
+                    class="chat-attach-btn"
+                    title="Attach image"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z" />
+                    </svg>
+                </button>
+
                 <div class="chat-input-wrapper">
                     {{-- Image previews --}}
                     <template x-if="images.length > 0">

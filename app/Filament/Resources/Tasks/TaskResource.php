@@ -21,6 +21,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\File;
 
 class TaskResource extends Resource
 {
@@ -110,6 +111,15 @@ class TaskResource extends Resource
                     ->label('Open Chat')
                     ->icon('heroicon-o-chat-bubble-left-right')
                     ->url(fn (Task $record) => TaskChat::getUrl(['record' => $record])),
+                Actions\DeleteAction::make()
+                    ->modalDescription(fn (Task $record) => $record->isInWorkspace()
+                        ? "This will permanently delete the task and its workspace directory:\n{$record->workspace_path}"
+                        : 'This will permanently delete the task and all its messages.')
+                    ->before(function (Task $record) {
+                        if ($record->isInWorkspace() && File::isDirectory($record->workspace_path)) {
+                            File::deleteDirectory($record->workspace_path);
+                        }
+                    }),
             ]);
     }
 
