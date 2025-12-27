@@ -112,6 +112,7 @@
     {{-- Chat Area --}}
     <div class="chat-area"
         x-data="{
+            polling: @entangle('waitingForResponse'),
             scrollToBottom() {
                 this.$refs.messages.scrollTop = this.$refs.messages.scrollHeight;
             },
@@ -123,7 +124,7 @@
         }"
     >
         {{-- Messages --}}
-        <div class="chat-messages" x-ref="messages" @if($this->shouldPoll) wire:poll.1s="$refresh" @endif>
+        <div class="chat-messages" x-ref="messages" wire:poll.1s="checkPolling">
             @forelse($this->chatMessages as $message)
                 <div wire:key="message-{{ $message->id }}" class="chat-message {{ $message->isFromUser() ? 'chat-message-user' : 'chat-message-assistant' }}">
                     <div class="chat-bubble {{ $message->isFromUser() ? 'chat-bubble-user' : 'chat-bubble-assistant' }}">
@@ -221,16 +222,14 @@
                 </div>
             @endforelse
 
-            @if($this->shouldPoll)
-                <div class="chat-thinking">
-                    <div class="chat-thinking-bubble">
-                        <div class="chat-thinking-content">
-                            <div class="chat-thinking-dot"></div>
-                            <span class="chat-thinking-text">Claude is thinking...</span>
-                        </div>
+            <div x-show="polling" class="chat-thinking">
+                <div class="chat-thinking-bubble">
+                    <div class="chat-thinking-content">
+                        <div class="chat-thinking-dot"></div>
+                        <span class="chat-thinking-text">Claude is thinking...</span>
                     </div>
                 </div>
-            @endif
+            </div>
         </div>
 
         {{-- Input --}}

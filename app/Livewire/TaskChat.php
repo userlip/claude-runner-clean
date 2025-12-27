@@ -71,9 +71,15 @@ class TaskChat extends Component
         return $this->task->isRunning();
     }
 
-    #[Computed]
-    public function shouldPoll(): bool
+    /**
+     * Called by wire:poll to check if we should continue polling.
+     * This method updates the waitingForResponse state.
+     */
+    public function checkPolling(): void
     {
+        // Refresh task status
+        $this->task->refresh();
+
         // Check if we got a response (message count increased)
         $currentCount = $this->task->messages()->count();
         if ($this->waitingForResponse && $currentCount > $this->lastMessageCount) {
@@ -81,6 +87,19 @@ class TaskChat extends Component
             $this->lastMessageCount = $currentCount;
         }
 
+        // Also stop waiting if task is no longer running
+        if ($this->waitingForResponse && ! $this->task->isRunning()) {
+            // Check if we actually have a new message
+            if ($currentCount > $this->lastMessageCount) {
+                $this->waitingForResponse = false;
+                $this->lastMessageCount = $currentCount;
+            }
+        }
+    }
+
+    #[Computed]
+    public function shouldPoll(): bool
+    {
         return $this->isRunning || $this->waitingForResponse;
     }
 
