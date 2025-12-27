@@ -112,7 +112,7 @@
     {{-- Chat Area --}}
     <div class="chat-area"
         x-data="{
-            polling: @entangle('waitingForResponse'),
+            polling: @entangle('waitingForResponse').live,
             scrollToBottom() {
                 this.$refs.messages.scrollTop = this.$refs.messages.scrollHeight;
             },
