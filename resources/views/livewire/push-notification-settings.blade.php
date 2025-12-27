@@ -145,12 +145,18 @@
                         const csrfToken = document.querySelector('meta[name="csrf-token"]');
                         const response = await fetch('/api/push/subscribe', {
                             method: 'POST',
+                            credentials: 'same-origin',
                             headers: {
                                 'Content-Type': 'application/json',
+                                'Accept': 'application/json',
                                 'X-CSRF-TOKEN': csrfToken ? csrfToken.content : ''
                             },
                             body: JSON.stringify(subscription.toJSON())
                         });
+
+                        if (!response.ok) {
+                            console.error('Subscribe API failed:', response.status, await response.text());
+                        }
 
                         if (response.ok) {
                             this.subscribed = true;
@@ -171,8 +177,10 @@
                             const csrfToken = document.querySelector('meta[name="csrf-token"]');
                             await fetch('/api/push/unsubscribe', {
                                 method: 'POST',
+                                credentials: 'same-origin',
                                 headers: {
                                     'Content-Type': 'application/json',
+                                    'Accept': 'application/json',
                                     'X-CSRF-TOKEN': csrfToken ? csrfToken.content : ''
                                 },
                                 body: JSON.stringify({ endpoint: subscription.endpoint })
