@@ -34,13 +34,14 @@
                 </svg>
                 <span>Click the button below to register this device.</span>
             </div>
-            <x-filament::button
+            <button
                 type="button"
-                onclick="registerPushSubscription()"
-                color="primary"
+                x-data
+                @click="registerPushSubscription()"
+                style="display: inline-flex; align-items: center; justify-content: center; padding: 10px 16px; background-color: rgb(59, 130, 246); color: white; font-weight: 500; font-size: 14px; border-radius: 8px; border: none; cursor: pointer;"
             >
                 Register This Device
-            </x-filament::button>
+            </button>
             @endif
         @endif
     </div>
