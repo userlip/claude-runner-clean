@@ -282,7 +282,6 @@
                         rows="1"
                         class="chat-textarea"
                         @paste="handlePaste($event)"
-                        @disabled($this->isRunning)
                         @keydown.enter.prevent="if (!$event.shiftKey && !$wire.isRunning) $wire.sendMessage()"
                     ></textarea>
                 </div>
