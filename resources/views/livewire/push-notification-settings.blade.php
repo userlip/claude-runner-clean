@@ -37,7 +37,7 @@
             <button
                 type="button"
                 x-data
-                @click="registerPushSubscription()"
+                @click="window.registerPushSubscription()"
                 style="display: inline-flex; align-items: center; justify-content: center; padding: 10px 16px; background-color: rgb(59, 130, 246); color: white; font-weight: 500; font-size: 14px; border-radius: 8px; border: none; cursor: pointer;"
             >
                 Register This Device
@@ -47,7 +47,7 @@
     </div>
 
     <script>
-        async function registerPushSubscription() {
+        window.registerPushSubscription = async function() {
             try {
                 const permission = await Notification.requestPermission();
                 if (permission !== 'granted') {
@@ -60,7 +60,7 @@
 
                 const subscription = await registration.pushManager.subscribe({
                     userVisibleOnly: true,
-                    applicationServerKey: urlBase64ToUint8Array(vapidKey)
+                    applicationServerKey: window.urlBase64ToUint8Array(vapidKey)
                 });
 
                 const response = await fetch('/api/push/subscribe', {
@@ -86,9 +86,9 @@
                 console.error('Registration error:', error);
                 alert('Error: ' + error.message);
             }
-        }
+        };
 
-        function urlBase64ToUint8Array(base64String) {
+        window.urlBase64ToUint8Array = function(base64String) {
             const padding = '='.repeat((4 - base64String.length % 4) % 4);
             const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
             const rawData = window.atob(base64);
@@ -97,6 +97,6 @@
                 outputArray[i] = rawData.charCodeAt(i);
             }
             return outputArray;
-        }
+        };
     </script>
 </x-filament::section>
