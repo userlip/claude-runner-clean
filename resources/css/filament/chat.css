@@ -1388,3 +1388,19 @@
     padding: 0.5rem;
     text-align: center;
 }
+
+.recent-chat-badge {
+    margin-left: auto;
+    flex-shrink: 0;
+    font-size: 0.625rem;
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.25rem;
+    background-color: rgb(229 231 235);
+    color: rgb(107 114 128);
+    font-weight: 500;
+}
+
+.dark .recent-chat-badge {
+    background-color: rgb(55 65 81);
+    color: rgb(156 163 175);
+}
