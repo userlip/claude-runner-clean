@@ -21,26 +21,26 @@
 
         @if($enabled)
             @if($subscriptionEndpoint)
-            <div class="rounded-lg bg-success-50 dark:bg-success-500/10 p-4 text-success-700 dark:text-success-400">
-                <div class="flex items-center gap-2">
-                    <x-heroicon-o-check-circle class="w-5 h-5" />
-                    <span>Push notifications active on this device.</span>
-                </div>
+            <div style="display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-radius: 8px; background-color: rgba(34, 197, 94, 0.1); color: rgb(34, 197, 94);">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 20px; height: 20px; flex-shrink: 0;">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>Push notifications active on this device.</span>
             </div>
             @else
-            <div class="rounded-lg bg-warning-50 dark:bg-warning-500/10 p-4 text-warning-700 dark:text-warning-400">
-                <div class="flex items-center gap-2">
-                    <x-heroicon-o-exclamation-triangle class="w-5 h-5" />
-                    <span>Click below to register this device for notifications.</span>
-                </div>
+            <div style="display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-radius: 8px; background-color: rgba(245, 158, 11, 0.1); color: rgb(245, 158, 11);">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 20px; height: 20px; flex-shrink: 0;">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                </svg>
+                <span>Click the button below to register this device.</span>
             </div>
-            <button
+            <x-filament::button
                 type="button"
                 onclick="registerPushSubscription()"
-                class="inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-500 transition"
+                color="primary"
             >
                 Register This Device
-            </button>
+            </x-filament::button>
             @endif
         @endif
     </div>

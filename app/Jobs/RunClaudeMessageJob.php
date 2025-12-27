@@ -101,6 +101,11 @@ class RunClaudeMessageJob implements ShouldQueue
                         ]);
                     }
                     if (isset($parsed['usage'])) {
+                        Log::info('Result event received - breaking loop', [
+                            'task_id' => $this->task->id,
+                            'usage' => $parsed['usage'],
+                        ]);
+
                         $assistantMessage->update([
                             'tokens_in' => $parsed['usage']['input_tokens'] ?? null,
                             'tokens_out' => $parsed['usage']['output_tokens'] ?? null,
@@ -174,7 +179,8 @@ class RunClaudeMessageJob implements ShouldQueue
 
     protected function sendPushNotification(string $title, string $body, bool $success): void
     {
-        $user = $this->task->user;
+        // Get user through repository since tasks don't have user_id directly
+        $user = $this->task->repository?->user;
 
         Log::debug('sendPushNotification called', [
             'user_id' => $user?->id,
@@ -195,7 +201,7 @@ class RunClaudeMessageJob implements ShouldQueue
             $user,
             $fullTitle,
             Str::limit($body, 150),
-            route('filament.admin.pages.task-chat', ['task' => $this->task->id]),
+            route('filament.admin.resources.tasks.chat', ['record' => $this->task->uuid]),
             [
                 ['action' => 'view', 'title' => 'View Task'],
                 ['action' => 'dismiss', 'title' => 'Dismiss'],
