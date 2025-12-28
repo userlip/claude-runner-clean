@@ -22,6 +22,8 @@ class Task extends Model
         'workspace_path',
         'session_id',
         'status',
+        'is_compacting',
+        'compaction_count',
         'max_turns',
         'started_at',
         'completed_at',
@@ -32,6 +34,8 @@ class Task extends Model
     {
         return [
             'status' => TaskStatus::class,
+            'is_compacting' => 'boolean',
+            'compaction_count' => 'integer',
             'max_turns' => 'integer',
             'started_at' => 'datetime',
             'completed_at' => 'datetime',

@@ -49,11 +49,25 @@
             <p class="chat-mobile-subtitle">General Chat</p>
         </div>
         {{-- Context indicator --}}
-        <div class="chat-mobile-context" title="{{ number_format($this->contextUsed) }} / {{ number_format($this->contextLimit) }} tokens">
-            <div class="chat-mobile-context-bar">
-                <div class="chat-mobile-context-fill {{ $this->contextColor }}" style="width: {{ min($this->contextPercentage, 100) }}%"></div>
-            </div>
-            <span class="chat-mobile-context-text">{{ number_format($this->contextPercentage, 0) }}%</span>
+        <div class="chat-mobile-context" title="{{ $chat->is_compacting ? 'Compacting conversation...' : number_format($this->contextUsed) . ' / ' . number_format($this->contextLimit) . ' tokens' }}">
+            @if($chat->is_compacting)
+                <div class="flex items-center gap-1 px-1.5 py-0.5 bg-amber-100 dark:bg-amber-900/30 rounded">
+                    <svg class="w-3 h-3 text-amber-600 dark:text-amber-400 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </div>
+            @else
+                <div class="chat-mobile-context-bar">
+                    <div class="chat-mobile-context-fill {{ $this->contextColor }}" style="width: {{ min($this->contextPercentage, 100) }}%"></div>
+                </div>
+                <span class="chat-mobile-context-text">{{ number_format($this->contextPercentage, 0) }}%</span>
+            @endif
+            @if($chat->compaction_count > 0)
+                <span class="inline-flex items-center justify-center w-5 h-5 text-xs font-medium rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+                    {{ $chat->compaction_count }}
+                </span>
+            @endif
         </div>
         {{-- Menu button --}}
         <button @click="mobileMenuOpen = !mobileMenuOpen" class="chat-mobile-menu">
@@ -139,17 +153,41 @@
             {{-- Context Usage Indicator --}}
             <div
                 class="flex items-center gap-2"
-                title="{{ number_format($this->contextUsed) }} tokens used of {{ number_format($this->contextLimit) }} ({{ number_format($this->contextPercentage, 1) }}%)"
+                title="{{ $chat->is_compacting ? 'Compacting conversation...' : number_format($this->contextUsed) . ' tokens used of ' . number_format($this->contextLimit) . ' (' . number_format($this->contextPercentage, 1) . '%)' }}"
             >
-                <div class="w-24 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                    <div
-                        class="{{ $this->contextColor }} h-full transition-all duration-300"
-                        style="width: {{ min($this->contextPercentage, 100) }}%"
-                    ></div>
-                </div>
-                <span class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                    {{ number_format($this->contextUsed / 1000, 0) }}K / {{ number_format($this->contextLimit / 1000, 0) }}K
-                </span>
+                @if($chat->is_compacting)
+                    {{-- Compacting State --}}
+                    <div class="flex items-center gap-1.5 px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 rounded-full">
+                        <svg class="w-3 h-3 text-amber-600 dark:text-amber-400 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span class="text-xs font-medium text-amber-700 dark:text-amber-300">Compacting</span>
+                    </div>
+                @else
+                    {{-- Normal Context Bar --}}
+                    <div class="w-24 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                        <div
+                            class="{{ $this->contextColor }} h-full transition-all duration-300"
+                            style="width: {{ min($this->contextPercentage, 100) }}%"
+                        ></div>
+                    </div>
+                    <span class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                        {{ number_format($this->contextUsed / 1000, 0) }}K / {{ number_format($this->contextLimit / 1000, 0) }}K
+                    </span>
+                @endif
+                {{-- Compaction Count Badge --}}
+                @if($chat->compaction_count > 0)
+                    <span
+                        class="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs font-medium rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300"
+                        title="{{ $chat->compaction_count }} conversation {{ Str::plural('compaction', $chat->compaction_count) }}"
+                    >
+                        <svg class="w-3 h-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25" />
+                        </svg>
+                        {{ $chat->compaction_count }}
+                    </span>
+                @endif
             </div>
         </div>
     </div>

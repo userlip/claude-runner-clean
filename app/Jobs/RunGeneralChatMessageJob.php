@@ -91,6 +91,15 @@ class RunGeneralChatMessageJob implements ShouldQueue
                             'content' => ($assistantMessage->content ?? '').$parsed['content'],
                         ]);
                     }
+                    if (isset($parsed['compacting'])) {
+                        Log::info('Context compaction started', [
+                            'chat_id' => $this->chat->id,
+                            'trigger' => $parsed['compacting']['trigger'],
+                            'pre_tokens' => $parsed['compacting']['pre_tokens'],
+                        ]);
+                        $this->chat->update(['is_compacting' => true]);
+                        $this->chat->increment('compaction_count');
+                    }
                     if (isset($parsed['usage'])) {
                         $assistantMessage->update([
                             'tokens_in' => $parsed['usage']['input_tokens'] ?? null,
@@ -105,6 +114,9 @@ class RunGeneralChatMessageJob implements ShouldQueue
                                 $parsed['usage']['output_tokens'] ?? 0
                             );
                         }
+
+                        // Clear compacting state when usage/result is received
+                        $this->chat->update(['is_compacting' => false]);
                     }
                 }
             }
@@ -230,10 +242,23 @@ class RunGeneralChatMessageJob implements ShouldQueue
         }
 
         if (($data['type'] ?? '') === 'result') {
+            // input_tokens represents total context window usage for this request
+            $usage = $data['usage'] ?? [];
+            $inputTokens = $usage['input_tokens'] ?? $data['total_input_tokens'] ?? 0;
+            $outputTokens = $usage['output_tokens'] ?? $data['total_output_tokens'] ?? 0;
+
             $result['usage'] = [
-                'input_tokens' => $data['total_input_tokens'] ?? null,
-                'output_tokens' => $data['total_output_tokens'] ?? null,
+                'input_tokens' => $inputTokens > 0 ? $inputTokens : null,
+                'output_tokens' => $outputTokens > 0 ? $outputTokens : null,
                 'cost_usd' => $data['total_cost_usd'] ?? null,
+            ];
+        }
+
+        // Detect context compaction events
+        if (($data['type'] ?? '') === 'system' && ($data['subtype'] ?? '') === 'compact_boundary') {
+            $result['compacting'] = [
+                'trigger' => $data['compact_metadata']['trigger'] ?? 'auto',
+                'pre_tokens' => $data['compact_metadata']['pre_tokens'] ?? null,
             ];
         }
 

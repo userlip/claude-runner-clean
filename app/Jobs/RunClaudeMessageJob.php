@@ -54,14 +54,10 @@ class RunClaudeMessageJob implements ShouldQueue
                 2 => ['pipe', 'w'],
             ];
 
-            $env = array_filter(
-                array_merge($_ENV, $_SERVER, $this->getProviderEnvironment(), [
-                    'PATH' => '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
-                    'HOME' => getenv('HOME') ?: '/home/ploi',
-                ]),
-                fn ($value) => is_string($value)
-            );
-            $process = proc_open($command, $descriptors, $pipes, $workingDir, $env);
+            // Pass null for env to let the command handle environment isolation.
+            // The command uses `env -i` to clear ALL inherited environment variables,
+            // ensuring the workspace's .env file is used for database credentials.
+            $process = proc_open($command, $descriptors, $pipes, $workingDir, null);
 
             if (! is_resource($process)) {
                 throw new \RuntimeException('Failed to start Claude process');
@@ -100,6 +96,15 @@ class RunClaudeMessageJob implements ShouldQueue
                             'content_blocks' => $contentBlocks,
                         ]);
                     }
+                    if (isset($parsed['compacting'])) {
+                        Log::info('Context compaction started', [
+                            'task_id' => $this->task->id,
+                            'trigger' => $parsed['compacting']['trigger'],
+                            'pre_tokens' => $parsed['compacting']['pre_tokens'],
+                        ]);
+                        $this->task->update(['is_compacting' => true]);
+                        $this->task->increment('compaction_count');
+                    }
                     if (isset($parsed['usage'])) {
                         Log::info('Result event received - breaking loop', [
                             'task_id' => $this->task->id,
@@ -119,6 +124,9 @@ class RunClaudeMessageJob implements ShouldQueue
                                 $parsed['usage']['output_tokens'] ?? 0
                             );
                         }
+
+                        // Clear compacting state when result is received
+                        $this->task->update(['is_compacting' => false]);
 
                         // Result event received - Claude finished this response
                         $resultReceived = true;
@@ -230,27 +238,49 @@ class RunClaudeMessageJob implements ShouldQueue
         $prompt = escapeshellarg($this->userMessage->content);
         $sessionId = escapeshellarg($this->task->session_id);
 
-        $cmd = "/usr/bin/claude -p {$prompt} --output-format stream-json --verbose --dangerously-skip-permissions";
+        $claudeCmd = "/usr/bin/claude -p {$prompt} --output-format stream-json --verbose --dangerously-skip-permissions";
 
         // Add MCP servers (Playwright for browser automation)
         $mcpConfig = $this->getMcpConfig();
         if ($mcpConfig) {
-            $cmd .= ' --mcp-config '.escapeshellarg($mcpConfig);
+            $claudeCmd .= ' --mcp-config '.escapeshellarg($mcpConfig);
         }
 
         if ($this->continue) {
             // Resume existing session
-            $cmd .= " --resume {$sessionId}";
+            $claudeCmd .= " --resume {$sessionId}";
         } else {
             // Start new session with specific ID
-            $cmd .= " --session-id {$sessionId}";
+            $claudeCmd .= " --session-id {$sessionId}";
         }
 
         if ($this->task->max_turns) {
-            $cmd .= " --max-turns {$this->task->max_turns}";
+            $claudeCmd .= " --max-turns {$this->task->max_turns}";
         }
 
-        return $cmd;
+        // Build environment variable string for env command
+        // We use env -i to clear ALL inherited environment variables,
+        // ensuring the workspace's .env file is used for database credentials.
+        $envVars = [
+            'HOME' => getenv('HOME') ?: '/home/ploi',
+            'PATH' => '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
+            'USER' => 'ploi',
+            'SHELL' => '/bin/bash',
+            'TERM' => 'xterm-256color',
+        ];
+
+        // Add provider environment variables (API keys)
+        foreach ($this->getProviderEnvironment() as $key => $value) {
+            $envVars[$key] = $value;
+        }
+
+        // Build the env command with all variables
+        $envCmd = 'env -i';
+        foreach ($envVars as $key => $value) {
+            $envCmd .= ' '.escapeshellarg("{$key}={$value}");
+        }
+
+        return "{$envCmd} {$claudeCmd}";
     }
 
     protected function getMcpConfig(): ?string
@@ -331,17 +361,25 @@ class RunClaudeMessageJob implements ShouldQueue
         }
 
         if (($data['type'] ?? '') === 'result') {
-            // Calculate total input tokens including cache reads
+            // input_tokens represents total context window usage for this request
+            // cache_read_input_tokens and cache_creation_input_tokens are billing breakdowns,
+            // not additional tokens - they're subsets of input_tokens
             $usage = $data['usage'] ?? [];
-            $inputTokens = ($usage['input_tokens'] ?? 0)
-                + ($usage['cache_read_input_tokens'] ?? 0)
-                + ($usage['cache_creation_input_tokens'] ?? 0);
+            $inputTokens = $usage['input_tokens'] ?? 0;
             $outputTokens = $usage['output_tokens'] ?? 0;
 
             $result['usage'] = [
                 'input_tokens' => $inputTokens > 0 ? $inputTokens : null,
                 'output_tokens' => $outputTokens > 0 ? $outputTokens : null,
                 'cost_usd' => $data['total_cost_usd'] ?? null,
+            ];
+        }
+
+        // Detect context compaction events
+        if (($data['type'] ?? '') === 'system' && ($data['subtype'] ?? '') === 'compact_boundary') {
+            $result['compacting'] = [
+                'trigger' => $data['compact_metadata']['trigger'] ?? 'auto',
+                'pre_tokens' => $data['compact_metadata']['pre_tokens'] ?? null,
             ];
         }
 

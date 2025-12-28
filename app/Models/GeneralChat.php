@@ -21,6 +21,8 @@ class GeneralChat extends Model
         'title',
         'working_directory',
         'status',
+        'is_compacting',
+        'compaction_count',
         'started_at',
         'completed_at',
         'last_viewed_at',
@@ -30,6 +32,8 @@ class GeneralChat extends Model
     {
         return [
             'status' => GeneralChatStatus::class,
+            'is_compacting' => 'boolean',
+            'compaction_count' => 'integer',
             'started_at' => 'datetime',
             'completed_at' => 'datetime',
             'last_viewed_at' => 'datetime',
