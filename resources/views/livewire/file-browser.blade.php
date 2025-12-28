@@ -10,22 +10,24 @@
         @endforeach
     </div>
 
-    {{-- File Preview Modal --}}
+    {{-- File Preview Modal - Teleported to body to escape sidebar transform context --}}
     @if($selectedFile)
-        <div wire:click.self="closePreview" class="file-preview-overlay">
-            <div class="file-preview-modal">
-                <div class="file-preview-header">
-                    <h3 class="file-preview-title">{{ $selectedFile }}</h3>
-                    <button wire:click="closePreview" class="file-preview-close">
-                        <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
-                </div>
-                <div class="file-preview-content">
-                    <pre class="file-preview-code">{{ $fileContent }}</pre>
+        @teleport('body')
+            <div wire:click.self="closePreview" class="file-preview-overlay">
+                <div class="file-preview-modal">
+                    <div class="file-preview-header">
+                        <h3 class="file-preview-title">{{ $selectedFile }}</h3>
+                        <button wire:click="closePreview" class="file-preview-close">
+                            <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="file-preview-content">
+                        <pre class="file-preview-code">{{ $fileContent }}</pre>
+                    </div>
                 </div>
             </div>
-        </div>
+        @endteleport
     @endif
 </div>

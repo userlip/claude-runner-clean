@@ -70,6 +70,7 @@ class RunGeneralChatMessageJob implements ShouldQueue
 
             $output = '';
             $toolCalls = [];
+            $lastTurnUsage = null; // Track the last turn's context usage
 
             while (! feof($pipes[1])) {
                 $line = fgets($pipes[1]);
@@ -91,6 +92,10 @@ class RunGeneralChatMessageJob implements ShouldQueue
                             'content' => ($assistantMessage->content ?? '').$parsed['content'],
                         ]);
                     }
+                    if (isset($parsed['turn_usage'])) {
+                        // Track the latest turn's context usage (overwrites previous)
+                        $lastTurnUsage = $parsed['turn_usage'];
+                    }
                     if (isset($parsed['compacting'])) {
                         Log::info('Context compaction started', [
                             'chat_id' => $this->chat->id,
@@ -101,17 +106,18 @@ class RunGeneralChatMessageJob implements ShouldQueue
                         $this->chat->increment('compaction_count');
                     }
                     if (isset($parsed['usage'])) {
+                        // Use last turn's context usage (actual context window usage)
                         $assistantMessage->update([
-                            'tokens_in' => $parsed['usage']['input_tokens'] ?? null,
-                            'tokens_out' => $parsed['usage']['output_tokens'] ?? null,
+                            'tokens_in' => $lastTurnUsage['input_tokens'] ?? null,
+                            'tokens_out' => $lastTurnUsage['output_tokens'] ?? null,
                             'cost_usd' => $parsed['usage']['cost_usd'] ?? null,
                         ]);
 
-                        // Track provider usage
-                        if ($this->chat->aiProvider) {
+                        // Track provider usage with last turn's tokens
+                        if ($this->chat->aiProvider && $lastTurnUsage) {
                             $this->chat->aiProvider->incrementUsage(
-                                $parsed['usage']['input_tokens'] ?? 0,
-                                $parsed['usage']['output_tokens'] ?? 0
+                                $lastTurnUsage['input_tokens'] ?? 0,
+                                $lastTurnUsage['output_tokens'] ?? 0
                             );
                         }
 
@@ -226,30 +232,40 @@ class RunGeneralChatMessageJob implements ShouldQueue
 
         $result = [];
 
-        if (($data['type'] ?? '') === 'assistant' && isset($data['message']['content'])) {
-            foreach ($data['message']['content'] as $block) {
-                if (($block['type'] ?? '') === 'text') {
-                    $result['content'] = $block['text'] ?? '';
+        if (($data['type'] ?? '') === 'assistant') {
+            if (isset($data['message']['content'])) {
+                foreach ($data['message']['content'] as $block) {
+                    if (($block['type'] ?? '') === 'text') {
+                        $result['content'] = $block['text'] ?? '';
+                    }
+                    if (($block['type'] ?? '') === 'tool_use') {
+                        $result['tool_call'] = [
+                            'id' => $block['id'] ?? null,
+                            'name' => $block['name'] ?? '',
+                            'input' => $block['input'] ?? [],
+                        ];
+                    }
                 }
-                if (($block['type'] ?? '') === 'tool_use') {
-                    $result['tool_call'] = [
-                        'id' => $block['id'] ?? null,
-                        'name' => $block['name'] ?? '',
-                        'input' => $block['input'] ?? [],
-                    ];
-                }
+            }
+
+            // Track per-turn context usage from assistant events
+            if (isset($data['message']['usage'])) {
+                $usage = $data['message']['usage'];
+                $inputTokens = ($usage['input_tokens'] ?? 0)
+                    + ($usage['cache_read_input_tokens'] ?? 0)
+                    + ($usage['cache_creation_input_tokens'] ?? 0);
+                $outputTokens = $usage['output_tokens'] ?? 0;
+
+                $result['turn_usage'] = [
+                    'input_tokens' => $inputTokens,
+                    'output_tokens' => $outputTokens,
+                ];
             }
         }
 
         if (($data['type'] ?? '') === 'result') {
-            // input_tokens represents total context window usage for this request
-            $usage = $data['usage'] ?? [];
-            $inputTokens = $usage['input_tokens'] ?? $data['total_input_tokens'] ?? 0;
-            $outputTokens = $usage['output_tokens'] ?? $data['total_output_tokens'] ?? 0;
-
+            // Signal that result was received, cost comes from here
             $result['usage'] = [
-                'input_tokens' => $inputTokens > 0 ? $inputTokens : null,
-                'output_tokens' => $outputTokens > 0 ? $outputTokens : null,
                 'cost_usd' => $data['total_cost_usd'] ?? null,
             ];
         }

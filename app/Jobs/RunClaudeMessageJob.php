@@ -68,6 +68,7 @@ class RunClaudeMessageJob implements ShouldQueue
             $output = '';
             $toolCalls = [];
             $contentBlocks = [];
+            $lastTurnUsage = null; // Track the last turn's context usage
 
             $resultReceived = false;
             while (! feof($pipes[1])) {
@@ -96,6 +97,10 @@ class RunClaudeMessageJob implements ShouldQueue
                             'content_blocks' => $contentBlocks,
                         ]);
                     }
+                    if (isset($parsed['turn_usage'])) {
+                        // Track the latest turn's context usage (overwrites previous)
+                        $lastTurnUsage = $parsed['turn_usage'];
+                    }
                     if (isset($parsed['compacting'])) {
                         Log::info('Context compaction started', [
                             'task_id' => $this->task->id,
@@ -108,20 +113,23 @@ class RunClaudeMessageJob implements ShouldQueue
                     if (isset($parsed['usage'])) {
                         Log::info('Result event received - breaking loop', [
                             'task_id' => $this->task->id,
-                            'usage' => $parsed['usage'],
+                            'last_turn_usage' => $lastTurnUsage,
+                            'cost' => $parsed['usage']['cost_usd'] ?? null,
                         ]);
 
+                        // Use last turn's context usage (actual context window usage)
+                        // instead of cumulative session totals
                         $assistantMessage->update([
-                            'tokens_in' => $parsed['usage']['input_tokens'] ?? null,
-                            'tokens_out' => $parsed['usage']['output_tokens'] ?? null,
+                            'tokens_in' => $lastTurnUsage['input_tokens'] ?? null,
+                            'tokens_out' => $lastTurnUsage['output_tokens'] ?? null,
                             'cost_usd' => $parsed['usage']['cost_usd'] ?? null,
                         ]);
 
-                        // Track provider usage
-                        if ($this->task->aiProvider) {
+                        // Track provider usage with last turn's tokens
+                        if ($this->task->aiProvider && $lastTurnUsage) {
                             $this->task->aiProvider->incrementUsage(
-                                $parsed['usage']['input_tokens'] ?? 0,
-                                $parsed['usage']['output_tokens'] ?? 0
+                                $lastTurnUsage['input_tokens'] ?? 0,
+                                $lastTurnUsage['output_tokens'] ?? 0
                             );
                         }
 
@@ -345,32 +353,41 @@ class RunClaudeMessageJob implements ShouldQueue
 
         $result = [];
 
-        if (($data['type'] ?? '') === 'assistant' && isset($data['message']['content'])) {
-            foreach ($data['message']['content'] as $block) {
-                if (($block['type'] ?? '') === 'text') {
-                    $result['content'] = $block['text'] ?? '';
+        if (($data['type'] ?? '') === 'assistant') {
+            if (isset($data['message']['content'])) {
+                foreach ($data['message']['content'] as $block) {
+                    if (($block['type'] ?? '') === 'text') {
+                        $result['content'] = $block['text'] ?? '';
+                    }
+                    if (($block['type'] ?? '') === 'tool_use') {
+                        $result['tool_call'] = [
+                            'id' => $block['id'] ?? null,
+                            'name' => $block['name'] ?? '',
+                            'input' => $block['input'] ?? [],
+                        ];
+                    }
                 }
-                if (($block['type'] ?? '') === 'tool_use') {
-                    $result['tool_call'] = [
-                        'id' => $block['id'] ?? null,
-                        'name' => $block['name'] ?? '',
-                        'input' => $block['input'] ?? [],
-                    ];
-                }
+            }
+
+            // Track per-turn context usage from assistant events
+            // This gives us the actual context window usage for this turn (not cumulative)
+            if (isset($data['message']['usage'])) {
+                $usage = $data['message']['usage'];
+                $inputTokens = ($usage['input_tokens'] ?? 0)
+                    + ($usage['cache_read_input_tokens'] ?? 0)
+                    + ($usage['cache_creation_input_tokens'] ?? 0);
+                $outputTokens = $usage['output_tokens'] ?? 0;
+
+                $result['turn_usage'] = [
+                    'input_tokens' => $inputTokens,
+                    'output_tokens' => $outputTokens,
+                ];
             }
         }
 
         if (($data['type'] ?? '') === 'result') {
-            // input_tokens represents total context window usage for this request
-            // cache_read_input_tokens and cache_creation_input_tokens are billing breakdowns,
-            // not additional tokens - they're subsets of input_tokens
-            $usage = $data['usage'] ?? [];
-            $inputTokens = $usage['input_tokens'] ?? 0;
-            $outputTokens = $usage['output_tokens'] ?? 0;
-
+            // Signal that result was received, cost comes from here
             $result['usage'] = [
-                'input_tokens' => $inputTokens > 0 ? $inputTokens : null,
-                'output_tokens' => $outputTokens > 0 ? $outputTokens : null,
                 'cost_usd' => $data['total_cost_usd'] ?? null,
             ];
         }
