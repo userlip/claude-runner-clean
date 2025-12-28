@@ -14,6 +14,7 @@ class RecentChats extends Component
 {
     /**
      * Get combined recent chats from both Task and GeneralChat models.
+     * Returns 10 items for desktop display.
      *
      * @return Collection<int, array{type: string, model: Task|GeneralChat}>
      */
@@ -22,7 +23,7 @@ class RecentChats extends Component
     {
         $tasks = Task::query()
             ->latest('updated_at')
-            ->limit(6)
+            ->limit(10)
             ->get()
             ->map(fn (Task $task) => [
                 'type' => 'task',
@@ -32,7 +33,7 @@ class RecentChats extends Component
 
         $generalChats = GeneralChat::query()
             ->latest('updated_at')
-            ->limit(6)
+            ->limit(10)
             ->get()
             ->map(fn (GeneralChat $chat) => [
                 'type' => 'general',
@@ -42,7 +43,7 @@ class RecentChats extends Component
 
         return $tasks->concat($generalChats)
             ->sortByDesc('updated_at')
-            ->take(6)
+            ->take(10)
             ->values();
     }
 
@@ -67,6 +68,11 @@ class RecentChats extends Component
         }
 
         return null;
+    }
+
+    public function hasUnreadReply(array $chat): bool
+    {
+        return $chat['model']->hasUnreadReply();
     }
 
     public function render()

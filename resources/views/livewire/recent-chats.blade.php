@@ -6,12 +6,13 @@
         @forelse($this->recentChats as $chat)
             <li>
                 <a href="{{ $this->getChatUrl($chat) }}" class="recent-chat-item" wire:navigate>
-                    @if($chat['type'] === 'task')
-                        <span class="recent-chat-status recent-chat-status-{{ $chat['model']->status->value }}"></span>
-                    @else
-                        <span class="recent-chat-status recent-chat-status-{{ $chat['model']->status->value }}"></span>
-                    @endif
-                    <span class="recent-chat-title">{{ Str::limit($this->getChatTitle($chat), 40) }}</span>
+                    <span class="recent-chat-status recent-chat-status-{{ $chat['model']->status->value }}"></span>
+                    <span class="recent-chat-title">
+                        @if($this->hasUnreadReply($chat))
+                            <span class="recent-chat-unread">💬</span>
+                        @endif
+                        {{ Str::limit($this->getChatTitle($chat), 38) }}
+                    </span>
                     @if($badge = $this->getChatBadge($chat))
                         <span class="recent-chat-badge">{{ Str::limit($badge, 12) }}</span>
                     @elseif($chat['type'] === 'general')

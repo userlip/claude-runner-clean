@@ -25,6 +25,7 @@ class Task extends Model
         'max_turns',
         'started_at',
         'completed_at',
+        'last_viewed_at',
     ];
 
     protected function casts(): array
@@ -34,6 +35,7 @@ class Task extends Model
             'max_turns' => 'integer',
             'started_at' => 'datetime',
             'completed_at' => 'datetime',
+            'last_viewed_at' => 'datetime',
         ];
     }
 
@@ -112,5 +114,26 @@ class Task extends Model
             'status' => TaskStatus::Failed,
             'completed_at' => now(),
         ]);
+    }
+
+    public function markAsViewed(): void
+    {
+        $this->update(['last_viewed_at' => now()]);
+    }
+
+    public function hasUnreadReply(): bool
+    {
+        // No last_viewed_at means never viewed - check if there are any assistant messages
+        if (! $this->last_viewed_at) {
+            return $this->messages()
+                ->where('role', \App\Enums\MessageRole::Assistant)
+                ->exists();
+        }
+
+        // Check if there's an assistant message after last viewed and chat is not running
+        return ! $this->isRunning() && $this->messages()
+            ->where('role', \App\Enums\MessageRole::Assistant)
+            ->where('created_at', '>', $this->last_viewed_at)
+            ->exists();
     }
 }

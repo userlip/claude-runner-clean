@@ -30,6 +30,7 @@ class GeneralChatBox extends Component
     {
         $this->chat = $chat;
         $this->lastMessageCount = $chat->messages()->count();
+        $chat->markAsViewed();
     }
 
     #[On('insert-snippet')]

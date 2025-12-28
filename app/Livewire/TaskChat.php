@@ -45,6 +45,7 @@ class TaskChat extends Component
     {
         $this->task = $task;
         $this->lastMessageCount = $task->messages()->count();
+        $task->markAsViewed();
     }
 
     #[On('insert-snippet')]
