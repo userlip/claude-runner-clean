@@ -102,6 +102,7 @@ class TaskResource extends Resource
                     ->sortable(),
             ])
             ->defaultSort('created_at', 'desc')
+            ->recordUrl(fn (Task $record) => TaskChat::getUrl(['record' => $record]))
             ->filters([
                 Tables\Filters\SelectFilter::make('status')
                     ->options(TaskStatus::class),
