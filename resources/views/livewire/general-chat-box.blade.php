@@ -1,6 +1,18 @@
 <div class="chat-container" x-data="{
     mobileMenuOpen: false,
     init() {
+        // Make all links in chat bubbles open in new tab
+        const makeLinksExternal = () => {
+            this.$el.querySelectorAll('.chat-bubble-content a').forEach(link => {
+                link.setAttribute('target', '_blank');
+                link.setAttribute('rel', 'noopener noreferrer');
+            });
+        };
+        makeLinksExternal();
+        // Re-run when content updates (Livewire poll)
+        const observer = new MutationObserver(makeLinksExternal);
+        observer.observe(this.$el, { childList: true, subtree: true });
+
         // Handle iOS keyboard showing/hiding
         if (window.visualViewport) {
             const header = this.$el.querySelector('.chat-mobile-header');
