@@ -9,9 +9,12 @@
             });
         };
         makeLinksExternal();
-        // Re-run when content updates (Livewire poll)
-        const observer = new MutationObserver(makeLinksExternal);
-        observer.observe(this.$el, { childList: true, subtree: true });
+        // Re-run when Livewire updates the DOM
+        Livewire.hook('morph.updated', ({ el }) => {
+            if (this.$el.contains(el) || this.$el === el) {
+                makeLinksExternal();
+            }
+        });
 
         // Handle iOS keyboard showing/hiding
         if (window.visualViewport) {
@@ -196,12 +199,25 @@
     <div class="chat-area"
         x-data="{
             polling: @entangle('waitingForResponse').live,
+            isNearBottom: true,
+            scrollThreshold: 150,
+            checkIfNearBottom() {
+                const el = this.$refs.messages;
+                this.isNearBottom = (el.scrollHeight - el.scrollTop - el.clientHeight) < this.scrollThreshold;
+            },
             scrollToBottom() {
                 this.$refs.messages.scrollTop = this.$refs.messages.scrollHeight;
             },
             init() {
                 this.scrollToBottom();
-                const observer = new MutationObserver(() => this.$nextTick(() => this.scrollToBottom()));
+                this.$refs.messages.addEventListener('scroll', () => this.checkIfNearBottom());
+                const observer = new MutationObserver(() => {
+                    this.$nextTick(() => {
+                        if (this.isNearBottom) {
+                            this.scrollToBottom();
+                        }
+                    });
+                });
                 observer.observe(this.$refs.messages, { childList: true, subtree: true });
             }
         }"
