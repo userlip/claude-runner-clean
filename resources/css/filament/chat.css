@@ -331,9 +331,58 @@
     color: rgb(209 213 219);
 }
 
-.chat-tokens {
-    margin-top: 0.5rem;
+/* Date separator between messages from different days */
+.chat-date-separator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 1rem 0;
+}
+
+.chat-date-separator-text {
+    padding: 0.25rem 0.75rem;
     font-size: 0.75rem;
+    font-weight: 500;
+    color: rgb(107 114 128);
+    background-color: rgba(255, 255, 255, 0.9);
+    border-radius: 9999px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.dark .chat-date-separator-text {
+    color: rgb(156 163 175);
+    background-color: rgba(30, 41, 59, 0.9);
+}
+
+/* Message timestamp */
+.chat-message-time {
+    font-size: 0.6875rem;
+    color: rgb(107 114 128);
+}
+
+.dark .chat-message-time {
+    color: rgb(156 163 175);
+}
+
+/* User message timestamp - lighter color to contrast with blue background */
+.chat-message-time-user {
+    display: block;
+    text-align: right;
+    margin-top: 0.25rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+/* Assistant message meta row with time and tokens */
+.chat-message-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.375rem;
+    flex-wrap: wrap;
+}
+
+.chat-tokens {
+    font-size: 0.6875rem;
     color: rgb(107 114 128);
 }
 

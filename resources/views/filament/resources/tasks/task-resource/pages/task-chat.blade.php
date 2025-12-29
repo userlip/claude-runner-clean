@@ -56,7 +56,7 @@
         <div
             class="chat-page-sidebar"
             :class="{ 'chat-page-sidebar-open': sidebarOpen }"
-            x-data="{ activeTab: 'files' }"
+            x-data="{ activeTab: 'snippets' }"
         >
             <button @click="sidebarOpen = false" class="chat-sidebar-close">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 1.25rem; height: 1.25rem;">
@@ -66,26 +66,26 @@
             <div class="sidebar-tabs">
                 <div class="sidebar-tab-buttons">
                     <button
-                        @click="activeTab = 'files'"
-                        :class="{ 'sidebar-tab-btn-active': activeTab === 'files' }"
-                        class="sidebar-tab-btn"
-                    >
-                        Files
-                    </button>
-                    <button
                         @click="activeTab = 'snippets'"
                         :class="{ 'sidebar-tab-btn-active': activeTab === 'snippets' }"
                         class="sidebar-tab-btn"
                     >
                         Snippets
                     </button>
+                    <button
+                        @click="activeTab = 'files'"
+                        :class="{ 'sidebar-tab-btn-active': activeTab === 'files' }"
+                        class="sidebar-tab-btn"
+                    >
+                        Files
+                    </button>
                 </div>
                 <div class="sidebar-tab-content">
-                    <div x-show="activeTab === 'files'" style="height: 100%;">
-                        @livewire('file-browser', ['basePath' => $this->getRecord()->workspace_path ?? $this->getRecord()->site?->path])
-                    </div>
-                    <div x-show="activeTab === 'snippets'" x-cloak style="height: 100%;">
+                    <div x-show="activeTab === 'snippets'" style="height: 100%;">
                         @livewire('snippet-browser')
+                    </div>
+                    <div x-show="activeTab === 'files'" x-cloak style="height: 100%;">
+                        @livewire('file-browser', ['basePath' => $this->getRecord()->workspace_path ?? $this->getRecord()->site?->path])
                     </div>
                 </div>
             </div>

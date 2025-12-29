@@ -330,13 +330,34 @@
     >
         {{-- Messages --}}
         <div class="chat-messages" x-ref="messages" wire:poll.1s="checkPolling">
-            @forelse($this->chatMessages as $message)
+            @forelse($this->chatMessages as $index => $message)
+                @php
+                    $previousMessage = $index > 0 ? $this->chatMessages[$index - 1] : null;
+                    $showDateSeparator = !$previousMessage || !$message->created_at->isSameDay($previousMessage->created_at);
+                @endphp
+
+                @if($showDateSeparator)
+                    <div class="chat-date-separator">
+                        <span class="chat-date-separator-text">
+                            @if($message->created_at->isToday())
+                                Today
+                            @elseif($message->created_at->isYesterday())
+                                Yesterday
+                            @elseif($message->created_at->year === now()->year)
+                                {{ $message->created_at->format('M j') }}
+                            @else
+                                {{ $message->created_at->format('M j, Y') }}
+                            @endif
+                        </span>
+                    </div>
+                @endif
+
                 <div wire:key="message-{{ $message->id }}" class="chat-message {{ $message->isFromUser() ? 'chat-message-user' : 'chat-message-assistant' }}">
                     <div class="chat-bubble {{ $message->isFromUser() ? 'chat-bubble-user' : 'chat-bubble-assistant' }}">
                         @if($message->isFromUser())
                             @if($message->images && count($message->images) > 0)
                                 <div class="chat-message-images">
-                                    @foreach($message->images as $index => $image)
+                                    @foreach($message->images as $imageIndex => $image)
                                         <img
                                             src="{{ $image['data'] }}"
                                             alt="{{ $image['name'] ?? 'Image' }}"
@@ -349,6 +370,7 @@
                             @if($message->content)
                                 <p style="white-space: pre-wrap; margin: 0;">{{ $message->content }}</p>
                             @endif
+                            <span class="chat-message-time chat-message-time-user">{{ $message->created_at->timezone(config('app.timezone'))->format('H:i') }}</span>
                         @else
                             @if($message->content_blocks && count($message->content_blocks) > 0)
                                 {{-- Render interleaved content blocks as separate bubbles --}}
@@ -383,15 +405,19 @@
                                 @endif
                             @endif
 
-                            @if($message->tokens_in || $message->tokens_out)
-                                <div class="chat-tokens">
-                                    {{ number_format($message->tokens_in ?? 0) }} in /
-                                    {{ number_format($message->tokens_out ?? 0) }} out
-                                    @if($message->cost_usd)
-                                        (${{ number_format($message->cost_usd, 4) }})
-                                    @endif
-                                </div>
-                            @endif
+                            <div class="chat-message-meta">
+                                <span class="chat-message-time">{{ $message->created_at->timezone(config('app.timezone'))->format('H:i') }}</span>
+                                {{-- Only show tokens on the last bubble --}}
+                                @if((!$message->content_blocks || count($message->content_blocks) <= 1) && ($message->tokens_in || $message->tokens_out))
+                                    <span class="chat-tokens">
+                                        {{ number_format($message->tokens_in ?? 0) }} in /
+                                        {{ number_format($message->tokens_out ?? 0) }} out
+                                        @if($message->cost_usd)
+                                            (${{ number_format($message->cost_usd, 4) }})
+                                        @endif
+                                    </span>
+                                @endif
+                            </div>
                         @endif
                     </div>
                 </div>
@@ -418,17 +444,30 @@
                         }
                     @endphp
 
-                    @foreach($groupedBlocks as $index => $block)
+                    @foreach($groupedBlocks as $blockIndex => $block)
+                        @php $isLastBlock = $blockIndex === count($groupedBlocks) - 1; @endphp
                         @if(($block['type'] ?? '') === 'text' && !empty($block['text']))
-                            <div wire:key="message-{{ $message->id }}-grouped-{{ $index }}" class="chat-message chat-message-assistant">
+                            <div wire:key="message-{{ $message->id }}-grouped-{{ $blockIndex }}" class="chat-message chat-message-assistant">
                                 <div class="chat-bubble chat-bubble-assistant">
                                     <div class="chat-bubble-content">
                                         {!! Str::markdown($block['text']) !!}
                                     </div>
+                                    <div class="chat-message-meta">
+                                        <span class="chat-message-time">{{ $message->created_at->timezone(config('app.timezone'))->format('H:i') }}</span>
+                                        @if($isLastBlock && ($message->tokens_in || $message->tokens_out))
+                                            <span class="chat-tokens">
+                                                {{ number_format($message->tokens_in ?? 0) }} in /
+                                                {{ number_format($message->tokens_out ?? 0) }} out
+                                                @if($message->cost_usd)
+                                                    (${{ number_format($message->cost_usd, 4) }})
+                                                @endif
+                                            </span>
+                                        @endif
+                                    </div>
                                 </div>
                             </div>
                         @elseif(($block['type'] ?? '') === 'tool_group')
-                            <div wire:key="message-{{ $message->id }}-grouped-{{ $index }}" class="chat-message chat-message-assistant">
+                            <div wire:key="message-{{ $message->id }}-grouped-{{ $blockIndex }}" class="chat-message chat-message-assistant">
                                 <div class="chat-bubble chat-bubble-tool">
                                     @if(count($block['tools']) === 1)
                                         <div class="chat-tool-use">
@@ -455,6 +494,18 @@
                                             </div>
                                         </div>
                                     @endif
+                                    <div class="chat-message-meta">
+                                        <span class="chat-message-time">{{ $message->created_at->timezone(config('app.timezone'))->format('H:i') }}</span>
+                                        @if($isLastBlock && ($message->tokens_in || $message->tokens_out))
+                                            <span class="chat-tokens">
+                                                {{ number_format($message->tokens_in ?? 0) }} in /
+                                                {{ number_format($message->tokens_out ?? 0) }} out
+                                                @if($message->cost_usd)
+                                                    (${{ number_format($message->cost_usd, 4) }})
+                                                @endif
+                                            </span>
+                                        @endif
+                                    </div>
                                 </div>
                             </div>
                         @endif

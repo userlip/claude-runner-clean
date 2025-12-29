@@ -164,7 +164,7 @@ class GeneralChatBox extends Component
         }
 
         $this->validate([
-            'prompt' => 'nullable|string|max:100000',
+            'prompt' => 'nullable|string',
             'images' => 'array|max:10',
             'images.*.data' => 'required|string',
             'images.*.name' => 'required|string|max:255',

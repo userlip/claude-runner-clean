@@ -206,7 +206,7 @@ class TaskChat extends Component
         }
 
         $this->validate([
-            'prompt' => 'nullable|string|max:10000',
+            'prompt' => 'nullable|string',
             'images' => 'array|max:10',
             'images.*.data' => 'required|string',
             'images.*.name' => 'required|string|max:255',
