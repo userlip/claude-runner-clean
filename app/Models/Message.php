@@ -11,6 +11,13 @@ class Message extends Model
 {
     use HasFactory;
 
+    protected static function booted(): void
+    {
+        static::created(function (Message $message) {
+            $message->task?->update(['last_message_at' => $message->created_at]);
+        });
+    }
+
     protected $fillable = [
         'task_id',
         'role',

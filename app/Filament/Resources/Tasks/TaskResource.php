@@ -97,11 +97,13 @@ class TaskResource extends Resource
 
                         return 'Workspace';
                     }),
-                Tables\Columns\TextColumn::make('created_at')
+                Tables\Columns\TextColumn::make('last_message_at')
+                    ->label('Last Message')
                     ->dateTime()
-                    ->sortable(),
+                    ->sortable()
+                    ->placeholder('No messages'),
             ])
-            ->defaultSort('created_at', 'desc')
+            ->defaultSort('last_message_at', 'desc')
             ->recordUrl(fn (Task $record) => TaskChat::getUrl(['record' => $record]))
             ->filters([
                 Tables\Filters\SelectFilter::make('status')

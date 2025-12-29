@@ -77,12 +77,20 @@ class CloneRepositoryJob implements ShouldQueue
 
     protected function runDependencyInstallation(string $workspacePath): void
     {
+        // Environment variables required for composer and npm to work properly
+        $env = [
+            'HOME' => '/home/ploi',
+            'COMPOSER_HOME' => '/home/ploi/.config/composer',
+            'PATH' => '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
+        ];
+
         // Run composer install if composer.json exists
         if (file_exists($workspacePath.'/composer.json')) {
             Log::info('Running composer install', ['task_id' => $this->task->id]);
 
             $result = Process::timeout(300)
                 ->path($workspacePath)
+                ->env($env)
                 ->run(['composer', 'install', '--no-interaction', '--no-progress']);
 
             if ($result->successful()) {
@@ -101,6 +109,7 @@ class CloneRepositoryJob implements ShouldQueue
 
             $result = Process::timeout(300)
                 ->path($workspacePath)
+                ->env($env)
                 ->run(['npm', 'install']);
 
             if ($result->successful()) {
@@ -111,6 +120,7 @@ class CloneRepositoryJob implements ShouldQueue
 
                 $buildResult = Process::timeout(300)
                     ->path($workspacePath)
+                    ->env($env)
                     ->run(['npm', 'run', 'build']);
 
                 if ($buildResult->successful()) {

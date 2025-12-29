@@ -28,6 +28,7 @@ class Task extends Model
         'started_at',
         'completed_at',
         'last_viewed_at',
+        'last_message_at',
     ];
 
     protected function casts(): array
@@ -40,6 +41,7 @@ class Task extends Model
             'started_at' => 'datetime',
             'completed_at' => 'datetime',
             'last_viewed_at' => 'datetime',
+            'last_message_at' => 'datetime',
         ];
     }
 
