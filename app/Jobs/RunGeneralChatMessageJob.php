@@ -102,8 +102,20 @@ class RunGeneralChatMessageJob implements ShouldQueue
                             'trigger' => $parsed['compacting']['trigger'],
                             'pre_tokens' => $parsed['compacting']['pre_tokens'],
                         ]);
-                        $this->chat->update(['is_compacting' => true]);
+                        $this->chat->update(['is_compacting' => true, 'needs_compact' => false]);
                         $this->chat->increment('compaction_count');
+                    }
+                    if (isset($parsed['context_low'])) {
+                        Log::warning('Context low detected - needs compact', [
+                            'chat_id' => $this->chat->id,
+                        ]);
+                        $this->chat->update(['needs_compact' => true]);
+                    }
+                    if (isset($parsed['prompt_too_long'])) {
+                        Log::error('Prompt too long - forcing compact', [
+                            'chat_id' => $this->chat->id,
+                        ]);
+                        $this->chat->update(['needs_compact' => true]);
                     }
                     if (isset($parsed['usage'])) {
                         // Use last turn's context usage (actual context window usage)
@@ -138,6 +150,13 @@ class RunGeneralChatMessageJob implements ShouldQueue
             }
 
             $this->chat->markAsCompleted();
+
+            // Auto-compact if context is low
+            $this->chat->refresh();
+            if ($this->chat->needs_compact) {
+                Log::info('Auto-dispatching compact for low context', ['chat_id' => $this->chat->id]);
+                $this->dispatchCompact();
+            }
 
         } catch (\Throwable $e) {
             Log::error("Claude execution failed: {$e->getMessage()}");
@@ -203,6 +222,29 @@ class RunGeneralChatMessageJob implements ShouldQueue
     }
 
     /**
+     * Dispatch a compact command to reduce context usage.
+     */
+    protected function dispatchCompact(): void
+    {
+        // Don't auto-dispatch if the user message was already /compact (prevent infinite loop)
+        if (trim($this->userMessage->content) === '/compact') {
+            Log::warning('Compact failed - session needs reset', ['chat_id' => $this->chat->id]);
+
+            return;
+        }
+
+        // Create a system message for the compact request
+        $compactMessage = GeneralChatMessage::create([
+            'general_chat_id' => $this->chat->id,
+            'role' => MessageRole::User,
+            'content' => '/compact',
+        ]);
+
+        // Dispatch a new job to send the compact command
+        self::dispatch($this->chat, $compactMessage, continue: true);
+    }
+
+    /**
      * Handle a job failure (timeout, exception, etc.)
      */
     public function failed(\Throwable $exception): void
@@ -256,10 +298,13 @@ class RunGeneralChatMessageJob implements ShouldQueue
                     + ($usage['cache_creation_input_tokens'] ?? 0);
                 $outputTokens = $usage['output_tokens'] ?? 0;
 
-                $result['turn_usage'] = [
-                    'input_tokens' => $inputTokens,
-                    'output_tokens' => $outputTokens,
-                ];
+                // Only track if we have actual token counts (skip zero/empty usage blocks)
+                if ($inputTokens > 0 || $outputTokens > 0) {
+                    $result['turn_usage'] = [
+                        'input_tokens' => $inputTokens,
+                        'output_tokens' => $outputTokens,
+                    ];
+                }
             }
         }
 
@@ -276,6 +321,21 @@ class RunGeneralChatMessageJob implements ShouldQueue
                 'trigger' => $data['compact_metadata']['trigger'] ?? 'auto',
                 'pre_tokens' => $data['compact_metadata']['pre_tokens'] ?? null,
             ];
+        }
+
+        // Detect context low warning (requires manual /compact)
+        if (($data['type'] ?? '') === 'system' && str_contains($data['message'] ?? '', 'Context low')) {
+            $result['context_low'] = true;
+        }
+
+        // Detect "Prompt is too long" error - context exceeded hard limit
+        if (($data['type'] ?? '') === 'assistant') {
+            $content = $data['message']['content'] ?? [];
+            foreach ($content as $block) {
+                if (($block['type'] ?? '') === 'text' && str_contains($block['text'] ?? '', 'Prompt is too long')) {
+                    $result['prompt_too_long'] = true;
+                }
+            }
         }
 
         return $result ?: null;

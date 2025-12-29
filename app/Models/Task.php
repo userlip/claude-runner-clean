@@ -23,6 +23,7 @@ class Task extends Model
         'session_id',
         'status',
         'is_compacting',
+        'needs_compact',
         'compaction_count',
         'max_turns',
         'started_at',
@@ -36,6 +37,7 @@ class Task extends Model
         return [
             'status' => TaskStatus::class,
             'is_compacting' => 'boolean',
+            'needs_compact' => 'boolean',
             'compaction_count' => 'integer',
             'max_turns' => 'integer',
             'started_at' => 'datetime',

@@ -107,8 +107,20 @@ class RunClaudeMessageJob implements ShouldQueue
                             'trigger' => $parsed['compacting']['trigger'],
                             'pre_tokens' => $parsed['compacting']['pre_tokens'],
                         ]);
-                        $this->task->update(['is_compacting' => true]);
+                        $this->task->update(['is_compacting' => true, 'needs_compact' => false]);
                         $this->task->increment('compaction_count');
+                    }
+                    if (isset($parsed['context_low'])) {
+                        Log::warning('Context low detected - needs compact', [
+                            'task_id' => $this->task->id,
+                        ]);
+                        $this->task->update(['needs_compact' => true]);
+                    }
+                    if (isset($parsed['prompt_too_long'])) {
+                        Log::error('Prompt too long - forcing compact', [
+                            'task_id' => $this->task->id,
+                        ]);
+                        $this->task->update(['needs_compact' => true]);
                     }
                     if (isset($parsed['usage'])) {
                         Log::info('Result event received - breaking loop', [
@@ -163,6 +175,13 @@ class RunClaudeMessageJob implements ShouldQueue
                 // The main Claude session keeps running for future messages
                 proc_terminate($process);
                 proc_close($process);
+
+                // Auto-compact if context is low
+                $this->task->refresh();
+                if ($this->task->needs_compact) {
+                    Log::info('Auto-dispatching compact for low context', ['task_id' => $this->task->id]);
+                    $this->dispatchCompact();
+                }
             } else {
                 // No result received - process may have exited unexpectedly
                 $exitCode = proc_close($process);
@@ -318,6 +337,29 @@ class RunClaudeMessageJob implements ShouldQueue
     }
 
     /**
+     * Dispatch a compact command to reduce context usage.
+     */
+    protected function dispatchCompact(): void
+    {
+        // Don't auto-dispatch if the user message was already /compact (prevent infinite loop)
+        if (trim($this->userMessage->content) === '/compact') {
+            Log::warning('Compact failed - session needs reset', ['task_id' => $this->task->id]);
+
+            return;
+        }
+
+        // Create a system message for the compact request
+        $compactMessage = Message::create([
+            'task_id' => $this->task->id,
+            'role' => MessageRole::User,
+            'content' => '/compact',
+        ]);
+
+        // Dispatch a new job to send the compact command
+        self::dispatch($this->task, $compactMessage, continue: true);
+    }
+
+    /**
      * Handle a job failure (timeout, exception, etc.)
      */
     public function failed(\Throwable $exception): void
@@ -378,10 +420,13 @@ class RunClaudeMessageJob implements ShouldQueue
                     + ($usage['cache_creation_input_tokens'] ?? 0);
                 $outputTokens = $usage['output_tokens'] ?? 0;
 
-                $result['turn_usage'] = [
-                    'input_tokens' => $inputTokens,
-                    'output_tokens' => $outputTokens,
-                ];
+                // Only track if we have actual token counts (skip zero/empty usage blocks)
+                if ($inputTokens > 0 || $outputTokens > 0) {
+                    $result['turn_usage'] = [
+                        'input_tokens' => $inputTokens,
+                        'output_tokens' => $outputTokens,
+                    ];
+                }
             }
         }
 
@@ -398,6 +443,21 @@ class RunClaudeMessageJob implements ShouldQueue
                 'trigger' => $data['compact_metadata']['trigger'] ?? 'auto',
                 'pre_tokens' => $data['compact_metadata']['pre_tokens'] ?? null,
             ];
+        }
+
+        // Detect context low warning (requires manual /compact)
+        if (($data['type'] ?? '') === 'system' && str_contains($data['message'] ?? '', 'Context low')) {
+            $result['context_low'] = true;
+        }
+
+        // Detect "Prompt is too long" error - context exceeded hard limit
+        if (($data['type'] ?? '') === 'assistant') {
+            $content = $data['message']['content'] ?? [];
+            foreach ($content as $block) {
+                if (($block['type'] ?? '') === 'text' && str_contains($block['text'] ?? '', 'Prompt is too long')) {
+                    $result['prompt_too_long'] = true;
+                }
+            }
         }
 
         return $result ?: null;

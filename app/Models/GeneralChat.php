@@ -22,6 +22,7 @@ class GeneralChat extends Model
         'working_directory',
         'status',
         'is_compacting',
+        'needs_compact',
         'compaction_count',
         'started_at',
         'completed_at',
@@ -33,6 +34,7 @@ class GeneralChat extends Model
         return [
             'status' => GeneralChatStatus::class,
             'is_compacting' => 'boolean',
+            'needs_compact' => 'boolean',
             'compaction_count' => 'integer',
             'started_at' => 'datetime',
             'completed_at' => 'datetime',

@@ -272,6 +272,24 @@ class TaskChat extends Component
             return true;
         }
 
+        if ($command === '/context') {
+            $this->handleContextCommand();
+
+            return true;
+        }
+
+        if ($command === '/skills') {
+            $this->handleHelpCommand();
+
+            return true;
+        }
+
+        // /compact is NOT handled locally - it needs to be sent to Claude
+        // to trigger actual context compaction in the session
+        if (str_starts_with($command, '/compact')) {
+            return false; // Let it pass through to Claude
+        }
+
         return false;
     }
 
@@ -326,13 +344,46 @@ class TaskChat extends Component
         $content .= "| Command | Description |\n";
         $content .= "|---------|-------------|\n";
         $content .= "| `/usage` | Show token usage and cost for this session |\n";
+        $content .= "| `/context` | Show context window usage |\n";
+        $content .= "| `/compact` | Compact conversation to reduce context usage |\n";
         $content .= "| `/clear` | Clear all messages in this conversation |\n";
-        $content .= "| `/help` | Show this help message |\n";
+        $content .= "| `/help`, `/skills` | Show this help message |\n";
 
         Message::create([
             'task_id' => $this->task->id,
             'role' => MessageRole::User,
             'content' => '/help',
+        ]);
+
+        Message::create([
+            'task_id' => $this->task->id,
+            'role' => MessageRole::Assistant,
+            'content' => $content,
+        ]);
+    }
+
+    protected function handleContextCommand(): void
+    {
+        $used = $this->contextUsed;
+        $limit = $this->contextLimit;
+        $percentage = $this->contextPercentage;
+        $remaining = $limit - $used;
+
+        $status = $percentage >= 80 ? 'Critical' : ($percentage >= 60 ? 'Warning' : 'Good');
+
+        $content = "## Context Window Usage\n\n";
+        $content .= "| Metric | Value |\n";
+        $content .= "|--------|-------|\n";
+        $content .= '| Used | '.number_format($used)." tokens |\n";
+        $content .= '| Remaining | '.number_format($remaining)." tokens |\n";
+        $content .= '| Limit | '.number_format($limit)." tokens |\n";
+        $content .= '| Usage | '.number_format($percentage, 1)."% |\n";
+        $content .= "| Status | {$status} |\n";
+
+        Message::create([
+            'task_id' => $this->task->id,
+            'role' => MessageRole::User,
+            'content' => '/context',
         ]);
 
         Message::create([
@@ -419,6 +470,13 @@ class TaskChat extends Component
         $this->dispatch('notify', [
             'message' => "Deploying to {$this->deploySubdomain}.marin.sh...",
         ]);
+    }
+
+    public function sendCompactCommand(): void
+    {
+        // Directly send /compact command
+        $this->prompt = '/compact';
+        $this->sendMessage();
     }
 
     public function generateTitle(): void
