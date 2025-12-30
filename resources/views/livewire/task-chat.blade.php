@@ -450,6 +450,17 @@
                     </div>
                 @endif
 
+                @php
+                    // Determine if we should render the first bubble for assistant messages
+                    $firstBlockIsText = $message->isFromAssistant()
+                        && $message->content_blocks
+                        && count($message->content_blocks) > 0
+                        && ($message->content_blocks[0]['type'] ?? '') === 'text'
+                        && !empty($message->content_blocks[0]['text']);
+                    $hasNoContentBlocks = !$message->content_blocks || count($message->content_blocks) === 0;
+                    $shouldRenderFirstBubble = $message->isFromUser() || $firstBlockIsText || $hasNoContentBlocks;
+                @endphp
+                @if($shouldRenderFirstBubble)
                 <div wire:key="message-{{ $message->id }}" class="chat-message {{ $message->isFromUser() ? 'chat-message-user' : 'chat-message-assistant' }}">
                     <div class="chat-bubble {{ $message->isFromUser() ? 'chat-bubble-user' : 'chat-bubble-assistant' }}">
                         @if($message->isFromUser())
@@ -470,12 +481,45 @@
                             @endif
                             <span class="chat-message-time chat-message-time-user">{{ $message->created_at->timezone(config('app.timezone'))->format('H:i') }}</span>
                         @else
-                            @if($message->content_blocks && count($message->content_blocks) > 0)
-                                {{-- Render interleaved content blocks as separate bubbles --}}
+                            @if($firstBlockIsText)
+                                {{-- Render first text block --}}
                                 <div class="chat-bubble-content">
-                                    {!! Str::markdown($message->content_blocks[0]['text'] ?? '') !!}
+                                    {!! Str::markdown($message->content_blocks[0]['text']) !!}
                                 </div>
-                            @else
+
+                                <div class="chat-message-meta">
+                                    @php
+                                        $firstBlockTimestamp = isset($message->content_blocks[0]['timestamp'])
+                                            ? \Carbon\Carbon::parse($message->content_blocks[0]['timestamp'])->timezone(config('app.timezone'))->format('H:i')
+                                            : $message->created_at->timezone(config('app.timezone'))->format('H:i');
+                                    @endphp
+                                    <span class="chat-message-time">{{ $firstBlockTimestamp }}</span>
+                                    {{-- Only show tokens on the last bubble --}}
+                                    @if(count($message->content_blocks) <= 1 && ($message->tokens_in || $message->tokens_out))
+                                        <span class="chat-tokens">
+                                            {{ number_format($message->tokens_in ?? 0) }} in /
+                                            {{ number_format($message->tokens_out ?? 0) }} out
+                                            @if($message->cost_usd)
+                                                (${{ number_format($message->cost_usd, 4) }})
+                                            @endif
+                                        </span>
+                                    @endif
+                                </div>
+
+                                {{-- Inline Compact Action for "Prompt is too long" messages --}}
+                                @if(trim($message->content ?? '') === 'Prompt is too long')
+                                    <button
+                                        type="button"
+                                        wire:click="sendCompactCommand"
+                                        class="chat-compact-action"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25" />
+                                        </svg>
+                                        Click to compact context
+                                    </button>
+                                @endif
+                            @elseif($hasNoContentBlocks)
                                 {{-- Fallback for old messages without content_blocks --}}
                                 <div class="chat-bubble-content">
                                     {!! Str::markdown($message->content ?? '') !!}
@@ -501,47 +545,47 @@
                                         </div>
                                     </div>
                                 @endif
-                            @endif
 
-                            <div class="chat-message-meta">
-                                @php
-                                    $firstBlockTimestamp = isset($message->content_blocks[0]['timestamp'])
-                                        ? \Carbon\Carbon::parse($message->content_blocks[0]['timestamp'])->timezone(config('app.timezone'))->format('H:i')
-                                        : $message->created_at->timezone(config('app.timezone'))->format('H:i');
-                                @endphp
-                                <span class="chat-message-time">{{ $firstBlockTimestamp }}</span>
-                                {{-- Only show tokens on the last bubble --}}
-                                @if((!$message->content_blocks || count($message->content_blocks) <= 1) && ($message->tokens_in || $message->tokens_out))
-                                    <span class="chat-tokens">
-                                        {{ number_format($message->tokens_in ?? 0) }} in /
-                                        {{ number_format($message->tokens_out ?? 0) }} out
-                                        @if($message->cost_usd)
-                                            (${{ number_format($message->cost_usd, 4) }})
-                                        @endif
-                                    </span>
+                                <div class="chat-message-meta">
+                                    <span class="chat-message-time">{{ $message->created_at->timezone(config('app.timezone'))->format('H:i') }}</span>
+                                    @if($message->tokens_in || $message->tokens_out)
+                                        <span class="chat-tokens">
+                                            {{ number_format($message->tokens_in ?? 0) }} in /
+                                            {{ number_format($message->tokens_out ?? 0) }} out
+                                            @if($message->cost_usd)
+                                                (${{ number_format($message->cost_usd, 4) }})
+                                            @endif
+                                        </span>
+                                    @endif
+                                </div>
+
+                                {{-- Inline Compact Action for "Prompt is too long" messages --}}
+                                @if(trim($message->content ?? '') === 'Prompt is too long')
+                                    <button
+                                        type="button"
+                                        wire:click="sendCompactCommand"
+                                        class="chat-compact-action"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25" />
+                                        </svg>
+                                        Click to compact context
+                                    </button>
                                 @endif
-                            </div>
-
-                            {{-- Inline Compact Action for "Prompt is too long" messages --}}
-                            @if(trim($message->content ?? '') === 'Prompt is too long')
-                                <button
-                                    type="button"
-                                    wire:click="sendCompactCommand"
-                                    class="chat-compact-action"
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25" />
-                                    </svg>
-                                    Click to compact context
-                                </button>
                             @endif
+                            {{-- If first block is tool_use, skip the initial bubble - it will be rendered below with grouped blocks --}}
                         @endif
                     </div>
                 </div>
+                @endif
                 {{-- Render remaining content blocks with tool calls grouped --}}
-                @if($message->isFromAssistant() && $message->content_blocks && count($message->content_blocks) > 1)
+                @if($message->isFromAssistant() && $message->content_blocks && count($message->content_blocks) > 0)
                     @php
-                        $blocks = collect($message->content_blocks)->skip(1)->values();
+                        // Skip first block only if it was a text block (already rendered above)
+                        $skipFirst = $firstBlockIsText;
+                        $blocks = $skipFirst
+                            ? collect($message->content_blocks)->skip(1)->values()
+                            : collect($message->content_blocks)->values();
                         $groupedBlocks = [];
                         $currentToolGroup = [];
 
@@ -561,6 +605,7 @@
                         }
                     @endphp
 
+                    @if(count($groupedBlocks) > 0)
                     @foreach($groupedBlocks as $blockIndex => $block)
                         @php
                             $isLastBlock = $blockIndex === count($groupedBlocks) - 1;
@@ -635,6 +680,7 @@
                             </div>
                         @endif
                     @endforeach
+                    @endif
                 @endif
             @empty
                 <div class="chat-empty">
