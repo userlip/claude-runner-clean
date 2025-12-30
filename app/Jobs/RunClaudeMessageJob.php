@@ -29,6 +29,13 @@ class RunClaudeMessageJob implements ShouldQueue
     {
         $this->task->markAsRunning();
 
+        // If this is a continued session (like auto-compact), check for queued messages first
+        // and include them in this run. This prevents messages from getting stuck in queue
+        // if they were sent between jobs.
+        if ($this->continue) {
+            $this->includeQueuedMessagesInCurrentRun();
+        }
+
         $assistantMessage = Message::create([
             'task_id' => $this->task->id,
             'role' => MessageRole::Assistant,
@@ -436,6 +443,62 @@ class RunClaudeMessageJob implements ShouldQueue
 
         // Dispatch a new job to send the compact command
         self::dispatch($this->task, $compactMessage, continue: true);
+    }
+
+    /**
+     * Include any queued messages in the current run.
+     * Called at the start of continued sessions to pick up messages that were
+     * queued between jobs (race condition prevention).
+     */
+    protected function includeQueuedMessagesInCurrentRun(): void
+    {
+        $queuedMessages = $this->task->messages()
+            ->where('status', MessageStatus::Queued)
+            ->where('role', MessageRole::User)
+            ->oldest()
+            ->get();
+
+        if ($queuedMessages->isEmpty()) {
+            return;
+        }
+
+        Log::info('Including queued messages in current run', [
+            'task_id' => $this->task->id,
+            'count' => $queuedMessages->count(),
+            'current_message' => substr($this->userMessage->content, 0, 50),
+        ]);
+
+        // Combine queued messages with the current message
+        $combinedContent = [];
+        $allImages = $this->userMessage->images ?? [];
+
+        foreach ($queuedMessages as $message) {
+            if (! empty($message->content)) {
+                $combinedContent[] = $message->content;
+            }
+
+            if (! empty($message->images)) {
+                $allImages = array_merge($allImages, $message->images);
+            }
+
+            // Mark the queued message as sent
+            $message->markAsSent();
+        }
+
+        // Add the current message content
+        if (! empty($this->userMessage->content)) {
+            $combinedContent[] = $this->userMessage->content;
+        }
+
+        // Update the userMessage with combined content
+        $this->userMessage = new Message([
+            'task_id' => $this->task->id,
+            'role' => MessageRole::User,
+            'status' => MessageStatus::Sent,
+            'content' => implode("\n\n", $combinedContent),
+            'images' => ! empty($allImages) ? $allImages : null,
+        ]);
+        $this->userMessage->id = $queuedMessages->last()->id;
     }
 
     /**
