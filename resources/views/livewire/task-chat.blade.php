@@ -688,20 +688,28 @@
                         rows="1"
                         class="chat-textarea"
                         @paste="handlePaste($event)"
-                        @keydown.enter.prevent="if (!$event.shiftKey && !$wire.isRunning) $wire.sendMessage()"
+                        @keydown.enter.prevent="if (!$event.shiftKey) $wire.sendMessage()"
                         x-data
                         x-on:keydown.enter="if (!$event.shiftKey) { $wire.prompt = $el.value; }"
                     ></textarea>
                 </div>
                 <button
                     type="submit"
-                    class="chat-submit"
-                    @disabled($this->isRunning || empty($prompt))
-                    title="Send message"
+                    class="chat-submit {{ $this->isRunning ? 'chat-submit-queue' : '' }}"
+                    @disabled(empty($prompt) && empty($images))
+                    title="{{ $this->isRunning ? 'Add to queue' : 'Send message' }}"
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.25rem; height: 1.25rem;">
-                        <path d="M3.478 2.404a.75.75 0 0 0-.926.941l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.404Z" />
-                    </svg>
+                    @if($this->isRunning)
+                        {{-- Clock icon when queueing --}}
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.25rem; height: 1.25rem;">
+                            <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25ZM12.75 6a.75.75 0 0 0-1.5 0v6c0 .414.336.75.75.75h4.5a.75.75 0 0 0 0-1.5h-3.75V6Z" clip-rule="evenodd" />
+                        </svg>
+                    @else
+                        {{-- Send icon normally --}}
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.25rem; height: 1.25rem;">
+                            <path d="M3.478 2.404a.75.75 0 0 0-.926.941l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.404Z" />
+                        </svg>
+                    @endif
                 </button>
             </form>
         </div>
