@@ -24,6 +24,10 @@ class Task extends Model
         'workspace_path',
         'session_id',
         'status',
+        'init_status',
+        'ran_composer_install',
+        'ran_npm_install',
+        'ran_npm_build',
         'is_compacting',
         'needs_compact',
         'compaction_count',
@@ -38,6 +42,9 @@ class Task extends Model
     {
         return [
             'status' => TaskStatus::class,
+            'ran_composer_install' => 'boolean',
+            'ran_npm_install' => 'boolean',
+            'ran_npm_build' => 'boolean',
             'is_compacting' => 'boolean',
             'needs_compact' => 'boolean',
             'compaction_count' => 'integer',
@@ -166,5 +173,15 @@ class Task extends Model
             ->where('role', \App\Enums\MessageRole::Assistant)
             ->where('created_at', '>', $this->last_viewed_at)
             ->exists();
+    }
+
+    public function isInitializing(): bool
+    {
+        return $this->init_status !== null && $this->init_status !== 'completed';
+    }
+
+    public function setInitStatus(string $status): void
+    {
+        $this->update(['init_status' => $status]);
     }
 }

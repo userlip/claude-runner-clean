@@ -23,6 +23,8 @@ class CloneRepositoryJob implements ShouldQueue
         $repository = $this->task->repository;
         $workspacePath = $this->task->workspace_path;
 
+        $this->task->setInitStatus('cloning');
+
         Log::info("Cloning repository {$repository->full_name}", [
             'task_id' => $this->task->id,
             'workspace' => $workspacePath,
@@ -73,6 +75,9 @@ class CloneRepositoryJob implements ShouldQueue
 
         // Run composer install if composer.json exists
         $this->runDependencyInstallation($workspacePath);
+
+        // Mark initialization as complete
+        $this->task->setInitStatus('completed');
     }
 
     protected function runDependencyInstallation(string $workspacePath): void
@@ -86,6 +91,7 @@ class CloneRepositoryJob implements ShouldQueue
 
         // Run composer install if composer.json exists
         if (file_exists($workspacePath.'/composer.json')) {
+            $this->task->setInitStatus('composer_install');
             Log::info('Running composer install', ['task_id' => $this->task->id]);
 
             $result = Process::timeout(300)
@@ -95,6 +101,7 @@ class CloneRepositoryJob implements ShouldQueue
 
             if ($result->successful()) {
                 Log::info('Composer install completed', ['task_id' => $this->task->id]);
+                $this->task->update(['ran_composer_install' => true]);
             } else {
                 Log::warning('Composer install failed', [
                     'task_id' => $this->task->id,
@@ -105,6 +112,7 @@ class CloneRepositoryJob implements ShouldQueue
 
         // Run npm install and build if package.json exists
         if (file_exists($workspacePath.'/package.json')) {
+            $this->task->setInitStatus('npm_install');
             Log::info('Running npm install', ['task_id' => $this->task->id]);
 
             $result = Process::timeout(300)
@@ -114,8 +122,10 @@ class CloneRepositoryJob implements ShouldQueue
 
             if ($result->successful()) {
                 Log::info('npm install completed', ['task_id' => $this->task->id]);
+                $this->task->update(['ran_npm_install' => true]);
 
                 // Run npm run build
+                $this->task->setInitStatus('npm_build');
                 Log::info('Running npm run build', ['task_id' => $this->task->id]);
 
                 $buildResult = Process::timeout(300)
@@ -125,6 +135,7 @@ class CloneRepositoryJob implements ShouldQueue
 
                 if ($buildResult->successful()) {
                     Log::info('npm run build completed', ['task_id' => $this->task->id]);
+                    $this->task->update(['ran_npm_build' => true]);
                 } else {
                     Log::warning('npm run build failed', [
                         'task_id' => $this->task->id,

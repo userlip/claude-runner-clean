@@ -49,7 +49,29 @@
         </a>
         <div class="chat-mobile-title-area">
             <h1 class="chat-mobile-title">{{ $task->title ?? ($task->repository?->name ?? 'Chat') }}</h1>
-            <p class="chat-mobile-subtitle">{{ $this->locationLabel }}</p>
+            <p class="chat-mobile-subtitle">
+                {{ $this->locationLabel }}
+                @if($task->isInWorkspace() && $task->isInitializing())
+                    <span class="chat-mobile-init-status">
+                        @switch($task->init_status)
+                            @case('cloning')
+                                · Cloning...
+                                @break
+                            @case('composer_install')
+                                · Composer...
+                                @break
+                            @case('npm_install')
+                                · npm...
+                                @break
+                            @case('npm_build')
+                                · Building...
+                                @break
+                            @default
+                                · Initializing...
+                        @endswitch
+                    </span>
+                @endif
+            </p>
         </div>
         {{-- Context indicator --}}
         <div class="chat-mobile-context" title="{{ $task->is_compacting ? 'Compacting conversation...' : number_format($this->contextUsed) . ' / ' . number_format($this->contextLimit) . ' tokens' }}">
@@ -202,6 +224,61 @@
                 </div>
                 <div class="chat-header-meta">
                     <span class="chat-header-subtitle">{{ $this->locationLabel }}</span>
+                    {{-- Init Status Indicators --}}
+                    @if($task->isInWorkspace())
+                        <span class="chat-header-separator">·</span>
+                        <div class="chat-init-status" wire:poll.5s>
+                            @if($task->isInitializing())
+                                <span class="chat-init-badge chat-init-running" title="Initializing workspace...">
+                                    <svg class="animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" style="width: 0.75rem; height: 0.75rem;">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    @switch($task->init_status)
+                                        @case('cloning')
+                                            Cloning...
+                                            @break
+                                        @case('composer_install')
+                                            Composer...
+                                            @break
+                                        @case('npm_install')
+                                            npm install...
+                                            @break
+                                        @case('npm_build')
+                                            Building...
+                                            @break
+                                        @default
+                                            Initializing...
+                                    @endswitch
+                                </span>
+                            @else
+                                @if($task->ran_composer_install)
+                                    <span class="chat-init-badge chat-init-done" title="Composer install completed">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" style="width: 0.75rem; height: 0.75rem;">
+                                            <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
+                                        </svg>
+                                        composer
+                                    </span>
+                                @endif
+                                @if($task->ran_npm_install)
+                                    <span class="chat-init-badge chat-init-done" title="npm install completed">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" style="width: 0.75rem; height: 0.75rem;">
+                                            <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
+                                        </svg>
+                                        npm
+                                    </span>
+                                @endif
+                                @if($task->ran_npm_build)
+                                    <span class="chat-init-badge chat-init-done" title="npm build completed">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" style="width: 0.75rem; height: 0.75rem;">
+                                            <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
+                                        </svg>
+                                        build
+                                    </span>
+                                @endif
+                            @endif
+                        </div>
+                    @endif
                     {{-- Context Usage Indicator (inline with subtitle) --}}
                     <span class="chat-header-separator">·</span>
                     @if($task->is_compacting)
