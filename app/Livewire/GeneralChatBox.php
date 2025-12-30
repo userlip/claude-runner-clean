@@ -357,6 +357,15 @@ class GeneralChatBox extends Component
         $this->sendMessage();
     }
 
+    public function deleteChat(): void
+    {
+        // Delete the chat (messages will cascade delete)
+        $this->chat->delete();
+
+        // Redirect to the chats list
+        $this->redirect(route('filament.admin.resources.general-chats.index'));
+    }
+
     public function generateTitle(): void
     {
         $messages = $this->chat->messages()->oldest()->take(20)->get();
