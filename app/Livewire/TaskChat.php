@@ -232,6 +232,9 @@ class TaskChat extends Component
             'images.*.name' => 'required|string|max:255',
         ]);
 
+        // Refresh task to get latest status before checking isRunning
+        $this->task->refresh();
+
         // Handle slash commands locally (only when not running)
         if (! $this->task->isRunning() && ! empty($this->prompt) && $this->handleSlashCommand($this->prompt)) {
             $this->prompt = '';
