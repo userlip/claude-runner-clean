@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Enums\MessageRole;
+use App\Enums\MessageStatus;
 use App\Models\Message;
 use App\Models\Task;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -31,6 +32,7 @@ class RunClaudeMessageJob implements ShouldQueue
         $assistantMessage = Message::create([
             'task_id' => $this->task->id,
             'role' => MessageRole::Assistant,
+            'status' => MessageStatus::Sent,
             'content' => '',
         ]);
 
@@ -192,6 +194,9 @@ class RunClaudeMessageJob implements ShouldQueue
                     Log::info('Auto-dispatching compact for low context', ['task_id' => $this->task->id]);
                     $this->dispatchCompact();
                 }
+
+                // Process any queued messages
+                $this->processQueuedMessages();
             } else {
                 // No result received - process may have exited unexpectedly
                 $exitCode = proc_close($process);
@@ -224,8 +229,8 @@ class RunClaudeMessageJob implements ShouldQueue
 
     protected function sendPushNotification(string $title, string $body, bool $success): void
     {
-        // Get user through repository since tasks don't have user_id directly
-        $user = $this->task->repository?->user;
+        // Get user directly from task, or fall back to repository owner
+        $user = $this->task->user ?? $this->task->repository?->user;
 
         Log::debug('sendPushNotification called', [
             'user_id' => $user?->id,
@@ -239,7 +244,7 @@ class RunClaudeMessageJob implements ShouldQueue
             return;
         }
 
-        $taskTitle = $this->task->title ?? 'Untitled Task';
+        $taskTitle = $this->task->title ?? ($this->task->isGeneralChat() ? 'Chat' : 'Untitled Task');
         $fullTitle = $success ? "Completed: {$taskTitle}" : "Failed: {$taskTitle}";
 
         SendPushNotificationJob::dispatch(
@@ -248,7 +253,7 @@ class RunClaudeMessageJob implements ShouldQueue
             Str::limit($body, 150),
             route('filament.admin.resources.tasks.chat', ['record' => $this->task->uuid]),
             [
-                ['action' => 'view', 'title' => 'View Task'],
+                ['action' => 'view', 'title' => 'View'],
                 ['action' => 'dismiss', 'title' => 'Dismiss'],
             ]
         );
@@ -425,11 +430,75 @@ class RunClaudeMessageJob implements ShouldQueue
         $compactMessage = Message::create([
             'task_id' => $this->task->id,
             'role' => MessageRole::User,
+            'status' => MessageStatus::Sent,
             'content' => '/compact',
         ]);
 
         // Dispatch a new job to send the compact command
         self::dispatch($this->task, $compactMessage, continue: true);
+    }
+
+    /**
+     * Process any queued messages after Claude finishes responding.
+     * Combines all queued messages into a single prompt sent to Claude,
+     * while keeping them as separate visible messages in the chat history.
+     */
+    protected function processQueuedMessages(): void
+    {
+        $queuedMessages = $this->task->messages()
+            ->where('status', MessageStatus::Queued)
+            ->where('role', MessageRole::User)
+            ->oldest()
+            ->get();
+
+        if ($queuedMessages->isEmpty()) {
+            return;
+        }
+
+        Log::info('Processing queued messages', [
+            'task_id' => $this->task->id,
+            'count' => $queuedMessages->count(),
+        ]);
+
+        // Combine all queued messages into content parts for Claude
+        $combinedContent = [];
+        $allImages = [];
+
+        foreach ($queuedMessages as $message) {
+            if (! empty($message->content)) {
+                $combinedContent[] = $message->content;
+            }
+
+            if (! empty($message->images)) {
+                $allImages = array_merge($allImages, $message->images);
+            }
+
+            // Mark the queued message as sent so it appears in chat history
+            $message->markAsSent();
+        }
+
+        if (empty($combinedContent) && empty($allImages)) {
+            return;
+        }
+
+        // Use the last queued message as the "trigger" message for the job
+        // but update its content to be the combined content for Claude
+        $lastMessage = $queuedMessages->last();
+
+        // Create a synthetic message object for the job with combined content
+        // We don't save this to the DB - it's just for the Claude API call
+        $syntheticMessage = new Message([
+            'task_id' => $this->task->id,
+            'role' => MessageRole::User,
+            'status' => MessageStatus::Sent,
+            'content' => implode("\n\n", $combinedContent),
+            'images' => ! empty($allImages) ? $allImages : null,
+        ]);
+        // Set the ID so hasImages() and other methods work
+        $syntheticMessage->id = $lastMessage->id;
+
+        // Dispatch a new job to process the combined content
+        self::dispatch($this->task, $syntheticMessage, continue: true);
     }
 
     /**

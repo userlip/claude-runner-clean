@@ -93,7 +93,7 @@ test('job has correct timeout', function () {
 
     $job = new RunClaudeMessageJob($task, $message);
 
-    expect($job->timeout)->toBe(600);
+    expect($job->timeout)->toBe(10800); // 3 hours for complex tasks
 });
 
 test('job has single try', function () {

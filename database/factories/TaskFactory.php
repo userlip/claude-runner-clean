@@ -6,6 +6,7 @@ use App\Enums\TaskStatus;
 use App\Models\AiProvider;
 use App\Models\Repository;
 use App\Models\Site;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
@@ -13,9 +14,12 @@ class TaskFactory extends Factory
 {
     public function definition(): array
     {
+        $repository = Repository::factory()->create();
+
         return [
             'uuid' => Str::uuid(),
-            'repository_id' => Repository::factory(),
+            'user_id' => $repository->user_id,
+            'repository_id' => $repository->id,
             'site_id' => null,
             'ai_provider_id' => null,
             'workspace_path' => '/home/ploi/workspaces/'.fake()->slug(1).'-'.Str::random(8),
@@ -25,6 +29,20 @@ class TaskFactory extends Factory
             'started_at' => null,
             'completed_at' => null,
         ];
+    }
+
+    public function generalChat(?User $user = null): static
+    {
+        return $this->state(function () use ($user) {
+            $user ??= User::factory()->create();
+
+            return [
+                'user_id' => $user->id,
+                'repository_id' => null,
+                'site_id' => null,
+                'workspace_path' => null,
+            ];
+        });
     }
 
     public function running(): static

@@ -4,7 +4,9 @@
       "Skill(superpowers:brainstorming)",
       "Bash(cat:*)",
       "Bash(claude --version)",
-      "Bash(php artisan tinker:*)"
+      "Bash(php artisan tinker:*)",
+      "Bash(vendor/bin/pint:*)",
+      "Bash(composer dump-autoload:*)"
     ],
     "deny": [
       "Bash(php artisan migrate:fresh)",

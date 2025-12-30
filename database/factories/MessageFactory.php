@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Enums\MessageRole;
+use App\Enums\MessageStatus;
 use App\Models\Task;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -13,6 +14,7 @@ class MessageFactory extends Factory
         return [
             'task_id' => Task::factory(),
             'role' => MessageRole::User,
+            'status' => MessageStatus::Sent,
             'content' => fake()->paragraph(),
             'raw_output' => null,
             'tool_calls' => null,
@@ -20,6 +22,16 @@ class MessageFactory extends Factory
             'tokens_out' => null,
             'cost_usd' => null,
         ];
+    }
+
+    public function queued(): static
+    {
+        return $this->state(['status' => MessageStatus::Queued]);
+    }
+
+    public function sent(): static
+    {
+        return $this->state(['status' => MessageStatus::Sent]);
     }
 
     public function user(): static

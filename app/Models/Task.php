@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 
 class Task extends Model
@@ -15,6 +16,7 @@ class Task extends Model
 
     protected $fillable = [
         'uuid',
+        'user_id',
         'title',
         'repository_id',
         'site_id',
@@ -54,6 +56,12 @@ class Task extends Model
             $task->session_id ??= Str::uuid();
             $task->ai_provider_id ??= AiProvider::getDefault()?->id;
         });
+
+        static::deleting(function (Task $task) {
+            if ($task->workspace_path && File::isDirectory($task->workspace_path)) {
+                File::deleteDirectory($task->workspace_path);
+            }
+        });
     }
 
     public function getRouteKeyName(): string
@@ -71,18 +79,33 @@ class Task extends Model
         return $this->belongsTo(Site::class);
     }
 
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
     public function getWorkingDirectoryAttribute(): ?string
     {
         if ($this->workspace_path) {
             return $this->workspace_path;
         }
 
-        return $this->site?->path;
+        if ($this->site?->path) {
+            return $this->site->path;
+        }
+
+        // General chat mode - use home directory
+        return '/home/ploi';
     }
 
     public function isInWorkspace(): bool
     {
         return $this->workspace_path !== null;
+    }
+
+    public function isGeneralChat(): bool
+    {
+        return $this->repository_id === null;
     }
 
     public function messages(): HasMany

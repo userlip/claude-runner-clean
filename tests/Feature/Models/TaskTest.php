@@ -104,3 +104,31 @@ test('task working_directory returns site path when on site', function () {
 
     expect($task->working_directory)->toBe('/home/ploi/my-site.marin.sh');
 });
+
+test('deleting task removes workspace directory', function () {
+    $workspacePath = sys_get_temp_dir().'/test-workspace-'.uniqid();
+    mkdir($workspacePath, 0755, true);
+    file_put_contents($workspacePath.'/test.txt', 'test content');
+
+    $task = Task::factory()->create([
+        'workspace_path' => $workspacePath,
+        'site_id' => null,
+    ]);
+
+    expect(is_dir($workspacePath))->toBeTrue();
+
+    $task->delete();
+
+    expect(is_dir($workspacePath))->toBeFalse();
+});
+
+test('deleting task without workspace does not fail', function () {
+    $task = Task::factory()->create([
+        'workspace_path' => null,
+        'site_id' => null,
+    ]);
+
+    $task->delete();
+
+    expect(Task::find($task->id))->toBeNull();
+});

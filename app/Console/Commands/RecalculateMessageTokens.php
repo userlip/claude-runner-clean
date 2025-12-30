@@ -3,7 +3,6 @@
 namespace App\Console\Commands;
 
 use App\Enums\MessageRole;
-use App\Models\GeneralChatMessage;
 use App\Models\Message;
 use Illuminate\Console\Command;
 
@@ -22,11 +21,8 @@ class RecalculateMessageTokens extends Command
             $this->warn('DRY RUN - no changes will be made');
         }
 
-        // Process Task messages
-        $this->processMessages(Message::class, 'Task messages');
-
-        // Process GeneralChat messages
-        $this->processMessages(GeneralChatMessage::class, 'General chat messages');
+        // Process messages
+        $this->processMessages(Message::class, 'Messages');
 
         $this->info('Done!');
 

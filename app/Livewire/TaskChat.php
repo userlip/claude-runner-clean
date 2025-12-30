@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Enums\MessageRole;
+use App\Enums\MessageStatus;
 use App\Jobs\RunClaudeMessageJob;
 use App\Models\AiProvider;
 use App\Models\Message;
@@ -63,7 +64,22 @@ class TaskChat extends Component
     #[Computed]
     public function chatMessages(): Collection
     {
-        return $this->task->messages()->oldest()->get();
+        return $this->task->messages()
+            ->where('status', MessageStatus::Sent)
+            ->oldest()
+            ->get();
+    }
+
+    /**
+     * @return Collection<int, Message>
+     */
+    #[Computed]
+    public function queuedMessages(): Collection
+    {
+        return $this->task->messages()
+            ->where('status', MessageStatus::Queued)
+            ->oldest()
+            ->get();
     }
 
     #[Computed]
@@ -100,6 +116,10 @@ class TaskChat extends Component
     {
         if ($this->task->site) {
             return $this->task->site->domain;
+        }
+
+        if ($this->task->isGeneralChat()) {
+            return $this->task->working_directory;
         }
 
         return 'Workspace';
@@ -212,8 +232,24 @@ class TaskChat extends Component
             'images.*.name' => 'required|string|max:255',
         ]);
 
-        // Handle slash commands locally
-        if (! empty($this->prompt) && $this->handleSlashCommand($this->prompt)) {
+        // Handle slash commands locally (only when not running)
+        if (! $this->task->isRunning() && ! empty($this->prompt) && $this->handleSlashCommand($this->prompt)) {
+            $this->prompt = '';
+            $this->images = [];
+
+            return;
+        }
+
+        // If Claude is running, queue the message instead of sending immediately
+        if ($this->task->isRunning()) {
+            Message::create([
+                'task_id' => $this->task->id,
+                'role' => MessageRole::User,
+                'status' => MessageStatus::Queued,
+                'content' => $this->prompt ?: '',
+                'images' => ! empty($this->images) ? $this->images : null,
+            ]);
+
             $this->prompt = '';
             $this->images = [];
 
@@ -223,6 +259,7 @@ class TaskChat extends Component
         // Check if there's a successful assistant response to continue from
         $hasSuccessfulResponse = $this->task->messages()
             ->where('role', MessageRole::Assistant)
+            ->where('status', MessageStatus::Sent)
             ->whereNotNull('content')
             ->where('content', '!=', '')
             ->where('content', 'not like', 'Error:%')
@@ -231,6 +268,7 @@ class TaskChat extends Component
         $userMessage = Message::create([
             'task_id' => $this->task->id,
             'role' => MessageRole::User,
+            'status' => MessageStatus::Sent,
             'content' => $this->prompt ?: '',
             'images' => ! empty($this->images) ? $this->images : null,
         ]);
@@ -244,7 +282,7 @@ class TaskChat extends Component
         $this->prompt = '';
         $this->images = [];
         $this->waitingForResponse = true;
-        $this->lastMessageCount = $this->task->messages()->count();
+        $this->lastMessageCount = $this->task->messages()->where('status', MessageStatus::Sent)->count();
     }
 
     /**
@@ -442,12 +480,7 @@ class TaskChat extends Component
 
     public function deleteTask(): void
     {
-        // Delete workspace directory if it exists
-        if ($this->task->workspace_path && File::isDirectory($this->task->workspace_path)) {
-            File::deleteDirectory($this->task->workspace_path);
-        }
-
-        // Delete the task (messages will cascade delete)
+        // Delete the task (workspace directory and messages are deleted via model events/cascades)
         $this->task->delete();
 
         // Redirect to the tasks list
@@ -491,6 +524,18 @@ class TaskChat extends Component
         // Directly send /compact command
         $this->prompt = '/compact';
         $this->sendMessage();
+    }
+
+    public function deleteQueuedMessage(int $messageId): void
+    {
+        $message = Message::where('id', $messageId)
+            ->where('task_id', $this->task->id)
+            ->where('status', MessageStatus::Queued)
+            ->first();
+
+        if ($message) {
+            $message->delete();
+        }
     }
 
     public function generateTitle(): void

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\MessageRole;
+use App\Enums\MessageStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -21,6 +22,7 @@ class Message extends Model
     protected $fillable = [
         'task_id',
         'role',
+        'status',
         'content',
         'content_blocks',
         'images',
@@ -35,6 +37,7 @@ class Message extends Model
     {
         return [
             'role' => MessageRole::class,
+            'status' => MessageStatus::class,
             'content_blocks' => 'array',
             'images' => 'array',
             'tool_calls' => 'array',
@@ -42,6 +45,21 @@ class Message extends Model
             'tokens_out' => 'integer',
             'cost_usd' => 'decimal:6',
         ];
+    }
+
+    public function isQueued(): bool
+    {
+        return $this->status === MessageStatus::Queued;
+    }
+
+    public function isSent(): bool
+    {
+        return $this->status === MessageStatus::Sent;
+    }
+
+    public function markAsSent(): void
+    {
+        $this->update(['status' => MessageStatus::Sent]);
     }
 
     public function addContentBlock(array $block): void

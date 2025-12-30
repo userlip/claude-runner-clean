@@ -48,7 +48,7 @@
             </svg>
         </a>
         <div class="chat-mobile-title-area">
-            <h1 class="chat-mobile-title">{{ $task->title ?? $task->repository->name }}</h1>
+            <h1 class="chat-mobile-title">{{ $task->title ?? ($task->repository?->name ?? 'Chat') }}</h1>
             <p class="chat-mobile-subtitle">{{ $this->locationLabel }}</p>
         </div>
         {{-- Context indicator --}}
@@ -164,18 +164,18 @@
                     <span>Delete Workspace</span>
                 </button>
             @endif
-            {{-- Delete Task (always available) --}}
+            {{-- Delete Chat (always available) --}}
             <div class="chat-mobile-dropdown-divider"></div>
             <button
                 wire:click="deleteTask"
-                wire:confirm="Are you sure you want to delete this task and all its messages? This cannot be undone."
+                wire:confirm="Are you sure you want to delete this chat and all its messages? This cannot be undone."
                 @click="mobileMenuOpen = false"
                 class="chat-mobile-dropdown-item chat-mobile-dropdown-item-danger"
             >
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 1.25rem; height: 1.25rem;">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
                 </svg>
-                <span>Delete Task</span>
+                <span>Delete Chat</span>
             </button>
         </div>
     </div>
@@ -186,7 +186,7 @@
         <div class="chat-header-top">
             <div class="chat-header-info">
                 <div class="chat-header-title-row">
-                    <h2 class="chat-header-title">{{ $task->title ?? $task->repository->name }}</h2>
+                    <h2 class="chat-header-title">{{ $task->title ?? ($task->repository?->name ?? 'Chat') }}</h2>
                     @if($this->chatMessages->isNotEmpty())
                         <button
                             wire:click="generateTitle"
@@ -300,23 +300,23 @@
                 </button>
                 <button
                     wire:click="deleteTask"
-                    wire:confirm="Are you sure you want to delete this task and all its messages? This cannot be undone."
+                    wire:confirm="Are you sure you want to delete this chat and all its messages? This cannot be undone."
                     class="chat-header-action-btn chat-header-action-btn-danger"
                 >
                     <x-heroicon-o-trash class="chat-header-action-icon" />
-                    <span>Delete Task</span>
+                    <span>Delete Chat</span>
                 </button>
             </div>
         @else
-            {{-- Delete Task button only (no workspace) --}}
+            {{-- Delete Chat button only (no workspace) --}}
             <div class="chat-header-actions">
                 <button
                     wire:click="deleteTask"
-                    wire:confirm="Are you sure you want to delete this task and all its messages? This cannot be undone."
+                    wire:confirm="Are you sure you want to delete this chat and all its messages? This cannot be undone."
                     class="chat-header-action-btn chat-header-action-btn-danger"
                 >
                     <x-heroicon-o-trash class="chat-header-action-icon" />
-                    <span>Delete Task</span>
+                    <span>Delete Chat</span>
                 </button>
             </div>
         @endif
@@ -561,6 +561,41 @@
                 </div>
             </div>
         </div>
+
+        {{-- Queued Messages (stacked above input) --}}
+        @if($this->queuedMessages->isNotEmpty())
+            <div class="chat-queued-messages">
+                @foreach($this->queuedMessages as $queuedMessage)
+                    <div wire:key="queued-{{ $queuedMessage->id }}" class="chat-queued-message">
+                        <div class="chat-queued-message-content">
+                            @if($queuedMessage->images && count($queuedMessage->images) > 0)
+                                <span class="chat-queued-message-images">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 1rem; height: 1rem;">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+                                    </svg>
+                                    {{ count($queuedMessage->images) }}
+                                </span>
+                            @endif
+                            @if($queuedMessage->content)
+                                <span class="chat-queued-message-text">{{ Str::limit($queuedMessage->content, 100) }}</span>
+                            @endif
+                        </div>
+                        <button
+                            type="button"
+                            wire:click="deleteQueuedMessage({{ $queuedMessage->id }})"
+                            class="chat-queued-message-remove"
+                            title="Remove from queue"
+                        >&times;</button>
+                    </div>
+                @endforeach
+                <div class="chat-queued-label">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 0.875rem; height: 0.875rem;">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                    </svg>
+                    {{ $this->queuedMessages->count() }} {{ Str::plural('message', $this->queuedMessages->count()) }} queued - will send when Claude finishes
+                </div>
+            </div>
+        @endif
 
         {{-- Input --}}
         <div class="chat-input-area"

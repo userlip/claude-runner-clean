@@ -1,6 +1,5 @@
 <?php
 
-use App\Enums\MessageRole;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -12,7 +11,7 @@ return new class extends Migration
         Schema::create('general_chat_messages', function (Blueprint $table) {
             $table->id();
             $table->foreignId('general_chat_id')->constrained()->cascadeOnDelete();
-            $table->string('role')->default(MessageRole::User->value);
+            $table->string('role')->default('user');
             $table->longText('content')->nullable();
             $table->longText('raw_output')->nullable();
             $table->json('tool_calls')->nullable();
