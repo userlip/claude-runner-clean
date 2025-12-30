@@ -298,19 +298,28 @@
                     <x-heroicon-o-trash class="chat-header-action-icon" />
                     <span>Delete Workspace</span>
                 </button>
+                <button
+                    wire:click="deleteTask"
+                    wire:confirm="Are you sure you want to delete this task and all its messages? This cannot be undone."
+                    class="chat-header-action-btn chat-header-action-btn-danger"
+                >
+                    <x-heroicon-o-trash class="chat-header-action-icon" />
+                    <span>Delete Task</span>
+                </button>
+            </div>
+        @else
+            {{-- Delete Task button only (no workspace) --}}
+            <div class="chat-header-actions">
+                <button
+                    wire:click="deleteTask"
+                    wire:confirm="Are you sure you want to delete this task and all its messages? This cannot be undone."
+                    class="chat-header-action-btn chat-header-action-btn-danger"
+                >
+                    <x-heroicon-o-trash class="chat-header-action-icon" />
+                    <span>Delete Task</span>
+                </button>
             </div>
         @endif
-        {{-- Delete Task button (always available) --}}
-        <div class="chat-header-actions" style="@if($task->isInWorkspace()) margin-top: 0.5rem; @endif">
-            <button
-                wire:click="deleteTask"
-                wire:confirm="Are you sure you want to delete this task and all its messages? This cannot be undone."
-                class="chat-header-action-btn chat-header-action-btn-danger"
-            >
-                <x-heroicon-o-trash class="chat-header-action-icon" />
-                <span>Delete Task</span>
-            </button>
-        </div>
     </div>
 
     {{-- Chat Area --}}
