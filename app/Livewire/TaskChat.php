@@ -440,6 +440,20 @@ class TaskChat extends Component
         $this->dispatch('workspace-deleted');
     }
 
+    public function deleteTask(): void
+    {
+        // Delete workspace directory if it exists
+        if ($this->task->workspace_path && File::isDirectory($this->task->workspace_path)) {
+            File::deleteDirectory($this->task->workspace_path);
+        }
+
+        // Delete the task (messages will cascade delete)
+        $this->task->delete();
+
+        // Redirect to the tasks list
+        $this->redirect(route('filament.admin.resources.tasks.index'));
+    }
+
     public function openDeployModal(): void
     {
         $this->showDeployModal = true;
