@@ -9,7 +9,7 @@ use Symfony\Component\Finder\Finder;
 
 class FileBrowser extends Component
 {
-    public string $basePath;
+    public ?string $basePath = null;
 
     /** @var array<string> */
     public array $expandedDirs = [];
@@ -29,9 +29,9 @@ class FileBrowser extends Component
         'bootstrap/cache',
     ];
 
-    public function mount(string $basePath): void
+    public function mount(?string $basePath = null): void
     {
-        $this->basePath = rtrim($basePath, '/');
+        $this->basePath = $basePath ? rtrim($basePath, '/') : null;
     }
 
     /**
@@ -40,6 +40,10 @@ class FileBrowser extends Component
     #[Computed]
     public function files(): array
     {
+        if ($this->basePath === null) {
+            return [];
+        }
+
         return $this->getFilesInDirectory($this->basePath);
     }
 
@@ -112,6 +116,13 @@ class FileBrowser extends Component
 
     public function selectFile(string $path): void
     {
+        if ($this->basePath === null) {
+            $this->selectedFile = null;
+            $this->fileContent = null;
+
+            return;
+        }
+
         $fullPath = $this->basePath.'/'.$path;
         $realPath = realpath($fullPath);
 

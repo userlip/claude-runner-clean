@@ -504,7 +504,12 @@
                             @endif
 
                             <div class="chat-message-meta">
-                                <span class="chat-message-time">{{ $message->created_at->timezone(config('app.timezone'))->format('H:i') }}</span>
+                                @php
+                                    $firstBlockTimestamp = isset($message->content_blocks[0]['timestamp'])
+                                        ? \Carbon\Carbon::parse($message->content_blocks[0]['timestamp'])->timezone(config('app.timezone'))->format('H:i')
+                                        : $message->created_at->timezone(config('app.timezone'))->format('H:i');
+                                @endphp
+                                <span class="chat-message-time">{{ $firstBlockTimestamp }}</span>
                                 {{-- Only show tokens on the last bubble --}}
                                 @if((!$message->content_blocks || count($message->content_blocks) <= 1) && ($message->tokens_in || $message->tokens_out))
                                     <span class="chat-tokens">
@@ -557,7 +562,15 @@
                     @endphp
 
                     @foreach($groupedBlocks as $blockIndex => $block)
-                        @php $isLastBlock = $blockIndex === count($groupedBlocks) - 1; @endphp
+                        @php
+                            $isLastBlock = $blockIndex === count($groupedBlocks) - 1;
+                            // Get timestamp from block if available, otherwise fall back to message created_at
+                            $blockTimestamp = isset($block['timestamp'])
+                                ? \Carbon\Carbon::parse($block['timestamp'])->timezone(config('app.timezone'))->format('H:i')
+                                : (isset($block['tools'][0]['timestamp'])
+                                    ? \Carbon\Carbon::parse($block['tools'][0]['timestamp'])->timezone(config('app.timezone'))->format('H:i')
+                                    : $message->created_at->timezone(config('app.timezone'))->format('H:i'));
+                        @endphp
                         @if(($block['type'] ?? '') === 'text' && !empty($block['text']))
                             <div wire:key="message-{{ $message->id }}-grouped-{{ $blockIndex }}" class="chat-message chat-message-assistant">
                                 <div class="chat-bubble chat-bubble-assistant">
@@ -565,7 +578,7 @@
                                         {!! Str::markdown($block['text']) !!}
                                     </div>
                                     <div class="chat-message-meta">
-                                        <span class="chat-message-time">{{ $message->created_at->timezone(config('app.timezone'))->format('H:i') }}</span>
+                                        <span class="chat-message-time">{{ $blockTimestamp }}</span>
                                         @if($isLastBlock && ($message->tokens_in || $message->tokens_out))
                                             <span class="chat-tokens">
                                                 {{ number_format($message->tokens_in ?? 0) }} in /
@@ -607,7 +620,7 @@
                                         </div>
                                     @endif
                                     <div class="chat-message-meta">
-                                        <span class="chat-message-time">{{ $message->created_at->timezone(config('app.timezone'))->format('H:i') }}</span>
+                                        <span class="chat-message-time">{{ $blockTimestamp }}</span>
                                         @if($isLastBlock && ($message->tokens_in || $message->tokens_out))
                                             <span class="chat-tokens">
                                                 {{ number_format($message->tokens_in ?? 0) }} in /

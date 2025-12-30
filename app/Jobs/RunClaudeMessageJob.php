@@ -103,14 +103,22 @@ class RunClaudeMessageJob implements ShouldQueue
                 if ($parsed) {
                     if (isset($parsed['tool_call'])) {
                         $toolCalls[] = $parsed['tool_call'];
-                        $contentBlocks[] = ['type' => 'tool_use', 'tool' => $parsed['tool_call']];
+                        $contentBlocks[] = [
+                            'type' => 'tool_use',
+                            'tool' => $parsed['tool_call'],
+                            'timestamp' => now()->toIso8601String(),
+                        ];
                         $assistantMessage->update([
                             'tool_calls' => $toolCalls,
                             'content_blocks' => $contentBlocks,
                         ]);
                     }
                     if (isset($parsed['content'])) {
-                        $contentBlocks[] = ['type' => 'text', 'text' => $parsed['content']];
+                        $contentBlocks[] = [
+                            'type' => 'text',
+                            'text' => $parsed['content'],
+                            'timestamp' => now()->toIso8601String(),
+                        ];
                         $assistantMessage->update([
                             'content' => ($assistantMessage->content ?? '').$parsed['content'],
                             'content_blocks' => $contentBlocks,

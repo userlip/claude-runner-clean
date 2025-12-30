@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\Tasks\Pages;
 
 use App\Filament\Resources\Tasks\TaskResource;
-use App\Models\Task;
 use Filament\Resources\Pages\Concerns\InteractsWithRecord;
 use Filament\Resources\Pages\Page;
 use Filament\Support\Enums\Width;
@@ -28,10 +27,14 @@ class TaskChat extends Page
 
     public function getTitle(): string
     {
+        if (! $this->record?->exists) {
+            return 'Chat';
+        }
+
         $location = $this->record->site
             ? $this->record->site->domain
             : 'Workspace';
 
-        return "{$this->record->repository->name} - {$location}";
+        return "{$this->record->repository?->name} - {$location}";
     }
 }
