@@ -89,11 +89,29 @@ class AdminPanelProvider extends PanelProvider
                     '<link rel="apple-touch-icon" sizes="180x180" href="'.asset('apple-touch-icon.png').'">'.
                     '<link rel="icon" type="image/png" sizes="32x32" href="'.asset('favicon-32x32.png').'">'.
                     '<link rel="icon" type="image/png" sizes="16x16" href="'.asset('favicon-16x16.png').'">'.
-                    '<style>'.file_get_contents(resource_path('css/filament/chat.css')).'</style>',
+                    '<style>'.file_get_contents(resource_path('css/filament/chat.css')).'</style>'.
+                    $this->getSentryScript(),
             )
             ->renderHook(
                 PanelsRenderHook::SIDEBAR_FOOTER,
                 fn (): string => Blade::render('@livewire(\'recent-chats\')'),
             );
+    }
+
+    protected function getSentryScript(): string
+    {
+        $dsn = config('sentry.dsn');
+        if (empty($dsn)) {
+            return '';
+        }
+
+        $environment = config('sentry.environment') ?: config('app.env');
+        $release = config('sentry.release') ?: '';
+
+        return '<script>'.
+            'window.SENTRY_DSN = '.json_encode($dsn).';'.
+            'window.SENTRY_ENVIRONMENT = '.json_encode($environment).';'.
+            'window.SENTRY_RELEASE = '.json_encode($release).';'.
+            '</script>';
     }
 }
