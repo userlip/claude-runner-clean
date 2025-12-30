@@ -169,25 +169,51 @@
 
     {{-- Desktop Header --}}
     <div class="chat-header">
-        <div class="chat-header-info">
-            <div class="chat-header-title-row">
-                <h2 class="chat-header-title">{{ $task->title ?? $task->repository->name }}</h2>
-                @if($this->chatMessages->isNotEmpty())
-                    <button
-                        wire:click="generateTitle"
-                        wire:loading.attr="disabled"
-                        wire:target="generateTitle"
-                        title="Generate title from conversation"
-                        class="chat-rename-btn"
-                    >
-                        <span wire:loading.remove wire:target="generateTitle">✨ Rename</span>
-                        <span wire:loading wire:target="generateTitle">✨ ...</span>
-                    </button>
-                @endif
+        {{-- Top row: Title and Provider selector --}}
+        <div class="chat-header-top">
+            <div class="chat-header-info">
+                <div class="chat-header-title-row">
+                    <h2 class="chat-header-title">{{ $task->title ?? $task->repository->name }}</h2>
+                    @if($this->chatMessages->isNotEmpty())
+                        <button
+                            wire:click="generateTitle"
+                            wire:loading.attr="disabled"
+                            wire:target="generateTitle"
+                            title="Generate title from conversation"
+                            class="chat-rename-btn"
+                        >
+                            <span wire:loading.remove wire:target="generateTitle">✨ Rename</span>
+                            <span wire:loading wire:target="generateTitle">✨ ...</span>
+                        </button>
+                    @endif
+                </div>
+                <div class="chat-header-meta">
+                    <span class="chat-header-subtitle">{{ $this->locationLabel }}</span>
+                    {{-- Context Usage Indicator (inline with subtitle) --}}
+                    <span class="chat-header-separator">·</span>
+                    @if($task->is_compacting)
+                        <span class="chat-context-compacting">
+                            <svg class="animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Compacting...
+                        </span>
+                    @else
+                        <span class="chat-context-usage" title="{{ number_format($this->contextUsed) }} / {{ number_format($this->contextLimit) }} tokens">
+                            <span class="chat-context-bar">
+                                <span class="chat-context-fill {{ $this->contextColor }}" style="width: {{ min($this->contextPercentage, 100) }}%"></span>
+                            </span>
+                            {{ number_format($this->contextPercentage, 0) }}%
+                        </span>
+                    @endif
+                    @if($task->compaction_count > 0)
+                        <span class="chat-compaction-count" title="{{ $task->compaction_count }} {{ Str::plural('compaction', $task->compaction_count) }}">
+                            ×{{ $task->compaction_count }}
+                        </span>
+                    @endif
+                </div>
             </div>
-            <p class="chat-header-subtitle">{{ $this->locationLabel }}</p>
-        </div>
-        <div class="chat-header-controls">
             <div class="chat-provider-selector">
                 @foreach($this->availableProviders as $provider)
                     <button
@@ -199,106 +225,68 @@
                     </button>
                 @endforeach
             </div>
-            {{-- Context Usage Indicator --}}
-            <div
-                class="flex items-center gap-2"
-                title="{{ $task->is_compacting ? 'Compacting conversation...' : number_format($this->contextUsed) . ' tokens used of ' . number_format($this->contextLimit) . ' (' . number_format($this->contextPercentage, 1) . '%)' }}"
-            >
-                @if($task->is_compacting)
-                    {{-- Compacting State --}}
-                    <div class="flex items-center gap-1.5 px-2 py-0.5 bg-amber-100 dark:bg-amber-900/30 rounded-full">
-                        <svg class="w-3 h-3 text-amber-600 dark:text-amber-400 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        <span class="text-xs font-medium text-amber-700 dark:text-amber-300">Compacting</span>
-                    </div>
-                @else
-                    {{-- Normal Context Bar --}}
-                    <div class="w-24 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                        <div
-                            class="{{ $this->contextColor }} h-full transition-all duration-300"
-                            style="width: {{ min($this->contextPercentage, 100) }}%"
-                        ></div>
-                    </div>
-                    <span class="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                        {{ number_format($this->contextUsed / 1000, 0) }}K / {{ number_format($this->contextLimit / 1000, 0) }}K
-                    </span>
-                @endif
-                {{-- Compaction Count Badge --}}
-                @if($task->compaction_count > 0)
-                    <span
-                        class="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs font-medium rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300"
-                        title="{{ $task->compaction_count }} conversation {{ Str::plural('compaction', $task->compaction_count) }}"
-                    >
-                        <svg class="w-3 h-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25" />
-                        </svg>
-                        {{ $task->compaction_count }}
-                    </span>
-                @endif
-            </div>
-            @if($task->isInWorkspace())
-                <div class="chat-action-buttons">
-                    @if($this->hasEnvConfigs)
-                        <div x-data="{ open: false }" class="relative">
-                            <div class="inline-flex rounded-lg shadow-sm">
+        </div>
+        {{-- Bottom row: Action buttons (only for workspaces) --}}
+        @if($task->isInWorkspace())
+            <div class="chat-header-actions">
+                @if($this->hasEnvConfigs)
+                    <div x-data="{ open: false }" class="relative">
+                        <button
+                            type="button"
+                            wire:click="copyEnvConfig"
+                            @click.away="open = false"
+                            class="chat-header-action-btn"
+                        >
+                            <x-heroicon-o-document-duplicate class="chat-header-action-icon" />
+                            <span>Copy .env</span>
+                            @if($this->envConfigs->count() > 1)
                                 <button
                                     type="button"
-                                    wire:click="copyEnvConfig"
-                                    class="inline-flex items-center gap-1 rounded-l-lg bg-gray-100 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
+                                    @click.stop="open = !open"
+                                    class="chat-header-action-dropdown"
                                 >
-                                    <x-heroicon-o-document-duplicate style="width: 1rem; height: 1rem;" />
-                                    Copy .env
+                                    <x-heroicon-o-chevron-down class="chat-header-action-icon" />
                                 </button>
-                                <button
-                                    type="button"
-                                    @click="open = !open"
-                                    class="inline-flex items-center rounded-r-lg border-l border-gray-300 bg-gray-100 px-2 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
-                                >
-                                    <x-heroicon-o-chevron-down style="width: 1rem; height: 1rem;" />
-                                </button>
-                            </div>
+                            @endif
+                        </button>
 
+                        @if($this->envConfigs->count() > 1)
                             <div
                                 x-show="open"
-                                @click.away="open = false"
                                 x-transition
-                                class="absolute right-0 z-10 mt-1 w-48 origin-top-right rounded-lg bg-white shadow-lg ring-1 ring-black ring-opacity-5 dark:bg-gray-800 dark:ring-gray-700"
+                                class="chat-header-dropdown"
                             >
-                                <div class="py-1">
-                                    @foreach($this->envConfigs as $config)
-                                        <button
-                                            type="button"
-                                            wire:click="copyEnvConfig({{ $config->id }})"
-                                            @click="open = false"
-                                            class="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
-                                        >
-                                            @if($config->is_default)
-                                                <x-heroicon-o-star style="width: 1rem; height: 1rem; color: #eab308;" />
-                                            @else
-                                                <span style="width: 1rem; height: 1rem; display: inline-block;"></span>
-                                            @endif
-                                            {{ $config->name }}
-                                        </button>
-                                    @endforeach
-                                </div>
+                                @foreach($this->envConfigs as $config)
+                                    <button
+                                        type="button"
+                                        wire:click="copyEnvConfig({{ $config->id }})"
+                                        @click="open = false"
+                                        class="chat-header-dropdown-item"
+                                    >
+                                        @if($config->is_default)
+                                            <x-heroicon-o-star class="chat-header-dropdown-icon text-yellow-500" />
+                                        @endif
+                                        {{ $config->name }}
+                                    </button>
+                                @endforeach
                             </div>
-                        </div>
-                    @endif
-                    <button wire:click="openDeployModal" class="chat-action-btn chat-action-btn-success">
-                        Deploy to Site
-                    </button>
-                    <button
-                        wire:click="deleteWorkspace"
-                        wire:confirm="Are you sure you want to delete this workspace? This cannot be undone."
-                        class="chat-action-btn chat-action-btn-danger"
-                    >
-                        Delete Workspace
-                    </button>
-                </div>
-            @endif
-        </div>
+                        @endif
+                    </div>
+                @endif
+                <button wire:click="openDeployModal" class="chat-header-action-btn chat-header-action-btn-success">
+                    <x-heroicon-o-cloud-arrow-up class="chat-header-action-icon" />
+                    <span>Deploy</span>
+                </button>
+                <button
+                    wire:click="deleteWorkspace"
+                    wire:confirm="Are you sure you want to delete this workspace? This cannot be undone."
+                    class="chat-header-action-btn chat-header-action-btn-danger"
+                >
+                    <x-heroicon-o-trash class="chat-header-action-icon" />
+                    <span>Delete</span>
+                </button>
+            </div>
+        @endif
     </div>
 
     {{-- Chat Area --}}
@@ -329,7 +317,7 @@
         }"
     >
         {{-- Messages --}}
-        <div class="chat-messages" x-ref="messages" wire:poll.1s="checkPolling">
+        <div class="chat-messages" x-ref="messages" wire:poll.2s.visible="checkPolling">
             @forelse($this->chatMessages as $index => $message)
                 @php
                     $previousMessage = $index > 0 ? $this->chatMessages[$index - 1] : null;
@@ -627,12 +615,14 @@
                     </template>
 
                     <textarea
-                        wire:model.live="prompt"
+                        wire:model.blur="prompt"
                         placeholder="Type a message..."
                         rows="1"
                         class="chat-textarea"
                         @paste="handlePaste($event)"
                         @keydown.enter.prevent="if (!$event.shiftKey && !$wire.isRunning) $wire.sendMessage()"
+                        x-data
+                        x-on:keydown.enter="if (!$event.shiftKey) { $wire.prompt = $el.value; }"
                     ></textarea>
                 </div>
                 <button

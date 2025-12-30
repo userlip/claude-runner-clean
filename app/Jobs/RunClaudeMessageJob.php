@@ -63,6 +63,16 @@ class RunClaudeMessageJob implements ShouldQueue
                 throw new \RuntimeException('Failed to start Claude process');
             }
 
+            // For multimodal messages, write the JSON input to stdin
+            if ($this->hasImages()) {
+                $jsonInput = $this->buildStreamJsonInput();
+                fwrite($pipes[0], $jsonInput."\n");
+                Log::debug('Sent stream-json input with images', [
+                    'task_id' => $this->task->id,
+                    'image_count' => count($this->userMessage->images ?? []),
+                ]);
+            }
+
             fclose($pipes[0]);
 
             $output = '';
@@ -262,10 +272,19 @@ class RunClaudeMessageJob implements ShouldQueue
 
     public function buildCommand(): string
     {
-        $prompt = escapeshellarg($this->userMessage->content);
         $sessionId = escapeshellarg($this->task->session_id);
 
-        $claudeCmd = "/usr/bin/claude -p {$prompt} --output-format stream-json --verbose --dangerously-skip-permissions";
+        // Check if we have images - use stream-json input format if so
+        $hasImages = ! empty($this->userMessage->images);
+
+        if ($hasImages) {
+            // Use stream-json input mode for multimodal messages
+            $claudeCmd = '/usr/bin/claude --print --input-format stream-json --output-format stream-json --verbose --dangerously-skip-permissions';
+        } else {
+            // Simple text-only mode
+            $prompt = escapeshellarg($this->userMessage->content);
+            $claudeCmd = "/usr/bin/claude -p {$prompt} --output-format stream-json --verbose --dangerously-skip-permissions";
+        }
 
         // Add MCP servers (Playwright for browser automation)
         $mcpConfig = $this->getMcpConfig();
@@ -320,6 +339,60 @@ class RunClaudeMessageJob implements ShouldQueue
         ];
 
         return json_encode(['mcpServers' => $mcpServers]);
+    }
+
+    /**
+     * Build a stream-json input message with images for multimodal messages.
+     *
+     * @return string JSON line to send via stdin
+     */
+    protected function buildStreamJsonInput(): string
+    {
+        $content = [];
+
+        // Add images first
+        if (! empty($this->userMessage->images)) {
+            foreach ($this->userMessage->images as $image) {
+                // Images are stored as {data: "data:image/png;base64,...", name: "filename"}
+                $dataUrl = $image['data'] ?? '';
+
+                // Parse data URL to extract media type and base64 data
+                if (preg_match('/^data:(image\/\w+);base64,(.+)$/', $dataUrl, $matches)) {
+                    $content[] = [
+                        'type' => 'image',
+                        'source' => [
+                            'type' => 'base64',
+                            'media_type' => $matches[1],
+                            'data' => $matches[2],
+                        ],
+                    ];
+                }
+            }
+        }
+
+        // Add text content
+        if (! empty($this->userMessage->content)) {
+            $content[] = [
+                'type' => 'text',
+                'text' => $this->userMessage->content,
+            ];
+        }
+
+        return json_encode([
+            'type' => 'user',
+            'message' => [
+                'role' => 'user',
+                'content' => $content,
+            ],
+        ]);
+    }
+
+    /**
+     * Check if this message has images attached.
+     */
+    public function hasImages(): bool
+    {
+        return ! empty($this->userMessage->images);
     }
 
     /**
