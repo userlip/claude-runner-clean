@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Enums\ProposalPriority;
 use App\Enums\ProposalStatus;
+use App\Enums\ProposalType;
 use App\Filament\Resources\ProposalResource\Pages;
 use App\Models\Proposal;
 use App\Services\TelegramService;
@@ -76,10 +77,35 @@ class ProposalResource extends Resource
                             ->disabled()
                             ->dehydrated(),
 
-                        Forms\Components\KeyValue::make('proposed_action')
-                            ->label('Proposed Action')
-                            ->keyLabel('Field')
-                            ->valueLabel('Value')
+                        Forms\Components\Select::make('type')
+                            ->options(ProposalType::class)
+                            ->required()
+                            ->default('other'),
+
+                        Forms\Components\Fieldset::make('Proposed Action')
+                            ->schema([
+                                Forms\Components\TextInput::make('proposed_action.target')
+                                    ->label('Target')
+                                    ->helperText('e.g., YouTube Shorts, Trustpilot Reviews'),
+
+                                Forms\Components\TextInput::make('proposed_action.endpoint')
+                                    ->label('Endpoint Hint')
+                                    ->helperText('e.g., /api/v2/shorts'),
+
+                                Forms\Components\TextInput::make('proposed_action.service')
+                                    ->label('Service')
+                                    ->helperText('e.g., youtube, trustpilot'),
+
+                                Forms\Components\TagsInput::make('proposed_action.files_to_modify')
+                                    ->label('Files to Modify')
+                                    ->helperText('Paths of files likely to be modified'),
+
+                                Forms\Components\Textarea::make('proposed_action.instructions')
+                                    ->label('Additional Instructions')
+                                    ->rows(3)
+                                    ->columnSpanFull(),
+                            ])
+                            ->columns(2)
                             ->columnSpanFull(),
 
                         Forms\Components\Textarea::make('rejection_reason')
@@ -101,6 +127,10 @@ class ProposalResource extends Resource
                     ->tooltip(fn (ProposalPriority $state): string => $state->label())
                     ->sortable(),
 
+                Tables\Columns\TextColumn::make('type')
+                    ->badge()
+                    ->color(fn (ProposalType $state) => $state->color()),
+
                 Tables\Columns\TextColumn::make('title')
                     ->searchable()
                     ->limit(50),
@@ -120,6 +150,18 @@ class ProposalResource extends Resource
                     ->badge()
                     ->color(fn (ProposalStatus $state): string => $state->color())
                     ->sortable(),
+
+                Tables\Columns\TextColumn::make('executedTask.status')
+                    ->label('Execution')
+                    ->badge()
+                    ->color(fn ($state) => match ($state?->value ?? null) {
+                        'pending' => 'gray',
+                        'running' => 'warning',
+                        'completed' => 'success',
+                        'failed' => 'danger',
+                        default => 'gray',
+                    })
+                    ->placeholder('Not started'),
 
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()

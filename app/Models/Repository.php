@@ -15,6 +15,7 @@ class Repository extends Model
         'user_id',
         'github_id',
         'name',
+        'project_key',
         'full_name',
         'clone_url',
         'ssh_url',
@@ -78,5 +79,10 @@ class Repository extends Model
             'https://'.$connection->access_token.'@github.com/',
             $this->clone_url
         );
+    }
+
+    public static function findByProjectKey(string $projectKey): ?self
+    {
+        return static::where('project_key', $projectKey)->first();
     }
 }

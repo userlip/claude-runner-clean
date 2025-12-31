@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\ProposalPriority;
 use App\Enums\ProposalStatus;
+use App\Enums\ProposalType;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -21,9 +22,11 @@ class Proposal extends Model
         'priority',
         'status',
         'project',
+        'type',
         'proposed_action',
         'rejection_reason',
         'task_id',
+        'executed_task_id',
         'telegram_message_id',
         'approved_at',
         'rejected_at',
@@ -34,6 +37,7 @@ class Proposal extends Model
         return [
             'priority' => ProposalPriority::class,
             'status' => ProposalStatus::class,
+            'type' => ProposalType::class,
             'proposed_action' => 'array',
             'approved_at' => 'datetime',
             'rejected_at' => 'datetime',
@@ -55,6 +59,11 @@ class Proposal extends Model
     public function task(): BelongsTo
     {
         return $this->belongsTo(Task::class);
+    }
+
+    public function executedTask(): BelongsTo
+    {
+        return $this->belongsTo(Task::class, 'executed_task_id');
     }
 
     public function scopePending(Builder $query): Builder
@@ -83,6 +92,10 @@ class Proposal extends Model
             'status' => ProposalStatus::Approved,
             'approved_at' => now(),
         ]);
+
+        // Trigger autonomous execution
+        $service = app(\App\Services\ProposalExecutionService::class);
+        $service->execute($this);
     }
 
     public function reject(?string $reason = null): void
