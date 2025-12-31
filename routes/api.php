@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\PushSubscriptionController;
 use App\Http\Controllers\Api\TaskMessagesController;
+use App\Http\Controllers\Api\TelegramWebhookController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['web', 'auth'])->group(function () {
@@ -18,3 +19,8 @@ Route::middleware(['web', 'auth'])->group(function () {
 // Public route for VAPID key
 Route::get('/push/vapid-public-key', [PushSubscriptionController::class, 'vapidPublicKey'])
     ->name('api.push.vapid-public-key');
+
+// Telegram webhook - uses secret token in URL for security
+Route::post('/telegram/webhook/{secret}', [TelegramWebhookController::class, 'handle'])
+    ->name('api.telegram.webhook')
+    ->middleware('throttle:60,1');
