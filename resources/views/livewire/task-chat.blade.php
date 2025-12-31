@@ -591,7 +591,21 @@
 
                         foreach ($blocks as $block) {
                             if (($block['type'] ?? '') === 'tool_use') {
-                                $currentToolGroup[] = $block;
+                                $toolName = $block['tool']['name'] ?? '';
+                                // AskUserQuestion gets its own block type for special rendering
+                                if ($toolName === 'AskUserQuestion') {
+                                    if (count($currentToolGroup) > 0) {
+                                        $groupedBlocks[] = ['type' => 'tool_group', 'tools' => $currentToolGroup];
+                                        $currentToolGroup = [];
+                                    }
+                                    $groupedBlocks[] = [
+                                        'type' => 'ask_user_question',
+                                        'tool' => $block['tool'],
+                                        'timestamp' => $block['timestamp'] ?? null,
+                                    ];
+                                } else {
+                                    $currentToolGroup[] = $block;
+                                }
                             } else {
                                 if (count($currentToolGroup) > 0) {
                                     $groupedBlocks[] = ['type' => 'tool_group', 'tools' => $currentToolGroup];
@@ -675,6 +689,154 @@
                                                 @endif
                                             </span>
                                         @endif
+                                    </div>
+                                </div>
+                            </div>
+                        @elseif(($block['type'] ?? '') === 'ask_user_question')
+                            @php
+                                $toolId = $block['tool']['id'] ?? '';
+                                $questions = $block['tool']['input']['questions'] ?? [];
+                                // Check if this question has already been answered
+                                $existingResponse = $this->getQuestionResponse($message->id, $toolId);
+                            @endphp
+                            <div wire:key="message-{{ $message->id }}-question-{{ $blockIndex }}"
+                                 class="chat-message chat-message-assistant"
+                                 x-data="{
+                                    responses: @js($existingResponse ?? []),
+                                    submitted: {{ $existingResponse ? 'true' : 'false' }},
+                                    submitting: false,
+                                    otherText: {},
+                                    multiSelectValues: {},
+                                    init() {
+                                        // Initialize multiSelectValues for multi-select questions
+                                        @foreach($questions as $qIndex => $question)
+                                            @if($question['multiSelect'] ?? false)
+                                                this.multiSelectValues[{{ $qIndex }}] = [];
+                                            @endif
+                                        @endforeach
+                                    },
+                                    toggleMultiSelect(qIndex, value) {
+                                        if (!this.multiSelectValues[qIndex]) {
+                                            this.multiSelectValues[qIndex] = [];
+                                        }
+                                        const idx = this.multiSelectValues[qIndex].indexOf(value);
+                                        if (idx === -1) {
+                                            this.multiSelectValues[qIndex].push(value);
+                                        } else {
+                                            this.multiSelectValues[qIndex].splice(idx, 1);
+                                        }
+                                        this.responses[qIndex] = this.multiSelectValues[qIndex].join(', ');
+                                    },
+                                    isMultiSelected(qIndex, value) {
+                                        return this.multiSelectValues[qIndex]?.includes(value) ?? false;
+                                    },
+                                    submit() {
+                                        this.submitting = true;
+                                        // Check for 'Other' responses and replace with custom text
+                                        const finalResponses = {};
+                                        Object.keys(this.responses).forEach(key => {
+                                            let value = this.responses[key];
+                                            // Handle 'Other' option
+                                            if (value === '__other__' || (typeof value === 'string' && value.includes('__other__'))) {
+                                                value = this.otherText[key] || 'Other';
+                                            }
+                                            finalResponses[key] = value;
+                                        });
+                                        $wire.submitQuestionResponse({{ $message->id }}, '{{ $toolId }}', finalResponses)
+                                            .then(() => {
+                                                this.submitted = true;
+                                                this.submitting = false;
+                                            })
+                                            .catch(() => {
+                                                this.submitting = false;
+                                            });
+                                    }
+                                 }">
+                                <div class="chat-bubble chat-bubble-question">
+                                    <div class="chat-question-header">
+                                        <span class="chat-question-icon">❓</span>
+                                        <span class="chat-question-title">Claude needs your input</span>
+                                    </div>
+
+                                    <div class="chat-questions-list">
+                                        @foreach($questions as $qIndex => $question)
+                                            <div class="chat-question-item">
+                                                @if(!empty($question['header']))
+                                                    <span class="chat-question-chip">{{ $question['header'] }}</span>
+                                                @endif
+                                                <p class="chat-question-text">{{ $question['question'] }}</p>
+
+                                                <div class="chat-question-options">
+                                                    @foreach($question['options'] ?? [] as $oIndex => $option)
+                                                        @if($question['multiSelect'] ?? false)
+                                                            {{-- Multi-select: checkboxes --}}
+                                                            <label class="chat-question-option"
+                                                                   :class="{ 'selected': isMultiSelected({{ $qIndex }}, '{{ addslashes($option['label']) }}'), 'disabled': submitted }">
+                                                                <input type="checkbox"
+                                                                       :disabled="submitted"
+                                                                       @change="toggleMultiSelect({{ $qIndex }}, '{{ addslashes($option['label']) }}')"
+                                                                       :checked="isMultiSelected({{ $qIndex }}, '{{ addslashes($option['label']) }}')"
+                                                                       class="sr-only">
+                                                                <span class="chat-option-label">{{ $option['label'] }}</span>
+                                                                @if(!empty($option['description']))
+                                                                    <span class="chat-option-desc">{{ $option['description'] }}</span>
+                                                                @endif
+                                                            </label>
+                                                        @else
+                                                            {{-- Single select: radio buttons --}}
+                                                            <label class="chat-question-option"
+                                                                   :class="{ 'selected': responses[{{ $qIndex }}] === '{{ addslashes($option['label']) }}', 'disabled': submitted }">
+                                                                <input type="radio"
+                                                                       name="question-{{ $message->id }}-{{ $qIndex }}"
+                                                                       value="{{ $option['label'] }}"
+                                                                       :disabled="submitted"
+                                                                       x-model="responses[{{ $qIndex }}]"
+                                                                       class="sr-only">
+                                                                <span class="chat-option-label">{{ $option['label'] }}</span>
+                                                                @if(!empty($option['description']))
+                                                                    <span class="chat-option-desc">{{ $option['description'] }}</span>
+                                                                @endif
+                                                            </label>
+                                                        @endif
+                                                    @endforeach
+
+                                                    {{-- "Other" option with text input --}}
+                                                    <label class="chat-question-option chat-question-option-other"
+                                                           :class="{ 'selected': responses[{{ $qIndex }}] === '__other__', 'disabled': submitted }">
+                                                        <input type="radio"
+                                                               name="question-{{ $message->id }}-{{ $qIndex }}"
+                                                               value="__other__"
+                                                               :disabled="submitted"
+                                                               x-model="responses[{{ $qIndex }}]"
+                                                               class="sr-only">
+                                                        <span class="chat-option-label">Other</span>
+                                                    </label>
+                                                    <div x-show="responses[{{ $qIndex }}] === '__other__'" x-collapse>
+                                                        <input type="text"
+                                                               x-model="otherText[{{ $qIndex }}]"
+                                                               :disabled="submitted"
+                                                               placeholder="Enter your response..."
+                                                               class="chat-question-other-input">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    </div>
+
+                                    <div class="chat-question-actions">
+                                        <button type="button"
+                                                @click="submit()"
+                                                :disabled="submitting || submitted || Object.keys(responses).length !== {{ count($questions) }}"
+                                                class="chat-question-submit"
+                                                :class="{ 'submitted': submitted }">
+                                            <span x-show="!submitting && !submitted">Submit Response</span>
+                                            <span x-show="submitting">Sending...</span>
+                                            <span x-show="submitted">✓ Response Sent</span>
+                                        </button>
+                                    </div>
+
+                                    <div class="chat-message-meta">
+                                        <span class="chat-message-time">{{ $blockTimestamp }}</span>
                                     </div>
                                 </div>
                             </div>

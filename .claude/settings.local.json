@@ -6,7 +6,8 @@
       "Bash(claude --version)",
       "Bash(php artisan tinker:*)",
       "Bash(vendor/bin/pint:*)",
-      "Bash(composer dump-autoload:*)"
+      "Bash(composer dump-autoload:*)",
+      "Bash(php artisan optimize:clear:*)"
     ],
     "deny": [
       "Bash(php artisan migrate:fresh)",

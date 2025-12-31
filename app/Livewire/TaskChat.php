@@ -627,6 +627,81 @@ class TaskChat extends Component
         }
     }
 
+    /**
+     * Get an existing response to an AskUserQuestion tool call.
+     *
+     * @return array<string, string>|null
+     */
+    public function getQuestionResponse(int $messageId, string $toolId): ?array
+    {
+        // Check if there's a stored response in the task's metadata
+        $responses = $this->task->question_responses ?? [];
+
+        return $responses["{$messageId}_{$toolId}"] ?? null;
+    }
+
+    /**
+     * Submit a response to an AskUserQuestion tool call.
+     *
+     * @param  array<string, string>  $responses
+     */
+    public function submitQuestionResponse(int $messageId, string $toolId, array $responses): void
+    {
+        // Store the response in the task's metadata
+        $questionResponses = $this->task->question_responses ?? [];
+        $questionResponses["{$messageId}_{$toolId}"] = $responses;
+        $this->task->update(['question_responses' => $questionResponses]);
+
+        // Get the message and find the AskUserQuestion tool call
+        $message = Message::where('id', $messageId)
+            ->where('task_id', $this->task->id)
+            ->first();
+
+        if (! $message) {
+            return;
+        }
+
+        // Find the original question to get question text for each response
+        $contentBlocks = $message->content_blocks ?? [];
+        $questions = [];
+        foreach ($contentBlocks as $block) {
+            if (($block['type'] ?? '') === 'tool_use' && ($block['tool']['id'] ?? '') === $toolId) {
+                $questions = $block['tool']['input']['questions'] ?? [];
+                break;
+            }
+        }
+
+        // Format the response as a user message
+        // The response should be structured as answers to each question
+        $responseText = '';
+        foreach ($responses as $index => $answer) {
+            $questionText = $questions[$index]['question'] ?? "Question {$index}";
+            $header = $questions[$index]['header'] ?? '';
+            if ($header) {
+                $responseText .= "**{$header}**: {$answer}\n";
+            } else {
+                $responseText .= "{$answer}\n";
+            }
+        }
+
+        // Create a user message with the response
+        $userMessage = Message::create([
+            'task_id' => $this->task->id,
+            'role' => MessageRole::User,
+            'status' => MessageStatus::Sent,
+            'content' => trim($responseText),
+        ]);
+
+        // Dispatch job to continue the conversation with the response
+        RunClaudeMessageJob::dispatch(
+            $this->task,
+            $userMessage,
+            continue: true
+        );
+
+        $this->waitingForResponse = true;
+    }
+
     public function render()
     {
         return view('livewire.task-chat');
