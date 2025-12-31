@@ -108,3 +108,27 @@ test('job has correct timeout', function () {
 
     expect($job->timeout)->toBe(300);
 });
+
+test('job has tries set to 1', function () {
+    $site = Site::factory()->active()->create();
+    $task = Task::factory()->create(['site_id' => $site->id]);
+    $api = ScrappApi::factory()->create();
+
+    $job = new RunApiHealthCheckJob($task, $api, 'scrappa-endpoint-testing');
+
+    expect($job->tries)->toBe(1);
+});
+
+test('failed method updates last_test_result to failed', function () {
+    $site = Site::factory()->active()->create();
+    $task = Task::factory()->create(['site_id' => $site->id]);
+    $api = ScrappApi::factory()->create([
+        'last_test_result' => 'running',
+    ]);
+
+    $job = new RunApiHealthCheckJob($task, $api, 'scrappa-endpoint-testing');
+    $job->failed(new \Exception('Test exception'));
+
+    $api->refresh();
+    expect($api->last_test_result)->toBe('failed');
+});

@@ -9,12 +9,15 @@ use App\Models\ScrappApi;
 use App\Models\Task;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\Log;
 
 class RunApiHealthCheckJob implements ShouldQueue
 {
     use Queueable;
 
     public int $timeout = 300;
+
+    public int $tries = 1;
 
     public function __construct(
         public Task $task,
@@ -24,6 +27,12 @@ class RunApiHealthCheckJob implements ShouldQueue
 
     public function handle(): void
     {
+        Log::info('Running API health check', [
+            'api_id' => $this->api->id,
+            'api_name' => $this->api->name,
+            'skill' => $this->skill,
+            'task_id' => $this->task->id,
+        ]);
         $prompt = $this->buildSkillPrompt();
 
         $message = Message::create([
@@ -54,5 +63,12 @@ class RunApiHealthCheckJob implements ShouldQueue
 
             default => throw new \InvalidArgumentException("Unknown skill: {$this->skill}"),
         };
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        $this->api->update([
+            'last_test_result' => 'failed',
+        ]);
     }
 }
