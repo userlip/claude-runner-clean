@@ -85,6 +85,7 @@
 
 | Tool | Type | Purpose |
 |------|------|---------|
+| **Scrappa MCP** | MCP | Multi-API platform (see below) |
 | GitHub MCP | MCP | Repo management, PRs, issues |
 | Playwright MCP | MCP | Browser automation, RapidAPI testing, scraping |
 | Ploi CLI | CLI | Server/site management, deploys |
@@ -92,11 +93,47 @@
 | Sentry CLI | CLI | Error tracking (configured) |
 | yt-dlp | CLI | Video downloading (1000+ sources) |
 
-### Coming Soon
+### Scrappa MCP (Multi-API Platform)
 
-| Tool | Type | Purpose |
-|------|------|---------|
-| Google Search MCP | MCP | SEO, keywords, SERP analysis (user adding) |
+**Core APIs for Projects:**
+
+| API | Endpoints | Project Use |
+|-----|-----------|-------------|
+| Google Maps | `advanced_search`, `google_reviews`, `google_business_details` | Rezensionsheld |
+| Kununu | `kununu_search`, `kununu_reviews`, `kununu_profiles` | Rezensionsheld |
+| Trustpilot | `trustpilot_company_search`, `trustpilot_company_reviews` | Rezensionsheld |
+| TrustedShops | `trustedshops_search`, `trustedshops_reviews` | Rezensionsheld expansion |
+| YouTube | Full suite (14 endpoints) | LTO2 video metadata |
+| Google Search | `search`, `google_search_light`, `autocomplete` | Research pipeline |
+| Google News | `google_news` | Research pipeline |
+
+**Additional APIs (Scrappa Marketplace):**
+
+| API | Endpoints | Status |
+|-----|-----------|--------|
+| Amazon | `amazon_search`, `amazon_product`, `amazon_reviews` | Available |
+| Indeed Jobs | `indeed_jobs` | Available |
+| Google Flights | Full suite (6 endpoints) | Available |
+| Google Jobs | `google_jobs` | Available |
+| Vinted | Full suite (9 endpoints) | Available |
+| LinkedIn | `linkedin_profile`, `linkedin_company`, `linkedin_search` | Available |
+| Immobilienscout24 | Property search & details | Available |
+| SimilarWeb | Website analytics | Available |
+| Brave Search | Privacy-focused search | Available |
+| Bing Search | `bing_search` | Available |
+| Google Translate | `google_translate_api` | Available |
+| Google Images | `google_images` | Available |
+| Google Videos | `google_videos` | Available |
+
+### Custom MCP Servers (Built)
+
+| Server | Location | Tools |
+|--------|----------|-------|
+| Sentry MCP | `mcp-servers/sentry-mcp/` | Issue management, stats |
+| yt-dlp Health | `mcp-servers/ytdlp-health-mcp/` | Extractor health checks |
+| Project DB Reader | `mcp-servers/project-db-reader/` | Multi-DB analytics queries |
+
+### Coming Soon
 
 ### Need to Build
 

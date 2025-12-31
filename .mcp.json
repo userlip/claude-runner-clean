@@ -12,6 +12,34 @@
             "args": [
                 "@playwright/mcp@latest"
             ]
+        },
+        "sentry": {
+            "command": "node",
+            "args": [
+                "/home/ploi/claude-runner.marin.sh/mcp-servers/sentry-mcp/dist/index.js"
+            ]
+        },
+        "ytdlp-health": {
+            "command": "node",
+            "args": [
+                "/home/ploi/claude-runner.marin.sh/mcp-servers/ytdlp-health-mcp/dist/index.js"
+            ],
+            "env": {
+                "YTDLP_PATH": "/home/ploi/claude-runner.marin.sh/mcp-servers/ytdlp-health-mcp/yt-dlp"
+            }
+        },
+        "project-db": {
+            "command": "node",
+            "args": [
+                "/home/ploi/claude-runner.marin.sh/mcp-servers/project-db-reader/dist/index.js"
+            ],
+            "env": {
+                "PROJECT_DB_CLAUDE_RUNNER_HOST": "127.0.0.1",
+                "PROJECT_DB_CLAUDE_RUNNER_PORT": "3306",
+                "PROJECT_DB_CLAUDE_RUNNER_DATABASE": "claude_runner",
+                "PROJECT_DB_CLAUDE_RUNNER_USERNAME": "claude_runner_app",
+                "PROJECT_DB_CLAUDE_RUNNER_PASSWORD": "xQIFVDduaSrOQVliM6AK2KFG"
+            }
         }
     }
 }
