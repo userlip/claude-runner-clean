@@ -30,6 +30,11 @@ class Proposal extends Model
         'telegram_message_id',
         'approved_at',
         'rejected_at',
+        'rejected_reason',
+        'decision_time_seconds',
+        'execution_completed_at',
+        'execution_success',
+        'follow_up_count',
     ];
 
     protected function casts(): array
@@ -41,6 +46,10 @@ class Proposal extends Model
             'proposed_action' => 'array',
             'approved_at' => 'datetime',
             'rejected_at' => 'datetime',
+            'execution_completed_at' => 'datetime',
+            'execution_success' => 'boolean',
+            'decision_time_seconds' => 'integer',
+            'follow_up_count' => 'integer',
         ];
     }
 
@@ -88,9 +97,12 @@ class Proposal extends Model
 
     public function approve(): void
     {
+        $decisionTime = $this->created_at->diffInSeconds(now());
+
         $this->update([
             'status' => ProposalStatus::Approved,
             'approved_at' => now(),
+            'decision_time_seconds' => $decisionTime,
         ]);
 
         // Trigger autonomous execution
@@ -100,11 +112,27 @@ class Proposal extends Model
 
     public function reject(?string $reason = null): void
     {
+        $decisionTime = $this->created_at->diffInSeconds(now());
+
         $this->update([
             'status' => ProposalStatus::Rejected,
-            'rejection_reason' => $reason,
             'rejected_at' => now(),
+            'rejected_reason' => $reason,
+            'decision_time_seconds' => $decisionTime,
         ]);
+    }
+
+    public function markExecutionComplete(bool $success): void
+    {
+        $this->update([
+            'execution_completed_at' => now(),
+            'execution_success' => $success,
+        ]);
+    }
+
+    public function incrementFollowUpCount(): void
+    {
+        $this->increment('follow_up_count');
     }
 
     public function formatForTelegram(): string

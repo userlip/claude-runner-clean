@@ -152,6 +152,8 @@ class Task extends Model
             'status' => TaskStatus::Completed,
             'completed_at' => now(),
         ]);
+
+        $this->updateProposalExecution(true);
     }
 
     public function markAsFailed(): void
@@ -160,6 +162,17 @@ class Task extends Model
             'status' => TaskStatus::Failed,
             'completed_at' => now(),
         ]);
+
+        $this->updateProposalExecution(false);
+    }
+
+    public function updateProposalExecution(bool $success): void
+    {
+        $proposal = Proposal::where('executed_task_id', $this->id)->first();
+
+        if ($proposal) {
+            $proposal->markExecutionComplete($success);
+        }
     }
 
     public function markAsViewed(): void

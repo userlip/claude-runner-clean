@@ -172,6 +172,26 @@ class ProposalResource extends Resource
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
+
+                Tables\Columns\TextColumn::make('decision_time_seconds')
+                    ->label('Decision Time')
+                    ->formatStateUsing(fn ($state) => $state ? round($state / 3600, 1).'h' : '-')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                Tables\Columns\TextColumn::make('execution_success')
+                    ->label('Success')
+                    ->badge()
+                    ->color(fn ($state) => match ($state) {
+                        true => 'success',
+                        false => 'danger',
+                        default => 'gray',
+                    })
+                    ->formatStateUsing(fn ($state) => match ($state) {
+                        true => 'Yes',
+                        false => 'No',
+                        default => '-',
+                    })
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('status')

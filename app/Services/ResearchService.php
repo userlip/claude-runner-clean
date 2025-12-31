@@ -25,11 +25,14 @@ class ResearchService
 
     protected function injectPromptData(ResearchModule $module, string $prompt): string
     {
-        return match ($module) {
+        $prompt = match ($module) {
             ResearchModule::ApiOpportunities => $this->injectApiData($prompt),
             ResearchModule::PromotionFinder => $this->injectDirectoryData($prompt),
             default => $prompt,
         };
+
+        // Always inject analytics priorities
+        return $this->injectAnalyticsPriorities($prompt);
     }
 
     protected function injectApiData(string $prompt): string
@@ -52,6 +55,36 @@ class ResearchService
 
     protected function injectDirectoryData(string $prompt): string
     {
+        return $prompt;
+    }
+
+    protected function injectAnalyticsPriorities(string $prompt): string
+    {
+        $analytics = app(\App\Services\ProposalAnalyticsService::class);
+        $priorities = $analytics->getResearchPriorities();
+
+        $priorityText = '';
+
+        if (! empty($priorities['preferred_types'])) {
+            $types = implode(', ', $priorities['preferred_types']);
+            $priorityText .= "\n\n**User Preferences (from approval history):**\n";
+            $priorityText .= "- Preferred proposal types: {$types}\n";
+        }
+
+        if (! empty($priorities['preferred_projects'])) {
+            $projects = implode(', ', $priorities['preferred_projects']);
+            $priorityText .= "- Preferred projects: {$projects}\n";
+        }
+
+        if (! empty($priorities['avoid_types'])) {
+            $avoid = implode(', ', $priorities['avoid_types']);
+            $priorityText .= "- Types with low approval: {$avoid} (consider avoiding)\n";
+        }
+
+        if ($priorityText) {
+            $prompt .= $priorityText;
+        }
+
         return $prompt;
     }
 
