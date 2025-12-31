@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\ProposalPriority;
 use App\Enums\ProposalStatus;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -54,6 +55,11 @@ class Proposal extends Model
     public function task(): BelongsTo
     {
         return $this->belongsTo(Task::class);
+    }
+
+    public function scopePending(Builder $query): Builder
+    {
+        return $query->where('status', ProposalStatus::Pending);
     }
 
     public function isPending(): bool
