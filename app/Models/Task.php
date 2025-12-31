@@ -21,6 +21,7 @@ class Task extends Model
         'repository_id',
         'site_id',
         'ai_provider_id',
+        'scrapp_api_id',
         'workspace_path',
         'session_id',
         'status',
@@ -125,6 +126,11 @@ class Task extends Model
     public function aiProvider(): BelongsTo
     {
         return $this->belongsTo(AiProvider::class);
+    }
+
+    public function scrappApi(): BelongsTo
+    {
+        return $this->belongsTo(ScrappApi::class);
     }
 
     public function isRunning(): bool
