@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\ResearchModule;
+use App\Models\AiProvider;
 use App\Models\ResearchReport;
 use App\Models\Task;
 use Illuminate\Support\Facades\File;
@@ -58,9 +59,13 @@ class ResearchService
     {
         $prompt = $this->getPromptForModule($module);
 
+        // Use GLM provider for research tasks (z.ai subscription)
+        $glmProvider = AiProvider::where('name', 'glm')->where('is_active', true)->first();
+
         $task = Task::create([
             'title' => "Research: {$module->label()}",
             'status' => \App\Enums\TaskStatus::Pending,
+            'ai_provider_id' => $glmProvider?->id,
         ]);
 
         $task->messages()->create([
