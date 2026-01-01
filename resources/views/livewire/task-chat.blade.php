@@ -839,7 +839,8 @@
                 </div>
             @endforelse
 
-            <div x-show="polling" class="chat-thinking">
+            @if($this->isRunning || $this->waitingForResponse)
+            <div class="chat-thinking">
                 <div class="chat-thinking-bubble">
                     <div class="chat-thinking-content">
                         <div class="chat-thinking-dot"></div>
@@ -847,6 +848,7 @@
                     </div>
                 </div>
             </div>
+            @endif
         </div>
 
         {{-- Queued Messages (stacked above input) --}}
