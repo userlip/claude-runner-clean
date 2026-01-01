@@ -2632,3 +2632,35 @@
         width: 100%;
     }
 }
+
+/* Expand/Collapse blocks button for long messages */
+.chat-expand-blocks-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.5rem 0.875rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: rgb(59 130 246);
+    background-color: rgb(239 246 255);
+    border: 1px solid rgb(191 219 254);
+    border-radius: 1rem;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.chat-expand-blocks-btn:hover {
+    background-color: rgb(219 234 254);
+    border-color: rgb(147 197 253);
+}
+
+.dark .chat-expand-blocks-btn {
+    color: rgb(147 197 253);
+    background-color: rgba(59, 130, 246, 0.15);
+    border-color: rgba(59, 130, 246, 0.3);
+}
+
+.dark .chat-expand-blocks-btn:hover {
+    background-color: rgba(59, 130, 246, 0.25);
+    border-color: rgba(59, 130, 246, 0.5);
+}

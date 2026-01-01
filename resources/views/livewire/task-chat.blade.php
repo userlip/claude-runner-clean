@@ -432,6 +432,12 @@
                 @php
                     $previousMessage = $index > 0 ? $this->chatMessages[$index - 1] : null;
                     $showDateSeparator = !$previousMessage || !$message->created_at->isSameDay($previousMessage->created_at);
+
+                    // Use cached grouped blocks for performance
+                    $groupedData = $message->getGroupedBlocks();
+                    $firstBlockIsText = $groupedData['firstBlockIsText'];
+                    $hasNoContentBlocks = $groupedData['hasNoContentBlocks'];
+                    $shouldRenderFirstBubble = $message->isFromUser() || $firstBlockIsText || $hasNoContentBlocks;
                 @endphp
 
                 @if($showDateSeparator)
@@ -449,17 +455,6 @@
                         </span>
                     </div>
                 @endif
-
-                @php
-                    // Determine if we should render the first bubble for assistant messages
-                    $firstBlockIsText = $message->isFromAssistant()
-                        && $message->content_blocks
-                        && count($message->content_blocks) > 0
-                        && ($message->content_blocks[0]['type'] ?? '') === 'text'
-                        && !empty($message->content_blocks[0]['text']);
-                    $hasNoContentBlocks = !$message->content_blocks || count($message->content_blocks) === 0;
-                    $shouldRenderFirstBubble = $message->isFromUser() || $firstBlockIsText || $hasNoContentBlocks;
-                @endphp
                 @if($shouldRenderFirstBubble)
                 <div wire:key="message-{{ $message->id }}" class="chat-message {{ $message->isFromUser() ? 'chat-message-user' : 'chat-message-assistant' }}">
                     <div class="chat-bubble {{ $message->isFromUser() ? 'chat-bubble-user' : 'chat-bubble-assistant' }}">
@@ -482,9 +477,9 @@
                             <span class="chat-message-time chat-message-time-user">{{ $message->created_at->timezone(config('app.timezone'))->format('H:i') }}</span>
                         @else
                             @if($firstBlockIsText)
-                                {{-- Render first text block --}}
+                                {{-- Render first text block (using cached markdown) --}}
                                 <div class="chat-bubble-content">
-                                    {!! Str::markdown($message->content_blocks[0]['text']) !!}
+                                    {!! $message->getFirstTextBlockHtml() !!}
                                 </div>
 
                                 <div class="chat-message-meta">
@@ -578,49 +573,37 @@
                     </div>
                 </div>
                 @endif
-                {{-- Render remaining content blocks with tool calls grouped --}}
-                @if($message->isFromAssistant() && $message->content_blocks && count($message->content_blocks) > 0)
+                {{-- Render remaining content blocks with tool calls grouped (using cached data) --}}
+                @if($message->isFromAssistant() && !$hasNoContentBlocks)
                     @php
-                        // Skip first block only if it was a text block (already rendered above)
-                        $skipFirst = $firstBlockIsText;
-                        $blocks = $skipFirst
-                            ? collect($message->content_blocks)->skip(1)->values()
-                            : collect($message->content_blocks)->values();
-                        $groupedBlocks = [];
-                        $currentToolGroup = [];
-
-                        foreach ($blocks as $block) {
-                            if (($block['type'] ?? '') === 'tool_use') {
-                                $toolName = $block['tool']['name'] ?? '';
-                                // AskUserQuestion gets its own block type for special rendering
-                                if ($toolName === 'AskUserQuestion') {
-                                    if (count($currentToolGroup) > 0) {
-                                        $groupedBlocks[] = ['type' => 'tool_group', 'tools' => $currentToolGroup];
-                                        $currentToolGroup = [];
-                                    }
-                                    $groupedBlocks[] = [
-                                        'type' => 'ask_user_question',
-                                        'tool' => $block['tool'],
-                                        'timestamp' => $block['timestamp'] ?? null,
-                                    ];
-                                } else {
-                                    $currentToolGroup[] = $block;
-                                }
-                            } else {
-                                if (count($currentToolGroup) > 0) {
-                                    $groupedBlocks[] = ['type' => 'tool_group', 'tools' => $currentToolGroup];
-                                    $currentToolGroup = [];
-                                }
-                                $groupedBlocks[] = $block;
-                            }
-                        }
-                        if (count($currentToolGroup) > 0) {
-                            $groupedBlocks[] = ['type' => 'tool_group', 'tools' => $currentToolGroup];
-                        }
+                        // Use cached grouped blocks for performance
+                        $groupedBlocks = $groupedData['groupedBlocks'];
+                        $totalBlockCount = $groupedData['totalBlockCount'];
+                        $maxVisibleBlocks = \App\Models\Message::MAX_VISIBLE_BLOCKS;
+                        $hasHiddenBlocks = $totalBlockCount > $maxVisibleBlocks;
+                        $hiddenCount = max(0, $totalBlockCount - $maxVisibleBlocks);
                     @endphp
 
                     @if(count($groupedBlocks) > 0)
+                    {{-- Wrapper for collapsible blocks --}}
+                    <div x-data="{ expanded: {{ $hasHiddenBlocks ? 'false' : 'true' }} }">
+                        {{-- Show expand button if there are hidden blocks --}}
+                        @if($hasHiddenBlocks)
+                            <div class="chat-message chat-message-assistant">
+                                <button
+                                    type="button"
+                                    @click="expanded = !expanded"
+                                    class="chat-expand-blocks-btn"
+                                >
+                                    <span x-text="expanded ? '▼ Collapse {{ $hiddenCount }} blocks' : '▶ Show {{ $hiddenCount }} more blocks'"></span>
+                                </button>
+                            </div>
+                        @endif
+
                     @foreach($groupedBlocks as $blockIndex => $block)
+                        @php
+                            $shouldHide = $hasHiddenBlocks && $blockIndex >= $maxVisibleBlocks;
+                        @endphp
                         @php
                             $isLastBlock = $blockIndex === count($groupedBlocks) - 1;
                             // Get timestamp from block if available, otherwise fall back to message created_at
@@ -631,10 +614,12 @@
                                     : $message->created_at->timezone(config('app.timezone'))->format('H:i'));
                         @endphp
                         @if(($block['type'] ?? '') === 'text' && !empty($block['text']))
-                            <div wire:key="message-{{ $message->id }}-grouped-{{ $blockIndex }}" class="chat-message chat-message-assistant">
+                            <div wire:key="message-{{ $message->id }}-grouped-{{ $blockIndex }}"
+                                 class="chat-message chat-message-assistant"
+                                 @if($shouldHide) x-show="expanded" x-cloak @endif>
                                 <div class="chat-bubble chat-bubble-assistant">
                                     <div class="chat-bubble-content">
-                                        {!! Str::markdown($block['text']) !!}
+                                        {!! $message->renderMarkdown($block['text']) !!}
                                     </div>
                                     <div class="chat-message-meta">
                                         <span class="chat-message-time">{{ $blockTimestamp }}</span>
@@ -651,7 +636,9 @@
                                 </div>
                             </div>
                         @elseif(($block['type'] ?? '') === 'tool_group')
-                            <div wire:key="message-{{ $message->id }}-grouped-{{ $blockIndex }}" class="chat-message chat-message-assistant">
+                            <div wire:key="message-{{ $message->id }}-grouped-{{ $blockIndex }}"
+                                 class="chat-message chat-message-assistant"
+                                 @if($shouldHide) x-show="expanded" x-cloak @endif>
                                 <div class="chat-bubble chat-bubble-tool">
                                     @if(count($block['tools']) === 1)
                                         <div class="chat-tool-use">
@@ -701,6 +688,7 @@
                             @endphp
                             <div wire:key="message-{{ $message->id }}-question-{{ $blockIndex }}"
                                  class="chat-message chat-message-assistant"
+                                 @if($shouldHide) x-show="expanded" x-cloak @endif
                                  x-data="{
                                     responses: @js($existingResponse ?? []),
                                     submitted: {{ $existingResponse ? 'true' : 'false' }},
@@ -842,6 +830,7 @@
                             </div>
                         @endif
                     @endforeach
+                    </div>{{-- End collapsible wrapper --}}
                     @endif
                 @endif
             @empty
