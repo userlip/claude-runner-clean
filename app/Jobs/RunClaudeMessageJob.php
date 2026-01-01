@@ -156,6 +156,19 @@ class RunClaudeMessageJob implements ShouldQueue
                             'cost' => $parsed['usage']['cost_usd'] ?? null,
                         ]);
 
+                        // Append the final result summary to the message content if present
+                        if (isset($parsed['result_summary'])) {
+                            $contentBlocks[] = [
+                                'type' => 'text',
+                                'text' => $parsed['result_summary'],
+                                'timestamp' => now()->toIso8601String(),
+                            ];
+                            $assistantMessage->update([
+                                'content' => ($assistantMessage->content ?? '')."\n\n".$parsed['result_summary'],
+                                'content_blocks' => $contentBlocks,
+                            ]);
+                        }
+
                         // Use last turn's context usage (actual context window usage)
                         // instead of cumulative session totals
                         $assistantMessage->update([
@@ -648,6 +661,11 @@ class RunClaudeMessageJob implements ShouldQueue
             $result['usage'] = [
                 'cost_usd' => $data['total_cost_usd'] ?? null,
             ];
+
+            // Capture the final result summary text if present
+            if (! empty($data['result'])) {
+                $result['result_summary'] = $data['result'];
+            }
         }
 
         // Detect context compaction events
