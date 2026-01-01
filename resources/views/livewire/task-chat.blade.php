@@ -401,6 +401,7 @@
 
     {{-- Chat Area --}}
     <div class="chat-area"
+        wire:key="chat-area-{{ $task->status->value }}"
         x-data="realtimeChat({{ $task->id }}, '{{ $task->uuid }}', '{{ $task->status->value }}')"
         @message-created.window="$dispatch('refresh-messages')"
         @message-updated.window="$dispatch('refresh-messages')"
