@@ -961,11 +961,10 @@
                     this.images = [];
                     this.sending = true;
 
-                    // Show optimistic message IMMEDIATELY via event dispatch
-                    this.$dispatch('show-optimistic-message', {
-                        content: promptToSend,
-                        images: imagesToSend
-                    });
+                    // Show optimistic message IMMEDIATELY via window event
+                    window.dispatchEvent(new CustomEvent('show-optimistic-message', {
+                        detail: { content: promptToSend, images: imagesToSend }
+                    }));
 
                     try {
                         // Send via API (runs in background, message already visible)
@@ -977,7 +976,7 @@
                         // Restore input on error and clear optimistic message
                         this.prompt = promptToSend;
                         this.images = imagesToSend;
-                        this.$dispatch('clear-optimistic-message');
+                        window.dispatchEvent(new CustomEvent('clear-optimistic-message'));
                     } finally {
                         this.sending = false;
                     }

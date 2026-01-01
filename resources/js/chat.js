@@ -252,6 +252,13 @@ document.addEventListener('alpine:init', () => {
                 images: images,
                 timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
             };
+            // Scroll to bottom after Alpine renders the message
+            requestAnimationFrame(() => {
+                const messagesEl = document.querySelector('.chat-messages');
+                if (messagesEl) {
+                    messagesEl.scrollTop = messagesEl.scrollHeight;
+                }
+            });
         },
 
         async sendMessage(prompt, images = []) {
