@@ -14,11 +14,6 @@ class Message extends Model
 {
     use HasFactory;
 
-    /**
-     * Maximum number of blocks to show before collapsing.
-     */
-    public const MAX_VISIBLE_BLOCKS = 10;
-
     protected static function booted(): void
     {
         static::created(function (Message $message) {
@@ -205,27 +200,6 @@ class Message extends Model
         }
 
         return $this->renderMarkdown($firstBlock['text']);
-    }
-
-    /**
-     * Check if this message has many content blocks (should be collapsed).
-     */
-    public function hasLongContent(): bool
-    {
-        $grouped = $this->getGroupedBlocks();
-
-        return $grouped['totalBlockCount'] > self::MAX_VISIBLE_BLOCKS;
-    }
-
-    /**
-     * Get count of hidden blocks when collapsed.
-     */
-    public function getHiddenBlockCount(): int
-    {
-        $grouped = $this->getGroupedBlocks();
-        $total = $grouped['totalBlockCount'];
-
-        return max(0, $total - self::MAX_VISIBLE_BLOCKS);
     }
 
     /**

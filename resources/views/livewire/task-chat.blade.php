@@ -597,32 +597,10 @@
                     @php
                         // Use cached grouped blocks for performance
                         $groupedBlocks = $groupedData['groupedBlocks'];
-                        $totalBlockCount = $groupedData['totalBlockCount'];
-                        $maxVisibleBlocks = \App\Models\Message::MAX_VISIBLE_BLOCKS;
-                        $hasHiddenBlocks = $totalBlockCount > $maxVisibleBlocks;
-                        $hiddenCount = max(0, $totalBlockCount - $maxVisibleBlocks);
                     @endphp
 
                     @if(count($groupedBlocks) > 0)
-                    {{-- Wrapper for collapsible blocks --}}
-                    <div x-data="{ expanded: {{ $hasHiddenBlocks ? 'false' : 'true' }} }">
-                        {{-- Show expand button if there are hidden blocks --}}
-                        @if($hasHiddenBlocks)
-                            <div class="chat-message chat-message-assistant">
-                                <button
-                                    type="button"
-                                    @click="expanded = !expanded"
-                                    class="chat-expand-blocks-btn"
-                                >
-                                    <span x-text="expanded ? '▼ Collapse {{ $hiddenCount }} blocks' : '▶ Show {{ $hiddenCount }} more blocks'"></span>
-                                </button>
-                            </div>
-                        @endif
-
                     @foreach($groupedBlocks as $blockIndex => $block)
-                        @php
-                            $shouldHide = $hasHiddenBlocks && $blockIndex >= $maxVisibleBlocks;
-                        @endphp
                         @php
                             $isLastBlock = $blockIndex === count($groupedBlocks) - 1;
                             // Get timestamp from block if available, otherwise fall back to message created_at
@@ -634,8 +612,7 @@
                         @endphp
                         @if(($block['type'] ?? '') === 'text' && !empty($block['text']))
                             <div wire:key="message-{{ $message->id }}-grouped-{{ $blockIndex }}"
-                                 class="chat-message chat-message-assistant"
-                                 @if($shouldHide) x-show="expanded" x-cloak @endif>
+                                 class="chat-message chat-message-assistant">
                                 <div class="chat-bubble chat-bubble-assistant">
                                     <div class="chat-bubble-content">
                                         {!! $message->renderMarkdown($block['text']) !!}
@@ -656,8 +633,7 @@
                             </div>
                         @elseif(($block['type'] ?? '') === 'tool_group')
                             <div wire:key="message-{{ $message->id }}-grouped-{{ $blockIndex }}"
-                                 class="chat-message chat-message-assistant"
-                                 @if($shouldHide) x-show="expanded" x-cloak @endif>
+                                 class="chat-message chat-message-assistant">
                                 <div class="chat-bubble chat-bubble-tool">
                                     @if(count($block['tools']) === 1)
                                         <div class="chat-tool-use">
@@ -707,7 +683,6 @@
                             @endphp
                             <div wire:key="message-{{ $message->id }}-question-{{ $blockIndex }}"
                                  class="chat-message chat-message-assistant"
-                                 @if($shouldHide) x-show="expanded" x-cloak @endif
                                  x-data="{
                                     responses: @js($existingResponse ?? []),
                                     submitted: {{ $existingResponse ? 'true' : 'false' }},
@@ -849,7 +824,6 @@
                             </div>
                         @endif
                     @endforeach
-                    </div>{{-- End collapsible wrapper --}}
                     @endif
                 @endif
             @empty
