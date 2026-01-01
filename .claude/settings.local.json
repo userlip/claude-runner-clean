@@ -7,7 +7,11 @@
       "Bash(php artisan tinker:*)",
       "Bash(vendor/bin/pint:*)",
       "Bash(composer dump-autoload:*)",
-      "Bash(php artisan optimize:clear:*)"
+      "Bash(php artisan optimize:clear:*)",
+      "Skill(superpowers:systematic-debugging)",
+      "Bash(php artisan route:list:*)",
+      "Bash(php artisan config:clear:*)",
+      "Bash(php artisan:*)"
     ],
     "deny": [
       "Bash(php artisan migrate:fresh)",
