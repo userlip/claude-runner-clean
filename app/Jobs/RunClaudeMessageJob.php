@@ -156,17 +156,24 @@ class RunClaudeMessageJob implements ShouldQueue
                             'cost' => $parsed['usage']['cost_usd'] ?? null,
                         ]);
 
-                        // Append the final result summary to the message content if present
+                        // Append the final result summary only if it's not already in the content
+                        // (Claude often streams the final text AND includes it in the result event)
                         if (isset($parsed['result_summary'])) {
-                            $contentBlocks[] = [
-                                'type' => 'text',
-                                'text' => $parsed['result_summary'],
-                                'timestamp' => now()->toIso8601String(),
-                            ];
-                            $assistantMessage->update([
-                                'content' => ($assistantMessage->content ?? '')."\n\n".$parsed['result_summary'],
-                                'content_blocks' => $contentBlocks,
-                            ]);
+                            $currentContent = $assistantMessage->content ?? '';
+                            $resultSummary = $parsed['result_summary'];
+
+                            // Only append if the result summary isn't already at the end of content
+                            if (! str_ends_with(trim($currentContent), trim($resultSummary))) {
+                                $contentBlocks[] = [
+                                    'type' => 'text',
+                                    'text' => $resultSummary,
+                                    'timestamp' => now()->toIso8601String(),
+                                ];
+                                $assistantMessage->update([
+                                    'content' => $currentContent."\n\n".$resultSummary,
+                                    'content_blocks' => $contentBlocks,
+                                ]);
+                            }
                         }
 
                         // Use last turn's context usage (actual context window usage)

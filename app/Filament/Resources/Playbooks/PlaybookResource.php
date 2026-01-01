@@ -8,6 +8,7 @@ use App\Filament\Resources\Playbooks\Pages\EditPlaybook;
 use App\Filament\Resources\Playbooks\Pages\ListPlaybooks;
 use App\Models\Playbook;
 use BackedEnum;
+use Filament\Actions;
 use Filament\Forms;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Grid;
@@ -112,8 +113,8 @@ class PlaybookResource extends Resource
                 Tables\Filters\TernaryFilter::make('is_active')
                     ->default(true),
             ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
+            ->recordActions([
+                Actions\EditAction::make(),
             ])
             ->defaultSort('times_used', 'desc');
     }
