@@ -227,4 +227,35 @@ class Message extends Model
 
         return max(0, $total - self::MAX_VISIBLE_BLOCKS);
     }
+
+    /**
+     * Convert URLs in text to clickable links (for user messages).
+     */
+    public function linkifyContent(): string
+    {
+        if (empty($this->content)) {
+            return '';
+        }
+
+        // Escape HTML first to prevent XSS
+        $text = e($this->content);
+
+        // Pattern to match URLs (http, https, ftp)
+        $pattern = '/(https?:\/\/|ftp:\/\/)[^\s<>\[\]"\']+/i';
+
+        // Replace URLs with anchor tags
+        $linked = preg_replace_callback($pattern, function ($matches) {
+            $url = $matches[0];
+            // Remove trailing punctuation that's likely not part of the URL
+            $trailingPunct = '';
+            if (preg_match('/[.,;:!?\)\]]+$/', $url, $punctMatch)) {
+                $trailingPunct = $punctMatch[0];
+                $url = substr($url, 0, -strlen($trailingPunct));
+            }
+
+            return '<a href="'.$url.'" target="_blank" rel="noopener noreferrer" class="chat-user-link">'.$url.'</a>'.$trailingPunct;
+        }, $text);
+
+        return $linked;
+    }
 }

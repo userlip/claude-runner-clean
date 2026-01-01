@@ -472,7 +472,7 @@
                                 </div>
                             @endif
                             @if($message->content)
-                                <p style="white-space: pre-wrap; margin: 0;">{{ $message->content }}</p>
+                                <p style="white-space: pre-wrap; margin: 0;">{!! $message->linkifyContent() !!}</p>
                             @endif
                             <span class="chat-message-time chat-message-time-user">{{ $message->created_at->timezone(config('app.timezone'))->format('H:i') }}</span>
                         @else

@@ -2664,3 +2664,16 @@
     background-color: rgba(59, 130, 246, 0.25);
     border-color: rgba(59, 130, 246, 0.5);
 }
+
+/* Links in user messages */
+.chat-user-link {
+    color: rgba(255, 255, 255, 0.9);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    word-break: break-all;
+}
+
+.chat-user-link:hover {
+    color: white;
+    text-decoration-thickness: 2px;
+}
