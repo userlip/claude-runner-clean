@@ -887,7 +887,19 @@
         {{-- Input --}}
         <div class="chat-input-area"
             x-data="{
+                prompt: '',
                 images: @entangle('images'),
+                get canSend() {
+                    return this.prompt.trim().length > 0 || this.images.length > 0;
+                },
+                submit() {
+                    if (!this.canSend) return;
+                    // Sync prompt to Livewire and send
+                    $wire.prompt = this.prompt;
+                    $wire.sendMessage().then(() => {
+                        this.prompt = '';
+                    });
+                },
                 handlePaste(e) {
                     const items = e.clipboardData?.items;
                     if (!items) return;
@@ -942,7 +954,7 @@
                 class="chat-file-input"
             >
 
-            <form wire:submit="sendMessage" class="chat-form">
+            <form @submit.prevent="submit()" class="chat-form">
                 {{-- Attachment button (primarily for mobile) --}}
                 <button
                     type="button"
@@ -970,20 +982,18 @@
                     </template>
 
                     <textarea
-                        wire:model.blur="prompt"
+                        x-model="prompt"
                         placeholder="Type a message..."
                         rows="1"
                         class="chat-textarea"
                         @paste="handlePaste($event)"
-                        @keydown.enter.prevent="if (!$event.shiftKey) $wire.sendMessage()"
-                        x-data
-                        x-on:keydown.enter="if (!$event.shiftKey) { $wire.prompt = $el.value; }"
+                        @keydown.enter.prevent="if (!$event.shiftKey) submit()"
                     ></textarea>
                 </div>
                 <button
                     type="submit"
                     class="chat-submit {{ $this->isRunning ? 'chat-submit-queue' : '' }}"
-                    @disabled(empty($prompt) && empty($images))
+                    :disabled="!canSend"
                     title="{{ $this->isRunning ? 'Add to queue' : 'Send message' }}"
                 >
                     @if($this->isRunning)
