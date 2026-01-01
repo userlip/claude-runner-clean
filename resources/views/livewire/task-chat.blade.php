@@ -892,6 +892,17 @@
                 get canSend() {
                     return this.prompt.trim().length > 0 || this.images.length > 0;
                 },
+                init() {
+                    // Listen for snippet insertions from Livewire
+                    Livewire.on('insert-snippet', (data) => {
+                        if (this.prompt.length > 0) {
+                            this.prompt += '\n\n';
+                        }
+                        this.prompt += data.content;
+                        // Focus the textarea
+                        this.$refs.promptInput?.focus();
+                    });
+                },
                 submit() {
                     if (!this.canSend) return;
                     // Sync prompt to Livewire and send
@@ -982,6 +993,7 @@
                     </template>
 
                     <textarea
+                        x-ref="promptInput"
                         x-model="prompt"
                         placeholder="Type a message..."
                         rows="1"
