@@ -138,6 +138,29 @@ class RunClaudeMessageJob implements ShouldQueue
                         // Track the latest turn's context usage (overwrites previous)
                         $lastTurnUsage = $parsed['turn_usage'];
                     }
+                    if (isset($parsed['init_metadata'])) {
+                        // Store session init metadata (model, MCP servers, skills, etc.)
+                        $metadata = $this->task->session_metadata ?? [];
+                        $metadata['init'] = $parsed['init_metadata'];
+                        $this->task->update(['session_metadata' => $metadata]);
+                        Log::debug('Session init metadata captured', [
+                            'task_id' => $this->task->id,
+                            'model' => $parsed['init_metadata']['model'] ?? null,
+                            'mcp_servers_count' => count($parsed['init_metadata']['mcp_servers'] ?? []),
+                            'skills_count' => count($parsed['init_metadata']['skills'] ?? []),
+                        ]);
+                    }
+                    if (isset($parsed['result_metadata'])) {
+                        // Store session result metadata (model usage, duration, turns)
+                        $metadata = $this->task->session_metadata ?? [];
+                        $metadata['result'] = $parsed['result_metadata'];
+                        $this->task->update(['session_metadata' => $metadata]);
+                        Log::debug('Session result metadata captured', [
+                            'task_id' => $this->task->id,
+                            'duration_ms' => $parsed['result_metadata']['duration_ms'] ?? null,
+                            'num_turns' => $parsed['result_metadata']['num_turns'] ?? null,
+                        ]);
+                    }
                     if (isset($parsed['compacting'])) {
                         Log::info('Context compaction started', [
                             'task_id' => $this->task->id,
@@ -700,6 +723,29 @@ class RunClaudeMessageJob implements ShouldQueue
             if (! empty($data['result'])) {
                 $result['result_summary'] = $data['result'];
             }
+
+            // Capture session result metadata (model usage breakdown, duration, turns)
+            $result['result_metadata'] = [
+                'duration_ms' => $data['duration_ms'] ?? null,
+                'duration_api_ms' => $data['duration_api_ms'] ?? null,
+                'num_turns' => $data['num_turns'] ?? null,
+                'model_usage' => $data['modelUsage'] ?? null,
+                'is_error' => $data['is_error'] ?? false,
+                'subtype' => $data['subtype'] ?? null,
+            ];
+        }
+
+        // Extract session init metadata (model, MCP servers, skills, etc.)
+        if (($data['type'] ?? '') === 'system' && ($data['subtype'] ?? '') === 'init') {
+            $result['init_metadata'] = [
+                'model' => $data['model'] ?? null,
+                'claude_code_version' => $data['claude_code_version'] ?? null,
+                'mcp_servers' => $data['mcp_servers'] ?? [],
+                'skills' => $data['skills'] ?? [],
+                'tools' => $data['tools'] ?? [],
+                'agents' => $data['agents'] ?? [],
+                'plugins' => $data['plugins'] ?? [],
+            ];
         }
 
         // Detect context compaction events

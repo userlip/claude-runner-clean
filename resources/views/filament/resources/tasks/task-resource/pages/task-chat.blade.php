@@ -79,6 +79,13 @@
                     >
                         Files
                     </button>
+                    <button
+                        @click="activeTab = 'session'"
+                        :class="{ 'sidebar-tab-btn-active': activeTab === 'session' }"
+                        class="sidebar-tab-btn"
+                    >
+                        Session
+                    </button>
                 </div>
                 <div class="sidebar-tab-content">
                     <div x-show="activeTab === 'snippets'" style="height: 100%;">
@@ -86,6 +93,9 @@
                     </div>
                     <div x-show="activeTab === 'files'" x-cloak style="height: 100%;">
                         @livewire('file-browser', ['basePath' => $this->getRecord()->workspace_path ?? $this->getRecord()->site?->path])
+                    </div>
+                    <div x-show="activeTab === 'session'" x-cloak style="height: 100%;">
+                        @livewire('session-info-sidebar', ['task' => $this->getRecord()])
                     </div>
                 </div>
             </div>

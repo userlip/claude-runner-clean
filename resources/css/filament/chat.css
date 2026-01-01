@@ -2706,3 +2706,227 @@
 .dark .chat-load-more-count {
     color: rgb(107 114 128);
 }
+
+/* ==========================================
+   Session Info Sidebar Styles
+   ========================================== */
+
+.session-info-section {
+    padding: 0.75rem;
+    border-bottom: 1px solid rgb(229 231 235);
+}
+
+.dark .session-info-section {
+    border-bottom-color: rgb(55 65 81);
+}
+
+.session-info-stats {
+    display: flex;
+    gap: 1rem;
+}
+
+.session-info-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+}
+
+.session-info-stat-label {
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: rgb(107 114 128);
+    font-weight: 500;
+}
+
+.dark .session-info-stat-label {
+    color: rgb(156 163 175);
+}
+
+.session-info-stat-value {
+    font-size: 1rem;
+    font-weight: 600;
+    color: rgb(17 24 39);
+}
+
+.dark .session-info-stat-value {
+    color: white;
+}
+
+.session-info-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0.625rem 0.75rem;
+    background-color: transparent;
+    border: none;
+    border-bottom: 1px solid rgb(229 231 235);
+    cursor: pointer;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: rgb(55 65 81);
+    text-align: left;
+    transition: background-color 0.15s;
+}
+
+.dark .session-info-header {
+    border-bottom-color: rgb(55 65 81);
+    color: rgb(209 213 219);
+}
+
+.session-info-header:hover {
+    background-color: rgb(243 244 246);
+}
+
+.dark .session-info-header:hover {
+    background-color: rgb(55 65 81);
+}
+
+.session-info-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.25rem;
+    height: 1.25rem;
+    padding: 0 0.375rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: rgb(59 130 246);
+    background-color: rgb(219 234 254);
+    border-radius: 9999px;
+}
+
+.dark .session-info-badge {
+    color: rgb(147 197 253);
+    background-color: rgb(30 58 138 / 0.4);
+}
+
+.session-info-content {
+    padding: 0.5rem;
+    background-color: rgb(249 250 251);
+}
+
+.dark .session-info-content {
+    background-color: rgb(17 24 39 / 0.5);
+}
+
+.session-info-item {
+    padding: 0.5rem 0.625rem;
+    border-radius: 0.375rem;
+    font-size: 0.8125rem;
+    color: rgb(55 65 81);
+}
+
+.dark .session-info-item {
+    color: rgb(209 213 219);
+}
+
+.session-info-item:hover {
+    background-color: rgb(243 244 246);
+}
+
+.dark .session-info-item:hover {
+    background-color: rgb(55 65 81 / 0.5);
+}
+
+.session-info-item-model {
+    background-color: white;
+    border: 1px solid rgb(229 231 235);
+    margin-bottom: 0.375rem;
+}
+
+.dark .session-info-item-model {
+    background-color: rgb(30 41 59);
+    border-color: rgb(55 65 81);
+}
+
+.session-info-item-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.session-info-item-name {
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.session-info-item-cost {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: rgb(22 163 74);
+}
+
+.dark .session-info-item-cost {
+    color: rgb(74 222 128);
+}
+
+.session-info-item-details {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 0.25rem;
+    font-size: 0.6875rem;
+    color: rgb(107 114 128);
+}
+
+.dark .session-info-item-details {
+    color: rgb(156 163 175);
+}
+
+.session-info-status {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem 0.375rem;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    border-radius: 0.25rem;
+    text-transform: capitalize;
+}
+
+.session-info-status-connected {
+    color: rgb(22 163 74);
+    background-color: rgb(220 252 231);
+}
+
+.dark .session-info-status-connected {
+    color: rgb(74 222 128);
+    background-color: rgb(20 83 45 / 0.3);
+}
+
+.session-info-status-disconnected {
+    color: rgb(220 38 38);
+    background-color: rgb(254 226 226);
+}
+
+.dark .session-info-status-disconnected {
+    color: rgb(248 113 113);
+    background-color: rgb(127 29 29 / 0.3);
+}
+
+.session-info-status-unknown {
+    color: rgb(107 114 128);
+    background-color: rgb(243 244 246);
+}
+
+.dark .session-info-status-unknown {
+    color: rgb(156 163 175);
+    background-color: rgb(55 65 81);
+}
+
+.session-info-footer {
+    padding: 0.5rem 0.75rem;
+    margin-top: auto;
+    border-top: 1px solid rgb(229 231 235);
+    font-size: 0.6875rem;
+    color: rgb(156 163 175);
+    text-align: center;
+}
+
+.dark .session-info-footer {
+    border-top-color: rgb(55 65 81);
+    color: rgb(107 114 128);
+}
