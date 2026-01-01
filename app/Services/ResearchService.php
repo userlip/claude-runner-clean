@@ -90,7 +90,27 @@ class ResearchService
         // Inject value tier priorities
         $prompt = $this->injectValueTierPriorities($prompt);
 
+        // Inject improvement suggestions
+        $prompt = $this->injectImprovementSuggestions($prompt);
+
         return $prompt;
+    }
+
+    protected function injectImprovementSuggestions(string $prompt): string
+    {
+        $analytics = app(\App\Services\ProposalAnalyticsService::class);
+        $suggestions = $analytics->getImprovementSuggestions();
+
+        if (empty($suggestions)) {
+            return $prompt;
+        }
+
+        $suggestionText = "\n\n**System Improvement Suggestions:**\n";
+        foreach ($suggestions as $suggestion) {
+            $suggestionText .= "- {$suggestion}\n";
+        }
+
+        return $prompt.$suggestionText;
     }
 
     protected function injectValueTierPriorities(string $prompt): string

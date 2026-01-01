@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\ProposalStatus;
 use App\Enums\ProposalType;
+use App\Models\Playbook;
 use App\Models\Proposal;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -235,5 +236,110 @@ class ProposalAnalyticsService
             'preferred_projects' => $preferredProjects,
             'avoid_types' => $avoidTypes,
         ];
+    }
+
+    /**
+     * Detect patterns in approved proposals that could become playbooks.
+     *
+     * @return array<int, array{
+     *     type: string,
+     *     type_label: string,
+     *     project: string|null,
+     *     count: int,
+     *     success_rate: float,
+     *     has_playbook: bool,
+     *     suggestion: string
+     * }>
+     */
+    public function detectPlaybookOpportunities(): array
+    {
+        // Find type+project combinations with 3+ successful executions but no playbook
+        $patterns = Proposal::query()
+            ->select('type', 'project')
+            ->selectRaw('COUNT(*) as total')
+            ->selectRaw('SUM(CASE WHEN execution_success = true THEN 1 ELSE 0 END) as successful')
+            ->where('status', ProposalStatus::Approved)
+            ->whereNotNull('execution_completed_at')
+            ->groupBy('type', 'project')
+            ->having('total', '>=', 3)
+            ->get();
+
+        $opportunities = [];
+
+        foreach ($patterns as $pattern) {
+            $type = $pattern->type instanceof ProposalType ? $pattern->type : ProposalType::tryFrom($pattern->type);
+            $typeValue = $type?->value ?? $pattern->type;
+
+            // Check if playbook exists
+            $existingPlaybook = Playbook::where('proposal_type', $typeValue)
+                ->where(function ($q) use ($pattern) {
+                    $q->whereNull('project')
+                        ->orWhere('project', $pattern->project);
+                })
+                ->exists();
+
+            $successRate = $pattern->total > 0
+                ? round(($pattern->successful / $pattern->total) * 100, 1)
+                : 0;
+
+            // Only suggest if success rate is good and no playbook exists
+            if ($successRate >= 60 && ! $existingPlaybook) {
+                $opportunities[] = [
+                    'type' => $typeValue,
+                    'type_label' => $type?->label() ?? $typeValue,
+                    'project' => $pattern->project,
+                    'count' => (int) $pattern->total,
+                    'success_rate' => $successRate,
+                    'has_playbook' => false,
+                    'suggestion' => "Create a playbook for '{$type?->label()}' on {$pattern->project} ({$pattern->total} executions, {$successRate}% success)",
+                ];
+            }
+        }
+
+        // Sort by count descending
+        usort($opportunities, fn ($a, $b) => $b['count'] <=> $a['count']);
+
+        return $opportunities;
+    }
+
+    /**
+     * Get system improvement suggestions based on analytics.
+     *
+     * @return array<string>
+     */
+    public function getImprovementSuggestions(): array
+    {
+        $suggestions = [];
+        $metrics = $this->getOverallMetrics();
+        $byType = $this->getMetricsByType();
+        $playbookOpportunities = $this->detectPlaybookOpportunities();
+
+        // Suggestion: Low approval rate
+        if ($metrics['approval_rate'] < 50 && $metrics['total'] >= 5) {
+            $suggestions[] = "Approval rate is {$metrics['approval_rate']}%. Consider refining research to propose higher-quality work.";
+        }
+
+        // Suggestion: Low execution success rate
+        if ($metrics['execution_success_rate'] < 70 && $metrics['executed'] >= 3) {
+            $suggestions[] = "Execution success rate is {$metrics['execution_success_rate']}%. Review failed tasks to improve prompt quality.";
+        }
+
+        // Suggestion: Playbook opportunities
+        foreach (array_slice($playbookOpportunities, 0, 3) as $opportunity) {
+            $suggestions[] = $opportunity['suggestion'];
+        }
+
+        // Suggestion: Types with 0% approval
+        $failingTypes = $byType->filter(fn ($t) => $t['approval_rate'] === 0.0 && $t['total'] >= 2);
+        foreach ($failingTypes as $type) {
+            $suggestions[] = "'{$type['type_label']}' proposals have 0% approval ({$type['total']} rejected). Consider not proposing this type.";
+        }
+
+        // Suggestion: Slow decision time
+        if ($metrics['avg_decision_time_hours'] > 24 && $metrics['total'] >= 5) {
+            $suggestions[] = "Average decision time is {$metrics['avg_decision_time_hours']} hours. Consider using Telegram notifications for faster response.";
+        }
+
+        return $suggestions;
     }
 }

@@ -6,6 +6,7 @@ use App\Enums\ProposalType;
 use App\Jobs\CloneRepositoryJob;
 use App\Jobs\RunClaudeMessageJob;
 use App\Models\AiProvider;
+use App\Models\Playbook;
 use App\Models\Proposal;
 use App\Models\Repository;
 use App\Models\Task;
@@ -68,6 +69,18 @@ class ProposalExecutionService
     protected function generatePrompt(Proposal $proposal): string
     {
         $type = $proposal->type ?? ProposalType::Other;
+
+        // Try to find a matching playbook
+        $playbook = Playbook::findBestMatch($type, $proposal->project);
+
+        // If playbook exists, use its template
+        if ($playbook) {
+            $proposal->update(['playbook_id' => $playbook->id]);
+
+            return $playbook->buildPrompt($proposal);
+        }
+
+        // Fall back to default prompt generation
         $skills = $type->getRequiredSkills();
         $proposedAction = $proposal->proposed_action ?? [];
 

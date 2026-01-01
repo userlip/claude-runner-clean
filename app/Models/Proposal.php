@@ -27,6 +27,7 @@ class Proposal extends Model
         'rejection_reason',
         'task_id',
         'executed_task_id',
+        'playbook_id',
         'telegram_message_id',
         'approved_at',
         'rejected_at',
@@ -73,6 +74,11 @@ class Proposal extends Model
     public function executedTask(): BelongsTo
     {
         return $this->belongsTo(Task::class, 'executed_task_id');
+    }
+
+    public function playbook(): BelongsTo
+    {
+        return $this->belongsTo(Playbook::class);
     }
 
     public function scopePending(Builder $query): Builder
@@ -128,6 +134,11 @@ class Proposal extends Model
             'execution_completed_at' => now(),
             'execution_success' => $success,
         ]);
+
+        // Track playbook usage if one was used
+        if ($this->playbook_id) {
+            $this->playbook?->recordUsage($success);
+        }
     }
 
     public function incrementFollowUpCount(): void
