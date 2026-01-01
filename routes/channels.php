@@ -10,5 +10,6 @@ Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
 Broadcast::channel('task.{taskId}', function ($user, $taskId) {
     $task = Task::find($taskId);
 
-    return $task && $task->user_id === $user->id;
+    // Match TaskPolicy: allow if task has no owner or user owns it
+    return $task && ($task->user_id === null || $user->id === $task->user_id);
 });

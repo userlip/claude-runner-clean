@@ -30,6 +30,9 @@ class MessageUpdated implements ShouldBroadcast
     }
 
     /**
+     * Send minimal payload to avoid "Payload too large" errors.
+     * Frontend will trigger Livewire refresh to get updated content.
+     *
      * @return array<string, mixed>
      */
     public function broadcastWith(): array
@@ -39,14 +42,9 @@ class MessageUpdated implements ShouldBroadcast
             'task_id' => $this->message->task_id,
             'role' => $this->message->role->value,
             'status' => $this->message->status->value,
-            'content' => $this->message->content,
-            'content_blocks' => $this->message->content_blocks,
             'tokens_in' => $this->message->tokens_in,
             'tokens_out' => $this->message->tokens_out,
-            'cost_usd' => $this->message->cost_usd,
             'updated_at' => $this->message->updated_at->toISOString(),
-            'html' => $this->message->isFromAssistant() ? $this->message->getFirstTextBlockHtml() : null,
-            'grouped_blocks' => $this->message->isFromAssistant() ? $this->message->getGroupedBlocks() : null,
         ];
     }
 }

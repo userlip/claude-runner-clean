@@ -610,7 +610,7 @@
 
                     @if(count($groupedBlocks) > 0)
                     {{-- Wrapper for collapsible blocks --}}
-                    <div x-data="{ expanded: {{ $hasHiddenBlocks ? 'false' : 'true' }} }">
+                    <div x-data="{ expanded: true }">
                         {{-- Show expand button if there are hidden blocks --}}
                         @if($hasHiddenBlocks)
                             <div class="chat-message chat-message-assistant">
@@ -945,9 +945,8 @@
                         // Send via API
                         const chatManager = new ChatManager({{ $task->id }}, '{{ $task->uuid }}');
                         await chatManager.sendMessage(promptToSend, imagesToSend);
-                        // Refresh Livewire component to show new message
-                        // (fallback in case WebSockets aren't working)
-                        setTimeout(() => $wire.$refresh(), 500);
+                        // Refresh immediately to show the sent message
+                        $wire.$refresh();
                     } catch (error) {
                         console.error('Failed to send message:', error);
                         // Restore input on error
