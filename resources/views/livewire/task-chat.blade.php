@@ -405,6 +405,8 @@
         x-data="realtimeChat({{ $task->id }}, '{{ $task->uuid }}', '{{ $task->status->value }}')"
         @message-created.window="$dispatch('refresh-messages')"
         @message-updated.window="$dispatch('refresh-messages')"
+        @show-optimistic-message.window="showOptimisticMessage($event.detail.content, $event.detail.images)"
+        @clear-optimistic-message.window="optimisticMessage = null"
     >
         {{-- Messages --}}
         <div class="chat-messages"
@@ -959,8 +961,11 @@
                     this.images = [];
                     this.sending = true;
 
-                    // Show optimistic message IMMEDIATELY (before API call)
-                    this.$root.showOptimisticMessage(promptToSend, imagesToSend);
+                    // Show optimistic message IMMEDIATELY via event dispatch
+                    this.$dispatch('show-optimistic-message', {
+                        content: promptToSend,
+                        images: imagesToSend
+                    });
 
                     try {
                         // Send via API (runs in background, message already visible)
@@ -972,7 +977,7 @@
                         // Restore input on error and clear optimistic message
                         this.prompt = promptToSend;
                         this.images = imagesToSend;
-                        this.$root.optimisticMessage = null;
+                        this.$dispatch('clear-optimistic-message');
                     } finally {
                         this.sending = false;
                     }
