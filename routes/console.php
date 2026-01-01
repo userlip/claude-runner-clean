@@ -29,8 +29,8 @@ foreach (ResearchModule::cases() as $module) {
 }
 
 // API Health Checks - Run every 2 hours to monitor Scrappa API endpoints
-Schedule::command('scrappa:health-check')
-    ->everyTwoHours()
-    ->withoutOverlapping()
-    ->runInBackground()
-    ->appendOutputTo(storage_path('logs/api-health-check.log'));
+// Schedule::command('scrappa:health-check')
+//     ->everyTwoHours()
+//     ->withoutOverlapping()
+//     ->runInBackground()
+//     ->appendOutputTo(storage_path('logs/api-health-check.log'));
