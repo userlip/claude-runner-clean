@@ -3,7 +3,9 @@
 namespace App\Services;
 
 use App\Enums\ResearchModule;
+use App\Enums\ValueTier;
 use App\Models\AiProvider;
+use App\Models\Repository;
 use App\Models\ResearchReport;
 use App\Models\Task;
 use Illuminate\Support\Facades\File;
@@ -85,7 +87,44 @@ class ResearchService
             $prompt .= $priorityText;
         }
 
+        // Inject value tier priorities
+        $prompt = $this->injectValueTierPriorities($prompt);
+
         return $prompt;
+    }
+
+    protected function injectValueTierPriorities(string $prompt): string
+    {
+        $repos = Repository::whereNotNull('project_key')
+            ->orderByRaw("CASE value_tier WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END")
+            ->get(['name', 'project_key', 'value_tier']);
+
+        if ($repos->isEmpty()) {
+            return $prompt;
+        }
+
+        $priorityText = "\n\n**Project Value Priorities:**\n";
+
+        $highValue = $repos->filter(fn ($r) => $r->value_tier === ValueTier::High);
+        $mediumValue = $repos->filter(fn ($r) => $r->value_tier === ValueTier::Medium);
+        $lowValue = $repos->filter(fn ($r) => $r->value_tier === ValueTier::Low);
+
+        if ($highValue->isNotEmpty()) {
+            $names = $highValue->pluck('project_key')->implode(', ');
+            $priorityText .= "- **High priority** (focus here): {$names}\n";
+        }
+
+        if ($mediumValue->isNotEmpty()) {
+            $names = $mediumValue->pluck('project_key')->implode(', ');
+            $priorityText .= "- Medium priority: {$names}\n";
+        }
+
+        if ($lowValue->isNotEmpty()) {
+            $names = $lowValue->pluck('project_key')->implode(', ');
+            $priorityText .= "- Low priority (only if high-value work done): {$names}\n";
+        }
+
+        return $prompt.$priorityText;
     }
 
     public function createResearchTask(ResearchModule $module): Task

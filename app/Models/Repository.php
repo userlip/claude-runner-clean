@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ValueTier;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -16,6 +17,7 @@ class Repository extends Model
         'github_id',
         'name',
         'project_key',
+        'value_tier',
         'full_name',
         'clone_url',
         'ssh_url',
@@ -29,6 +31,7 @@ class Repository extends Model
         return [
             'github_id' => 'integer',
             'private' => 'boolean',
+            'value_tier' => ValueTier::class,
         ];
     }
 
