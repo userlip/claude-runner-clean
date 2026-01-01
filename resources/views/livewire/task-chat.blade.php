@@ -401,41 +401,33 @@
 
     {{-- Chat Area --}}
     <div class="chat-area"
-        wire:key="chat-area-{{ $task->status->value }}"
-        x-data="realtimeChat({{ $task->id }}, '{{ $task->uuid }}', '{{ $task->status->value }}')"
-        @message-created.window="$dispatch('refresh-messages')"
-        @message-updated.window="$dispatch('refresh-messages')"
-        @show-optimistic-message.window="showOptimisticMessage($event.detail.content, $event.detail.images)"
-        @clear-optimistic-message.window="optimisticMessage = null"
+        x-data="{
+            polling: @entangle('waitingForResponse').live,
+            isNearBottom: true,
+            scrollThreshold: 150,
+            checkIfNearBottom() {
+                const el = this.$refs.messages;
+                this.isNearBottom = (el.scrollHeight - el.scrollTop - el.clientHeight) < this.scrollThreshold;
+            },
+            scrollToBottom() {
+                this.$refs.messages.scrollTop = this.$refs.messages.scrollHeight;
+            },
+            init() {
+                this.scrollToBottom();
+                this.$refs.messages.addEventListener('scroll', () => this.checkIfNearBottom());
+                const observer = new MutationObserver(() => {
+                    this.$nextTick(() => {
+                        if (this.isNearBottom) {
+                            this.scrollToBottom();
+                        }
+                    });
+                });
+                observer.observe(this.$refs.messages, { childList: true, subtree: true });
+            }
+        }"
     >
         {{-- Messages --}}
-        <div class="chat-messages"
-            x-ref="messages"
-            x-data="{
-                isNearBottom: true,
-                scrollThreshold: 150,
-                checkIfNearBottom() {
-                    const el = this.$refs.messages;
-                    this.isNearBottom = (el.scrollHeight - el.scrollTop - el.clientHeight) < this.scrollThreshold;
-                },
-                scrollToBottom() {
-                    this.$refs.messages.scrollTop = this.$refs.messages.scrollHeight;
-                },
-                init() {
-                    this.scrollToBottom();
-                    this.$refs.messages.addEventListener('scroll', () => this.checkIfNearBottom());
-                    const observer = new MutationObserver(() => {
-                        this.$nextTick(() => {
-                            if (this.isNearBottom) {
-                                this.scrollToBottom();
-                            }
-                        });
-                    });
-                    observer.observe(this.$refs.messages, { childList: true, subtree: true });
-                }
-            }"
-            @refresh-messages.window="$wire.$refresh()"
-        >
+        <div class="chat-messages" x-ref="messages" wire:poll.2s.visible="checkPolling">
             {{-- Load earlier messages button --}}
             @if($this->hasMoreMessages)
                 <div class="chat-load-more">
@@ -613,7 +605,7 @@
 
                     @if(count($groupedBlocks) > 0)
                     {{-- Wrapper for collapsible blocks --}}
-                    <div x-data="{ expanded: true }">
+                    <div x-data="{ expanded: {{ $hasHiddenBlocks ? 'false' : 'true' }} }">
                         {{-- Show expand button if there are hidden blocks --}}
                         @if($hasHiddenBlocks)
                             <div class="chat-message chat-message-assistant">
@@ -866,24 +858,7 @@
                 </div>
             @endforelse
 
-            {{-- Optimistic message (shown instantly before server confirms) --}}
-            <template x-if="optimisticMessage">
-                <div class="chat-message chat-message-user">
-                    <div class="chat-bubble chat-bubble-user">
-                        <template x-if="optimisticMessage.images && optimisticMessage.images.length > 0">
-                            <div class="chat-message-images">
-                                <template x-for="(image, index) in optimisticMessage.images" :key="index">
-                                    <img :src="image.data" :alt="image.name || 'Image'" class="chat-message-image-thumb">
-                                </template>
-                            </div>
-                        </template>
-                        <p x-show="optimisticMessage.content" x-text="optimisticMessage.content" style="white-space: pre-wrap; margin: 0;"></p>
-                        <span class="chat-message-time chat-message-time-user" x-text="optimisticMessage.timestamp"></span>
-                    </div>
-                </div>
-            </template>
-
-            <template x-if="isRunning">
+            @if($this->isRunning || $this->waitingForResponse)
             <div class="chat-thinking">
                 <div class="chat-thinking-bubble">
                     <div class="chat-thinking-content">
@@ -892,7 +867,7 @@
                     </div>
                 </div>
             </div>
-            </template>
+            @endif
         </div>
 
         {{-- Queued Messages (stacked above input) --}}
@@ -934,10 +909,9 @@
         <div class="chat-input-area"
             x-data="{
                 prompt: '',
-                images: [],
-                sending: false,
+                images: @entangle('images'),
                 get canSend() {
-                    return !this.sending && (this.prompt.trim().length > 0 || this.images.length > 0);
+                    return this.prompt.trim().length > 0 || this.images.length > 0;
                 },
                 init() {
                     // Listen for snippet insertions from Livewire
@@ -950,36 +924,13 @@
                         this.$refs.promptInput?.focus();
                     });
                 },
-                async submit() {
+                submit() {
                     if (!this.canSend) return;
-
-                    const promptToSend = this.prompt;
-                    const imagesToSend = [...this.images];
-
-                    // Clear input immediately for better UX
-                    this.prompt = '';
-                    this.images = [];
-                    this.sending = true;
-
-                    // Show optimistic message IMMEDIATELY via window event
-                    window.dispatchEvent(new CustomEvent('show-optimistic-message', {
-                        detail: { content: promptToSend, images: imagesToSend }
-                    }));
-
-                    try {
-                        // Send via API (runs in background, message already visible)
-                        const chatManager = new ChatManager({{ $task->id }}, '{{ $task->uuid }}');
-                        await chatManager.sendMessage(promptToSend, imagesToSend);
-                        // WebSocket will notify us when message is saved, then we refresh
-                    } catch (error) {
-                        console.error('Failed to send message:', error);
-                        // Restore input on error and clear optimistic message
-                        this.prompt = promptToSend;
-                        this.images = imagesToSend;
-                        window.dispatchEvent(new CustomEvent('clear-optimistic-message'));
-                    } finally {
-                        this.sending = false;
-                    }
+                    // Sync prompt to Livewire and send
+                    $wire.prompt = this.prompt;
+                    $wire.sendMessage().then(() => {
+                        this.prompt = '';
+                    });
                 },
                 handlePaste(e) {
                     const items = e.clipboardData?.items;
@@ -1074,23 +1025,21 @@
                 </div>
                 <button
                     type="submit"
-                    class="chat-submit"
-                    :class="{ 'chat-submit-queue': $root.isRunning }"
-                    :disabled="!canSend || sending"
-                    :title="$root.isRunning ? 'Add to queue' : 'Send message'"
+                    class="chat-submit {{ $this->isRunning ? 'chat-submit-queue' : '' }}"
+                    :disabled="!canSend"
+                    title="{{ $this->isRunning ? 'Add to queue' : 'Send message' }}"
                 >
-                    <template x-if="$root.isRunning">
+                    @if($this->isRunning)
                         {{-- Clock icon when queueing --}}
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.25rem; height: 1.25rem;">
                             <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25ZM12.75 6a.75.75 0 0 0-1.5 0v6c0 .414.336.75.75.75h4.5a.75.75 0 0 0 0-1.5h-3.75V6Z" clip-rule="evenodd" />
                         </svg>
-                    </template>
-                    <template x-if="!$root.isRunning">
+                    @else
                         {{-- Send icon normally --}}
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.25rem; height: 1.25rem;">
                             <path d="M3.478 2.404a.75.75 0 0 0-.926.941l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.404Z" />
                         </svg>
-                    </template>
+                    @endif
                 </button>
             </form>
         </div>

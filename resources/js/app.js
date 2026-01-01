@@ -1,5 +1,4 @@
 import './bootstrap';
-import './chat';
 import * as Sentry from '@sentry/browser';
 
 // Initialize Sentry if DSN is configured
