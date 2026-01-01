@@ -146,6 +146,12 @@ class TaskChat extends Component
         return $this->task->isRunning();
     }
 
+    #[Computed]
+    public function isWaitingForInput(): bool
+    {
+        return $this->task->isWaitingForInput();
+    }
+
     /**
      * Called by wire:poll to check if we should continue polling.
      * This method updates the waitingForResponse state.
@@ -157,6 +163,7 @@ class TaskChat extends Component
 
         // Only stop waiting when task is no longer running
         // (message count check is unreliable since empty assistant message is created immediately)
+        // Also stop if waiting for input (AskUserQuestion detected)
         if ($this->waitingForResponse && ! $this->task->isRunning()) {
             $this->waitingForResponse = false;
             $this->lastMessageCount = $this->task->messages()->count();

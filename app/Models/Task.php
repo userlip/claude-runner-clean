@@ -166,6 +166,18 @@ class Task extends Model
         $this->updateProposalExecution(false);
     }
 
+    public function markAsWaitingForInput(): void
+    {
+        $this->update([
+            'status' => TaskStatus::WaitingForInput,
+        ]);
+    }
+
+    public function isWaitingForInput(): bool
+    {
+        return $this->status === TaskStatus::WaitingForInput;
+    }
+
     public function updateProposalExecution(bool $success): void
     {
         $proposal = Proposal::where('executed_task_id', $this->id)->first();

@@ -88,6 +88,7 @@ class RunClaudeMessageJob implements ShouldQueue
             $toolCalls = [];
             $contentBlocks = [];
             $lastTurnUsage = null; // Track the last turn's context usage
+            $askUserQuestionDetected = false; // Track if we need to wait for user input
 
             $resultReceived = false;
             while (! feof($pipes[1])) {
@@ -112,6 +113,15 @@ class RunClaudeMessageJob implements ShouldQueue
                             'tool_calls' => $toolCalls,
                             'content_blocks' => $contentBlocks,
                         ]);
+
+                        // Detect AskUserQuestion tool - we need to pause and wait for input
+                        if (($parsed['tool_call']['name'] ?? '') === 'AskUserQuestion') {
+                            Log::info('AskUserQuestion detected - will wait for user input', [
+                                'task_id' => $this->task->id,
+                                'tool_id' => $parsed['tool_call']['id'] ?? null,
+                            ]);
+                            $askUserQuestionDetected = true;
+                        }
                     }
                     if (isset($parsed['content'])) {
                         $contentBlocks[] = [
@@ -208,6 +218,28 @@ class RunClaudeMessageJob implements ShouldQueue
             fclose($pipes[2]);
 
             if ($resultReceived) {
+                // Kill the subprocess since we're done with it
+                // The main Claude session keeps running for future messages
+                proc_terminate($process);
+                proc_close($process);
+
+                // If AskUserQuestion was detected, mark as waiting for input instead of completed
+                if ($askUserQuestionDetected) {
+                    $this->task->markAsWaitingForInput();
+                    Log::info('Task marked as waiting for input (AskUserQuestion detected)', [
+                        'task_id' => $this->task->id,
+                    ]);
+
+                    $this->sendPushNotification(
+                        'Input Required',
+                        'Claude is waiting for your response to continue.',
+                        true
+                    );
+
+                    // Don't process queued messages or auto-compact - wait for user input
+                    return;
+                }
+
                 // Claude finished responding - mark completed and notify
                 $this->task->markAsCompleted();
                 Log::debug('Task marked as completed (result received)', ['task_id' => $this->task->id]);
@@ -217,11 +249,6 @@ class RunClaudeMessageJob implements ShouldQueue
                     $this->getNotificationBody($assistantMessage),
                     true
                 );
-
-                // Kill the subprocess since we're done with it
-                // The main Claude session keeps running for future messages
-                proc_terminate($process);
-                proc_close($process);
 
                 // Auto-compact if context is low
                 $this->task->refresh();
