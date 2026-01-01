@@ -19,6 +19,11 @@ use Livewire\Component;
 
 class TaskChat extends Component
 {
+    /**
+     * Number of messages to load per page for pagination.
+     */
+    public const MESSAGES_PER_PAGE = 50;
+
     public Task $task;
 
     public string $prompt = '';
@@ -29,6 +34,11 @@ class TaskChat extends Component
     public bool $waitingForResponse = false;
 
     public int $lastMessageCount = 0;
+
+    /**
+     * Number of message pages currently loaded.
+     */
+    public int $loadedPages = 1;
 
     public bool $showDeployModal = false;
 
@@ -64,10 +74,58 @@ class TaskChat extends Component
     #[Computed]
     public function chatMessages(): Collection
     {
+        $totalMessages = $this->task->messages()
+            ->where('status', MessageStatus::Sent)
+            ->count();
+
+        $limit = self::MESSAGES_PER_PAGE * $this->loadedPages;
+        $skip = max(0, $totalMessages - $limit);
+
         return $this->task->messages()
             ->where('status', MessageStatus::Sent)
             ->oldest()
+            ->skip($skip)
+            ->take($limit)
             ->get();
+    }
+
+    /**
+     * Total count of sent messages.
+     */
+    #[Computed]
+    public function totalMessageCount(): int
+    {
+        return $this->task->messages()
+            ->where('status', MessageStatus::Sent)
+            ->count();
+    }
+
+    /**
+     * Number of messages not yet loaded (hidden).
+     */
+    #[Computed]
+    public function hiddenMessageCount(): int
+    {
+        $loaded = self::MESSAGES_PER_PAGE * $this->loadedPages;
+
+        return max(0, $this->totalMessageCount - $loaded);
+    }
+
+    /**
+     * Whether there are more messages to load.
+     */
+    #[Computed]
+    public function hasMoreMessages(): bool
+    {
+        return $this->hiddenMessageCount > 0;
+    }
+
+    /**
+     * Load more (earlier) messages.
+     */
+    public function loadMoreMessages(): void
+    {
+        $this->loadedPages++;
     }
 
     /**

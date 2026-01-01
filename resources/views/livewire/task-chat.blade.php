@@ -428,6 +428,25 @@
     >
         {{-- Messages --}}
         <div class="chat-messages" x-ref="messages" wire:poll.2s.visible="checkPolling">
+            {{-- Load earlier messages button --}}
+            @if($this->hasMoreMessages)
+                <div class="chat-load-more">
+                    <button
+                        type="button"
+                        wire:click="loadMoreMessages"
+                        wire:loading.attr="disabled"
+                        wire:target="loadMoreMessages"
+                        class="chat-load-more-btn"
+                    >
+                        <span wire:loading.remove wire:target="loadMoreMessages">
+                            ↑ Load {{ min($this->hiddenMessageCount, \App\Livewire\TaskChat::MESSAGES_PER_PAGE) }} earlier messages
+                            <span class="chat-load-more-count">({{ $this->hiddenMessageCount }} hidden)</span>
+                        </span>
+                        <span wire:loading wire:target="loadMoreMessages">Loading...</span>
+                    </button>
+                </div>
+            @endif
+
             @forelse($this->chatMessages as $index => $message)
                 @php
                     $previousMessage = $index > 0 ? $this->chatMessages[$index - 1] : null;
