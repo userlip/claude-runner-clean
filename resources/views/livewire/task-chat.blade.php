@@ -864,6 +864,23 @@
                 </div>
             @endforelse
 
+            {{-- Optimistic message (shown instantly before server confirms) --}}
+            <template x-if="optimisticMessage">
+                <div class="chat-message chat-message-user">
+                    <div class="chat-bubble chat-bubble-user">
+                        <template x-if="optimisticMessage.images && optimisticMessage.images.length > 0">
+                            <div class="chat-message-images">
+                                <template x-for="(image, index) in optimisticMessage.images" :key="index">
+                                    <img :src="image.data" :alt="image.name || 'Image'" class="chat-message-image-thumb">
+                                </template>
+                            </div>
+                        </template>
+                        <p x-show="optimisticMessage.content" x-text="optimisticMessage.content" style="white-space: pre-wrap; margin: 0;"></p>
+                        <span class="chat-message-time chat-message-time-user" x-text="optimisticMessage.timestamp"></span>
+                    </div>
+                </div>
+            </template>
+
             <template x-if="isRunning">
             <div class="chat-thinking">
                 <div class="chat-thinking-bubble">
@@ -942,17 +959,20 @@
                     this.images = [];
                     this.sending = true;
 
+                    // Show optimistic message IMMEDIATELY (before API call)
+                    this.$root.showOptimisticMessage(promptToSend, imagesToSend);
+
                     try {
-                        // Send via API
+                        // Send via API (runs in background, message already visible)
                         const chatManager = new ChatManager({{ $task->id }}, '{{ $task->uuid }}');
                         await chatManager.sendMessage(promptToSend, imagesToSend);
-                        // Refresh immediately to show the sent message
-                        $wire.$refresh();
+                        // WebSocket will notify us when message is saved, then we refresh
                     } catch (error) {
                         console.error('Failed to send message:', error);
-                        // Restore input on error
+                        // Restore input on error and clear optimistic message
                         this.prompt = promptToSend;
                         this.images = imagesToSend;
+                        this.$root.optimisticMessage = null;
                     } finally {
                         this.sending = false;
                     }

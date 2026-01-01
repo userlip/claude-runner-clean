@@ -206,12 +206,17 @@ document.addEventListener('alpine:init', () => {
         isCompacting: false,
         compactionCount: 0,
         chatManager: null,
+        optimisticMessage: null,
 
         init() {
             // Connect to WebSocket
             this.chatManager = new ChatManager(taskId, taskUuid);
 
             this.chatManager.onMessageCreated = (data) => {
+                // Clear optimistic message when real message arrives
+                if (data.role === 'user') {
+                    this.optimisticMessage = null;
+                }
                 // Let the message component handle rendering
                 this.$dispatch('message-created', data);
             };
@@ -239,6 +244,14 @@ document.addEventListener('alpine:init', () => {
 
         get isRunning() {
             return this.taskStatus === 'running';
+        },
+
+        showOptimisticMessage(content, images = []) {
+            this.optimisticMessage = {
+                content: content,
+                images: images,
+                timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
+            };
         },
 
         async sendMessage(prompt, images = []) {
