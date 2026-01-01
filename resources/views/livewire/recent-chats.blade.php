@@ -1,11 +1,11 @@
-<div wire:poll.3s class="recent-chats-sidebar">
+<div wire:poll.5s class="recent-chats-sidebar">
     <div class="recent-chats-header">
         <span>Recent Chats</span>
     </div>
     <ul class="recent-chats-list">
         @forelse($this->recentChats as $chat)
-            <li>
-                <a href="{{ $this->getChatUrl($chat) }}" class="recent-chat-item" wire:navigate>
+            <li wire:key="chat-{{ $chat['model']->id }}">
+                <a href="{{ $this->getChatUrl($chat) }}" class="recent-chat-item">
                     <span class="recent-chat-status recent-chat-status-{{ $chat['model']->status->value }}"></span>
                     <span class="recent-chat-title">
                         @if($this->hasUnreadReply($chat))
