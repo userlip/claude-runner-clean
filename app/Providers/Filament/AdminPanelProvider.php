@@ -95,6 +95,10 @@ class AdminPanelProvider extends PanelProvider
             ->renderHook(
                 PanelsRenderHook::SIDEBAR_FOOTER,
                 fn (): string => Blade::render('@livewire(\'recent-chats\')'),
+            )
+            ->renderHook(
+                PanelsRenderHook::SCRIPTS_AFTER,
+                fn (): string => Blade::render('@vite(\'resources/js/app.js\')'),
             );
     }
 

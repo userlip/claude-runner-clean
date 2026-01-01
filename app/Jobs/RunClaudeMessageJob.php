@@ -4,6 +4,9 @@ namespace App\Jobs;
 
 use App\Enums\MessageRole;
 use App\Enums\MessageStatus;
+use App\Events\MessageCreated;
+use App\Events\MessageUpdated;
+use App\Events\TaskStatusChanged;
 use App\Models\Message;
 use App\Models\Task;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -28,6 +31,7 @@ class RunClaudeMessageJob implements ShouldQueue
     public function handle(): void
     {
         $this->task->markAsRunning();
+        broadcast(new TaskStatusChanged($this->task->fresh()))->toOthers();
 
         // If this is a continued session (like auto-compact), check for queued messages first
         // and include them in this run. This prevents messages from getting stuck in queue
@@ -42,6 +46,9 @@ class RunClaudeMessageJob implements ShouldQueue
             'status' => MessageStatus::Sent,
             'content' => '',
         ]);
+
+        // Broadcast message created event
+        broadcast(new MessageCreated($assistantMessage))->toOthers();
 
         try {
             $command = $this->buildCommand();
@@ -112,6 +119,7 @@ class RunClaudeMessageJob implements ShouldQueue
                             'tool_calls' => $toolCalls,
                             'content_blocks' => $contentBlocks,
                         ]);
+                        broadcast(new MessageUpdated($assistantMessage->fresh()))->toOthers();
                     }
                     if (isset($parsed['content'])) {
                         $contentBlocks[] = [
@@ -123,6 +131,7 @@ class RunClaudeMessageJob implements ShouldQueue
                             'content' => ($assistantMessage->content ?? '').$parsed['content'],
                             'content_blocks' => $contentBlocks,
                         ]);
+                        broadcast(new MessageUpdated($assistantMessage->fresh()))->toOthers();
                     }
                     if (isset($parsed['turn_usage'])) {
                         // Track the latest turn's context usage (overwrites previous)
@@ -210,6 +219,7 @@ class RunClaudeMessageJob implements ShouldQueue
             if ($resultReceived) {
                 // Claude finished responding - mark completed and notify
                 $this->task->markAsCompleted();
+                broadcast(new TaskStatusChanged($this->task->fresh()))->toOthers();
                 Log::debug('Task marked as completed (result received)', ['task_id' => $this->task->id]);
 
                 $this->sendPushNotification(

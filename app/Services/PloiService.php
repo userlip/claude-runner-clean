@@ -122,4 +122,170 @@ class PloiService
             Log::info("Auto-matched site {$site->domain} to repository {$repository->full_name}");
         }
     }
+
+    /**
+     * Get all daemons for the server.
+     *
+     * @return array<int, array{id: int, command: string, directory: string, user: string, processes: int, status: string}>
+     */
+    public function listDaemons(): array
+    {
+        $result = Process::run([
+            'ploi', 'daemon:list',
+            '--server='.$this->serverName,
+            '--no-interaction',
+        ]);
+
+        if (! $result->successful()) {
+            Log::error('Failed to list Ploi daemons', ['output' => $result->errorOutput()]);
+
+            throw new \RuntimeException('Failed to list daemons: '.$result->errorOutput());
+        }
+
+        return $this->parseDaemonOutput($result->output());
+    }
+
+    /**
+     * Create a new daemon.
+     *
+     * @return array{id: int, command: string}|null
+     */
+    public function createDaemon(
+        string $command,
+        string $directory,
+        string $user = 'ploi',
+        int $processes = 1
+    ): ?array {
+        $result = Process::run([
+            'ploi', 'daemon:create',
+            '--server='.$this->serverName,
+            '--command='.$command,
+            '--directory='.$directory,
+            '--system-user='.$user,
+            '--processes='.$processes,
+            '--no-interaction',
+        ]);
+
+        if (! $result->successful()) {
+            Log::error('Failed to create Ploi daemon', [
+                'command' => $command,
+                'directory' => $directory,
+                'output' => $result->errorOutput(),
+            ]);
+
+            throw new \RuntimeException('Failed to create daemon: '.$result->errorOutput());
+        }
+
+        Log::info('Ploi daemon created', [
+            'command' => $command,
+            'directory' => $directory,
+        ]);
+
+        return [
+            'command' => $command,
+            'directory' => $directory,
+        ];
+    }
+
+    /**
+     * Delete a daemon by ID.
+     */
+    public function deleteDaemon(int $daemonId): bool
+    {
+        $result = Process::run([
+            'ploi', 'daemon:delete',
+            '--server='.$this->serverName,
+            '--daemon-id='.$daemonId,
+            '--no-interaction',
+        ]);
+
+        if (! $result->successful()) {
+            Log::error('Failed to delete Ploi daemon', [
+                'daemon_id' => $daemonId,
+                'output' => $result->errorOutput(),
+            ]);
+
+            return false;
+        }
+
+        Log::info('Ploi daemon deleted', ['daemon_id' => $daemonId]);
+
+        return true;
+    }
+
+    /**
+     * Restart a daemon by ID.
+     */
+    public function restartDaemon(int $daemonId): bool
+    {
+        $result = Process::run([
+            'ploi', 'daemon:restart',
+            '--server='.$this->serverName,
+            '--daemon='.$daemonId,
+            '--no-interaction',
+        ]);
+
+        if (! $result->successful()) {
+            Log::error('Failed to restart Ploi daemon', [
+                'daemon_id' => $daemonId,
+                'output' => $result->errorOutput(),
+            ]);
+
+            return false;
+        }
+
+        Log::info('Ploi daemon restarted', ['daemon_id' => $daemonId]);
+
+        return true;
+    }
+
+    /**
+     * Find a daemon by command pattern.
+     *
+     * @return array{id: int, command: string, directory: string, user: string, processes: int, status: string}|null
+     */
+    public function findDaemonByCommand(string $pattern): ?array
+    {
+        $daemons = $this->listDaemons();
+
+        foreach ($daemons as $daemon) {
+            if (str_contains($daemon['command'], $pattern)) {
+                return $daemon;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array<int, array{id: int, command: string, directory: string, user: string, processes: int, status: string}>
+     */
+    protected function parseDaemonOutput(string $output): array
+    {
+        $daemons = [];
+        $lines = explode("\n", $output);
+
+        foreach ($lines as $line) {
+            // Skip header, separator, and empty lines
+            if (! str_contains($line, '|') || str_contains($line, '---') || str_contains($line, 'ID')) {
+                continue;
+            }
+
+            $columns = array_map('trim', explode('|', $line));
+            $columns = array_values(array_filter($columns, fn ($c) => $c !== ''));
+
+            if (count($columns) >= 6) {
+                $daemons[] = [
+                    'id' => (int) $columns[0],
+                    'command' => $columns[1],
+                    'directory' => $columns[2],
+                    'user' => $columns[3],
+                    'processes' => (int) $columns[4],
+                    'status' => $columns[5],
+                ];
+            }
+        }
+
+        return $daemons;
+    }
 }
