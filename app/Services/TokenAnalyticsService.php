@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\AiProvider;
 use App\Models\Message;
+use App\Models\Proposal;
 use App\Models\Task;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -81,33 +82,34 @@ class TokenAnalyticsService
     public function getUsageByTaskType(): array
     {
         // Research tasks (created by ResearchService)
-        $researchTasks = Task::where('title', 'like', 'Research:%')->pluck('id');
-        $researchMessages = Message::whereIn('task_id', $researchTasks);
+        $researchTaskIds = Task::where('title', 'like', 'Research:%')->pluck('id');
 
-        // Proposal execution tasks (created by ProposalExecutionService)
-        $proposalTasks = Task::whereHas('proposal')->pluck('id');
-        $proposalMessages = Message::whereIn('task_id', $proposalTasks);
+        // Proposal execution tasks (via Proposal.executed_task_id)
+        $proposalTaskIds = Proposal::whereNotNull('executed_task_id')->pluck('executed_task_id');
 
         // Manual tasks (everything else)
-        $manualTaskIds = Task::whereNotIn('id', $researchTasks->merge($proposalTasks))->pluck('id');
-        $manualMessages = Message::whereIn('task_id', $manualTaskIds);
+        $automatedIds = $researchTaskIds->merge($proposalTaskIds);
+        $manualTaskIds = Task::whereNotIn('id', $automatedIds)->pluck('id');
 
         return [
-            'research' => [
-                'tokens' => (int) $researchMessages->sum(DB::raw('tokens_in + tokens_out')),
-                'cost' => (float) $researchMessages->sum('cost_usd'),
-                'task_count' => $researchTasks->count(),
-            ],
-            'proposal_execution' => [
-                'tokens' => (int) $proposalMessages->sum(DB::raw('tokens_in + tokens_out')),
-                'cost' => (float) $proposalMessages->sum('cost_usd'),
-                'task_count' => $proposalTasks->count(),
-            ],
-            'manual' => [
-                'tokens' => (int) $manualMessages->sum(DB::raw('tokens_in + tokens_out')),
-                'cost' => (float) $manualMessages->sum('cost_usd'),
-                'task_count' => $manualTaskIds->count(),
-            ],
+            'research' => $this->getTaskTypeStats($researchTaskIds),
+            'proposal_execution' => $this->getTaskTypeStats($proposalTaskIds),
+            'manual' => $this->getTaskTypeStats($manualTaskIds),
+        ];
+    }
+
+    private function getTaskTypeStats(Collection $taskIds): array
+    {
+        if ($taskIds->isEmpty()) {
+            return ['tokens' => 0, 'cost' => 0.0, 'task_count' => 0];
+        }
+
+        $messages = Message::whereIn('task_id', $taskIds);
+
+        return [
+            'tokens' => (int) ($messages->sum('tokens_in') + $messages->sum('tokens_out')),
+            'cost' => (float) $messages->sum('cost_usd'),
+            'task_count' => $taskIds->count(),
         ];
     }
 
