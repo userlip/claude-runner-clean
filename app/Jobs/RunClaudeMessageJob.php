@@ -114,13 +114,18 @@ class RunClaudeMessageJob implements ShouldQueue
                             'content_blocks' => $contentBlocks,
                         ]);
 
-                        // Detect AskUserQuestion tool - we need to pause and wait for input
+                        // Detect AskUserQuestion tool - we need to IMMEDIATELY stop and wait for input
+                        // In headless mode, Claude will auto-answer and continue if we don't stop now
                         if (($parsed['tool_call']['name'] ?? '') === 'AskUserQuestion') {
-                            Log::info('AskUserQuestion detected - will wait for user input', [
+                            Log::info('AskUserQuestion detected - STOPPING to wait for user input', [
                                 'task_id' => $this->task->id,
                                 'tool_id' => $parsed['tool_call']['id'] ?? null,
                             ]);
                             $askUserQuestionDetected = true;
+
+                            // IMMEDIATELY break out to stop Claude from auto-continuing
+                            // The user must submit their response via the UI
+                            break;
                         }
                     }
                     if (isset($parsed['content'])) {
@@ -240,29 +245,29 @@ class RunClaudeMessageJob implements ShouldQueue
             fclose($pipes[1]);
             fclose($pipes[2]);
 
+            // Kill the subprocess since we're done with it
+            // The main Claude session keeps running for future messages
+            proc_terminate($process);
+            proc_close($process);
+
+            // Handle AskUserQuestion FIRST - we may have broken early before receiving result
+            if ($askUserQuestionDetected) {
+                $this->task->markAsWaitingForInput();
+                Log::info('Task marked as waiting for input (AskUserQuestion detected)', [
+                    'task_id' => $this->task->id,
+                ]);
+
+                $this->sendPushNotification(
+                    'Input Required',
+                    'Claude is waiting for your response to continue.',
+                    true
+                );
+
+                // Don't process queued messages or auto-compact - wait for user input
+                return;
+            }
+
             if ($resultReceived) {
-                // Kill the subprocess since we're done with it
-                // The main Claude session keeps running for future messages
-                proc_terminate($process);
-                proc_close($process);
-
-                // If AskUserQuestion was detected, mark as waiting for input instead of completed
-                if ($askUserQuestionDetected) {
-                    $this->task->markAsWaitingForInput();
-                    Log::info('Task marked as waiting for input (AskUserQuestion detected)', [
-                        'task_id' => $this->task->id,
-                    ]);
-
-                    $this->sendPushNotification(
-                        'Input Required',
-                        'Claude is waiting for your response to continue.',
-                        true
-                    );
-
-                    // Don't process queued messages or auto-compact - wait for user input
-                    return;
-                }
-
                 // Claude finished responding - mark completed and notify
                 $this->task->markAsCompleted();
                 Log::debug('Task marked as completed (result received)', ['task_id' => $this->task->id]);
@@ -284,9 +289,7 @@ class RunClaudeMessageJob implements ShouldQueue
                 $this->processQueuedMessages();
             } else {
                 // No result received - process may have exited unexpectedly
-                $exitCode = proc_close($process);
                 Log::warning('Claude process ended without result event', [
-                    'exit_code' => $exitCode,
                     'task_id' => $this->task->id,
                 ]);
                 $this->task->markAsCompleted();
