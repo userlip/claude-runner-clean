@@ -109,9 +109,15 @@
         @if($expandedSection === 'skills')
         <div class="session-info-content" style="max-height: 300px; overflow-y: auto;">
             @foreach($this->skills as $skill)
-                <div class="session-info-item">
+                <button
+                    wire:click="viewSkill('{{ $skill }}')"
+                    class="session-info-item session-info-item-clickable"
+                >
                     <span class="session-info-item-name">{{ $skill }}</span>
-                </div>
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 0.875rem; height: 0.875rem; opacity: 0.5;">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                    </svg>
+                </button>
             @endforeach
         </div>
         @endif
@@ -157,4 +163,23 @@
         </div>
         @endif
     </div>
+
+    {{-- Skill Content Modal --}}
+    @if($viewingSkill)
+    <div class="file-preview-overlay" wire:click.self="closeSkillModal">
+        <div class="file-preview-modal" style="max-width: 48rem;">
+            <div class="file-preview-header">
+                <h4 class="file-preview-title">{{ $viewingSkill }}</h4>
+                <button wire:click="closeSkillModal" class="file-preview-close">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 1.25rem; height: 1.25rem;">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div class="file-preview-content">
+                <pre class="file-preview-code" style="white-space: pre-wrap; word-wrap: break-word;">{{ $skillContent }}</pre>
+            </div>
+        </div>
+    </div>
+    @endif
 </div>

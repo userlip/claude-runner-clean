@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Models\Task;
+use Illuminate\Support\Facades\Process;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
@@ -12,6 +13,10 @@ class SessionInfoSidebar extends Component
 
     public ?string $expandedSection = null;
 
+    public ?string $viewingSkill = null;
+
+    public ?string $skillContent = null;
+
     public function mount(Task $task): void
     {
         $this->task = $task;
@@ -20,6 +25,64 @@ class SessionInfoSidebar extends Component
     public function toggleSection(string $section): void
     {
         $this->expandedSection = $this->expandedSection === $section ? null : $section;
+    }
+
+    public function viewSkill(string $skillName): void
+    {
+        $this->viewingSkill = $skillName;
+        $this->skillContent = $this->loadSkillContent($skillName);
+    }
+
+    public function closeSkillModal(): void
+    {
+        $this->viewingSkill = null;
+        $this->skillContent = null;
+    }
+
+    protected function loadSkillContent(string $skillName): string
+    {
+        // Skills can be in user skills directory or plugin cache
+        $possiblePaths = [
+            "/home/ploi/.claude/skills/{$skillName}.md",
+            "/home/ploi/.claude/skills/{$skillName}/skill.md",
+        ];
+
+        // Check for plugin skills (superpowers:skillname format)
+        if (str_contains($skillName, ':')) {
+            [$plugin, $skill] = explode(':', $skillName, 2);
+            $possiblePaths[] = "/home/ploi/.claude/plugins/cache/{$plugin}-marketplace/{$plugin}/**/skills/{$skill}.md";
+            $possiblePaths[] = "/home/ploi/.claude/plugins/cache/*/{$plugin}/**/skills/{$skill}.md";
+
+            // Try glob for plugin paths
+            $globPatterns = [
+                "/home/ploi/.claude/plugins/cache/{$plugin}-marketplace/{$plugin}/*/skills/{$skill}.md",
+                "/home/ploi/.claude/plugins/cache/*/{$plugin}/*/skills/{$skill}.md",
+            ];
+
+            foreach ($globPatterns as $pattern) {
+                $matches = glob($pattern);
+                if (! empty($matches)) {
+                    $possiblePaths = array_merge($matches, $possiblePaths);
+                }
+            }
+        }
+
+        foreach ($possiblePaths as $path) {
+            if (file_exists($path) && is_readable($path)) {
+                return file_get_contents($path);
+            }
+        }
+
+        // Try using claude CLI to get skill content
+        $result = Process::timeout(10)
+            ->path($this->task->working_directory)
+            ->run("claude skill show {$skillName} 2>/dev/null || echo 'Skill not found or not accessible'");
+
+        if ($result->successful() && ! str_contains($result->output(), 'Skill not found')) {
+            return $result->output();
+        }
+
+        return "Could not load skill content for: {$skillName}\n\nThe skill may be a built-in skill or located in a non-standard path.";
     }
 
     /**

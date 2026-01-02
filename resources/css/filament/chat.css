@@ -2930,3 +2930,23 @@
     border-top-color: rgb(55 65 81);
     color: rgb(107 114 128);
 }
+
+.session-info-item-clickable {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    transition: background-color 0.15s;
+}
+
+.session-info-item-clickable:hover {
+    background-color: rgb(219 234 254);
+}
+
+.dark .session-info-item-clickable:hover {
+    background-color: rgb(30 58 138 / 0.3);
+}
