@@ -30,6 +30,13 @@ class GitHubSettings extends Page
         return $this->getGitHubConnection() !== null;
     }
 
+    public function getManageAccessUrl(): string
+    {
+        $clientId = config('services.github.client_id');
+
+        return "https://github.com/settings/connections/applications/{$clientId}";
+    }
+
     protected function getHeaderActions(): array
     {
         return [
@@ -38,6 +45,13 @@ class GitHubSettings extends Page
                 ->icon('heroicon-o-link')
                 ->url(route('github.redirect'))
                 ->visible(fn () => ! $this->isConnected()),
+
+            Action::make('manage_access')
+                ->label('Manage Repository Access')
+                ->icon('heroicon-o-cog-6-tooth')
+                ->url(fn () => $this->getManageAccessUrl())
+                ->openUrlInNewTab()
+                ->visible(fn () => $this->isConnected()),
 
             Action::make('disconnect')
                 ->label('Disconnect')
