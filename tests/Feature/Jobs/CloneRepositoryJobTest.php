@@ -8,12 +8,14 @@ use Illuminate\Support\Facades\Process;
 test('job clones repository to workspace path', function () {
     Process::fake();
 
+    $workspacePath = sys_get_temp_dir().'/test-workspaces/repo-'.uniqid();
+
     $repository = Repository::factory()->create([
         'clone_url' => 'https://github.com/test/repo.git',
     ]);
     $task = Task::factory()->create([
         'repository_id' => $repository->id,
-        'workspace_path' => '/home/ploi/workspaces/repo-abc123',
+        'workspace_path' => $workspacePath,
     ]);
 
     CloneRepositoryJob::dispatchSync($task);
@@ -26,21 +28,23 @@ test('job clones repository to workspace path', function () {
 test('job builds correct clone command', function () {
     Process::fake();
 
+    $workspacePath = sys_get_temp_dir().'/test-workspaces/my-repo-'.uniqid();
+
     $repository = Repository::factory()->create([
         'clone_url' => 'https://github.com/test/my-repo.git',
         'default_branch' => 'main',
     ]);
     $task = Task::factory()->create([
         'repository_id' => $repository->id,
-        'workspace_path' => '/home/ploi/workspaces/my-repo-xyz',
+        'workspace_path' => $workspacePath,
     ]);
 
     CloneRepositoryJob::dispatchSync($task);
 
-    Process::assertRan(function ($process) {
+    Process::assertRan(function ($process) use ($workspacePath) {
         $cmd = implode(' ', $process->command);
 
         return str_contains($cmd, 'https://github.com/test/my-repo.git')
-            && str_contains($cmd, '/home/ploi/workspaces/my-repo-xyz');
+            && str_contains($cmd, $workspacePath);
     });
 });

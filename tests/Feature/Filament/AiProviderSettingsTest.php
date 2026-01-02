@@ -8,6 +8,7 @@ use Livewire\Livewire;
 
 beforeEach(function () {
     Filament::setCurrentPanel(Filament::getPanel('admin'));
+    $this->withoutVite();
 });
 
 test('it renders settings page', function () {
@@ -15,8 +16,8 @@ test('it renders settings page', function () {
     AiProvider::factory()->claude()->create();
     AiProvider::factory()->glm()->create();
 
-    $this->actingAs($user)
-        ->get('/admin/ai-provider-settings')
+    Livewire::actingAs($user)
+        ->test(AiProviderSettings::class)
         ->assertSuccessful();
 });
 

@@ -6,7 +6,10 @@ use App\Services\PloiService;
 use Illuminate\Support\Facades\Process;
 
 beforeEach(function () {
-    config(['services.ploi.server_id' => '105384']);
+    config([
+        'services.ploi.server_id' => '105384',
+        'services.ploi.server_name' => 'test-server',
+    ]);
 });
 
 test('sync sites creates new sites from ploi', function () {

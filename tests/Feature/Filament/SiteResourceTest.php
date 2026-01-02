@@ -13,6 +13,11 @@ use Livewire\Livewire;
 beforeEach(function () {
     Filament::setCurrentPanel(Filament::getPanel('admin'));
 
+    config([
+        'services.ploi.server_id' => '105384',
+        'services.ploi.server_name' => 'test-server',
+    ]);
+
     $this->user = User::factory()->create();
     $this->actingAs($this->user);
 });
