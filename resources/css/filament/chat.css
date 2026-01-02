@@ -2950,3 +2950,54 @@
 .dark .session-info-item-clickable:hover {
     background-color: rgb(30 58 138 / 0.3);
 }
+
+.session-info-item-with-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.session-info-item-with-actions:hover {
+    background-color: rgb(243 244 246);
+}
+
+.dark .session-info-item-with-actions:hover {
+    background-color: rgb(55 65 81 / 0.5);
+}
+
+.session-info-item-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    flex-shrink: 0;
+}
+
+.session-info-action-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    padding: 0;
+    border: none;
+    background: transparent;
+    border-radius: 0.25rem;
+    color: rgb(107 114 128);
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.session-info-action-btn:hover {
+    background-color: rgb(219 234 254);
+    color: rgb(37 99 235);
+}
+
+.dark .session-info-action-btn {
+    color: rgb(156 163 175);
+}
+
+.dark .session-info-action-btn:hover {
+    background-color: rgb(30 58 138 / 0.3);
+    color: rgb(96 165 250);
+}

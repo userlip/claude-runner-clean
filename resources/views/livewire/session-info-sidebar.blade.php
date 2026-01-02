@@ -109,16 +109,37 @@
         @if($expandedSection === 'skills')
         <div class="session-info-content" style="max-height: 300px; overflow-y: auto;">
             @foreach($this->skills as $index => $skill)
-                <button
-                    wire:click="viewSkill({{ json_encode($skill) }})"
+                <div
                     wire:key="skill-{{ $index }}"
-                    class="session-info-item session-info-item-clickable"
+                    class="session-info-item session-info-item-with-actions"
                 >
                     <span class="session-info-item-name">{{ $skill }}</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 0.875rem; height: 0.875rem; opacity: 0.5;">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-                    </svg>
-                </button>
+                    <div class="session-info-item-actions">
+                        {{-- Run button - inserts skill command into chat --}}
+                        <button
+                            type="button"
+                            x-data
+                            @click="$dispatch('insert-snippet', { content: '/{{ $skill }}' })"
+                            class="session-info-action-btn"
+                            title="Run skill"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 0.875rem; height: 0.875rem;">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
+                            </svg>
+                        </button>
+                        {{-- View button --}}
+                        <button
+                            type="button"
+                            wire:click="viewSkill({{ json_encode($skill) }})"
+                            class="session-info-action-btn"
+                            title="View skill"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 0.875rem; height: 0.875rem;">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
             @endforeach
         </div>
         @endif
