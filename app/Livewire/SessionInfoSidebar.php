@@ -22,9 +22,20 @@ class SessionInfoSidebar extends Component
         $this->expandedSection = $this->expandedSection === $section ? null : $section;
     }
 
+    /**
+     * Refresh task on each poll to get latest metadata.
+     */
+    public function refresh(): void
+    {
+        $this->task->refresh();
+    }
+
     #[Computed]
     public function metadata(): array
     {
+        // Refresh task to get latest metadata on each render
+        $this->task->refresh();
+
         return $this->task->session_metadata ?? [];
     }
 

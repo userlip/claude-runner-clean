@@ -1,4 +1,4 @@
-<div class="file-browser" wire:poll.5s>
+<div class="file-browser" wire:poll.5s="refresh">
     <div class="file-browser-header">
         <h3 class="file-browser-title">Session Info</h3>
         @if($this->model)
