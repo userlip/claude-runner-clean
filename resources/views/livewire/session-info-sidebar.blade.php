@@ -118,8 +118,7 @@
                         {{-- Run button - inserts skill command into chat --}}
                         <button
                             type="button"
-                            x-data
-                            @click="$dispatch('insert-snippet', { content: '/{{ $skill }}' })"
+                            wire:click="runSkill({{ json_encode($skill) }})"
                             class="session-info-action-btn"
                             title="Run skill"
                         >

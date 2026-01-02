@@ -39,6 +39,11 @@ class SessionInfoSidebar extends Component
         $this->skillContent = null;
     }
 
+    public function runSkill(string $skillName): void
+    {
+        $this->dispatch('insert-snippet', content: '/'.$skillName);
+    }
+
     protected function loadSkillContent(string $skillName): string
     {
         // Skills can be in user skills directory or plugin cache
