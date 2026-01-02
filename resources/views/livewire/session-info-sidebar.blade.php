@@ -108,9 +108,10 @@
         </button>
         @if($expandedSection === 'skills')
         <div class="session-info-content" style="max-height: 300px; overflow-y: auto;">
-            @foreach($this->skills as $skill)
+            @foreach($this->skills as $index => $skill)
                 <button
-                    wire:click="viewSkill('{{ $skill }}')"
+                    wire:click="viewSkill({{ json_encode($skill) }})"
+                    wire:key="skill-{{ $index }}"
                     class="session-info-item session-info-item-clickable"
                 >
                     <span class="session-info-item-name">{{ $skill }}</span>

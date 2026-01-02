@@ -42,26 +42,29 @@ class SessionInfoSidebar extends Component
     protected function loadSkillContent(string $skillName): string
     {
         // Skills can be in user skills directory or plugin cache
+        // Files are typically SKILL.md (uppercase)
         $possiblePaths = [
             "/home/ploi/.claude/skills/{$skillName}.md",
+            "/home/ploi/.claude/skills/{$skillName}/SKILL.md",
             "/home/ploi/.claude/skills/{$skillName}/skill.md",
         ];
 
         // Check for plugin skills (superpowers:skillname format)
         if (str_contains($skillName, ':')) {
             [$plugin, $skill] = explode(':', $skillName, 2);
-            $possiblePaths[] = "/home/ploi/.claude/plugins/cache/{$plugin}-marketplace/{$plugin}/**/skills/{$skill}.md";
-            $possiblePaths[] = "/home/ploi/.claude/plugins/cache/*/{$plugin}/**/skills/{$skill}.md";
 
-            // Try glob for plugin paths
+            // Try glob for plugin paths - skills are in versioned directories
             $globPatterns = [
+                "/home/ploi/.claude/plugins/cache/{$plugin}-marketplace/{$plugin}/*/skills/{$skill}/SKILL.md",
                 "/home/ploi/.claude/plugins/cache/{$plugin}-marketplace/{$plugin}/*/skills/{$skill}.md",
+                "/home/ploi/.claude/plugins/cache/*/{$plugin}/*/skills/{$skill}/SKILL.md",
                 "/home/ploi/.claude/plugins/cache/*/{$plugin}/*/skills/{$skill}.md",
             ];
 
             foreach ($globPatterns as $pattern) {
                 $matches = glob($pattern);
                 if (! empty($matches)) {
+                    // Use the first match (most recent version typically)
                     $possiblePaths = array_merge($matches, $possiblePaths);
                 }
             }
