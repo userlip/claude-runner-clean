@@ -1,5 +1,6 @@
 import './bootstrap';
 import * as Sentry from '@sentry/browser';
+import './native-feel';
 
 // Initialize Sentry if DSN is configured
 if (window.SENTRY_DSN) {

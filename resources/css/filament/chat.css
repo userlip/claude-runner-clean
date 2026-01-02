@@ -3001,3 +3001,205 @@
     background-color: rgb(30 58 138 / 0.3);
     color: rgb(96 165 250);
 }
+
+/* ==========================================================================
+   Native Feel Enhancement Styles
+   ========================================================================== */
+
+/* Touch Feedback - instant visual response on touch */
+.touch-active {
+    transform: scale(0.97) !important;
+    opacity: 0.9 !important;
+}
+
+/* Base styles for touch targets */
+button,
+a,
+[role="button"],
+[wire\:click],
+[x-on\:click],
+.fi-btn,
+.fi-icon-btn,
+.fi-dropdown-trigger,
+.fi-sidebar-item,
+.fi-tabs-item,
+.cursor-pointer {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+}
+
+/* Smooth transitions for interactive elements */
+button,
+a,
+[role="button"],
+.fi-btn,
+.fi-icon-btn {
+    transition: transform 0.1s ease-out, opacity 0.1s ease-out, background-color 0.15s, color 0.15s, border-color 0.15s;
+    will-change: transform;
+}
+
+/* Pull-to-Refresh Indicator */
+.ptr-indicator {
+    position: fixed;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%) translateY(-60px);
+    z-index: 9999;
+    pointer-events: none;
+    transition: transform 0.2s ease-out;
+}
+
+.ptr-indicator.pulling {
+    transform: translateX(-50%) translateY(calc(var(--ptr-offset, 0px) - 60px));
+    transition: none;
+}
+
+.ptr-indicator.refreshing {
+    transform: translateX(-50%) translateY(20px);
+    transition: transform 0.3s ease-out;
+}
+
+.ptr-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    background: white;
+    border-radius: 9999px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    opacity: var(--ptr-opacity, 0);
+    transition: opacity 0.15s;
+}
+
+.dark .ptr-content {
+    background: rgb(31 41 55);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.ptr-indicator.refreshing .ptr-content {
+    opacity: 1;
+}
+
+.ptr-spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgb(209 213 219);
+    border-top-color: rgb(59 130 246);
+    border-radius: 50%;
+    transform: rotate(var(--ptr-rotation, 0deg));
+    transition: transform 0.1s linear;
+}
+
+.dark .ptr-spinner {
+    border-color: rgb(75 85 99);
+    border-top-color: rgb(96 165 250);
+}
+
+.ptr-indicator.refreshing .ptr-spinner {
+    animation: ptr-spin 0.8s linear infinite;
+}
+
+@keyframes ptr-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.ptr-text {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: rgb(107 114 128);
+    white-space: nowrap;
+}
+
+.dark .ptr-text {
+    color: rgb(156 163 175);
+}
+
+/* Swipe Back Navigation Overlay */
+.swipe-back-overlay {
+    position: fixed;
+    inset: 0;
+    background: linear-gradient(to right, rgba(0, 0, 0, 0.08) 0%, transparent 30%);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 9998;
+    transition: opacity 0.2s ease-out;
+}
+
+.swipe-back-overlay.active {
+    opacity: var(--swipe-progress, 0);
+}
+
+/* Modal/Slideover Swipe-to-Dismiss */
+.fi-modal.dragging,
+.fi-slideover.dragging,
+[role="dialog"].dragging {
+    transition: none !important;
+    cursor: grabbing;
+}
+
+.fi-modal:not(.dragging),
+.fi-slideover:not(.dragging),
+[role="dialog"]:not(.dragging) {
+    transition: transform 0.25s ease-out, opacity 0.25s ease-out;
+}
+
+/* Add drag handle indicator to modal headers */
+.fi-modal-header::before,
+.fi-slideover-header::before {
+    content: '';
+    position: absolute;
+    top: 0.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 2rem;
+    height: 0.25rem;
+    background: rgb(209 213 219);
+    border-radius: 9999px;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.dark .fi-modal-header::before,
+.dark .fi-slideover-header::before {
+    background: rgb(75 85 99);
+}
+
+/* Show drag handle on touch devices */
+@media (pointer: coarse) {
+    .fi-modal-header::before,
+    .fi-slideover-header::before {
+        opacity: 1;
+    }
+
+    .fi-modal-header,
+    .fi-slideover-header {
+        padding-top: 1.25rem;
+        cursor: grab;
+    }
+}
+
+/* Prevent text selection during gestures */
+.ptr-indicator.pulling ~ *,
+.swipe-back-overlay.active ~ * {
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* Safe area adjustments for pull-to-refresh */
+@supports (padding-top: env(safe-area-inset-top)) {
+    .ptr-indicator {
+        top: env(safe-area-inset-top);
+    }
+}
+
+/* Momentum scrolling for iOS */
+.chat-messages,
+.session-info-content,
+.fi-modal-content,
+.fi-slideover-content {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+}
