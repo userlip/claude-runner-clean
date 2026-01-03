@@ -170,6 +170,12 @@ class SessionInfoSidebar extends Component
         return $this->resultMetadata['num_turns'] ?? null;
     }
 
+    #[Computed]
+    public function shouldPoll(): bool
+    {
+        return $this->task->isRunning();
+    }
+
     public function formatDuration(?int $ms): string
     {
         if ($ms === null) {

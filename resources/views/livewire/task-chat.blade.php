@@ -227,7 +227,7 @@
                     {{-- Init Status Indicators --}}
                     @if($task->isInWorkspace())
                         <span class="chat-header-separator">·</span>
-                        <div class="chat-init-status" wire:poll.5s>
+                        <div class="chat-init-status" @if($task->isInitializing()) wire:poll.5s @endif>
                             @if($task->isInitializing())
                                 <span class="chat-init-badge chat-init-running" title="Initializing workspace...">
                                     <svg class="animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" style="width: 0.75rem; height: 0.75rem;">
@@ -427,7 +427,7 @@
         }"
     >
         {{-- Messages --}}
-        <div class="chat-messages" x-ref="messages" wire:poll.2s.visible="checkPolling">
+        <div class="chat-messages" x-ref="messages" @if($this->shouldPoll) wire:poll.2s.visible="checkPolling" @endif>
             {{-- Load earlier messages button --}}
             @if($this->hasMoreMessages)
                 <div class="chat-load-more">
@@ -746,36 +746,37 @@
                                                 @if(!empty($question['header']))
                                                     <span class="chat-question-chip">{{ $question['header'] }}</span>
                                                 @endif
-                                                <p class="chat-question-text">{{ $question['question'] }}</p>
+                                                <p class="chat-question-text">{{ $question['question'] ?? 'Please select an option:' }}</p>
 
                                                 <div class="chat-question-options">
                                                     @foreach($question['options'] ?? [] as $oIndex => $option)
+                                                        @php $optionLabel = $option['label'] ?? $option['description'] ?? "Option " . ($oIndex + 1); @endphp
                                                         @if($question['multiSelect'] ?? false)
                                                             {{-- Multi-select: checkboxes --}}
                                                             <label class="chat-question-option"
-                                                                   :class="{ 'selected': isMultiSelected({{ $qIndex }}, '{{ addslashes($option['label']) }}'), 'disabled': submitted }">
+                                                                   :class="{ 'selected': isMultiSelected({{ $qIndex }}, '{{ addslashes($optionLabel) }}'), 'disabled': submitted }">
                                                                 <input type="checkbox"
                                                                        :disabled="submitted"
-                                                                       @change="toggleMultiSelect({{ $qIndex }}, '{{ addslashes($option['label']) }}')"
-                                                                       :checked="isMultiSelected({{ $qIndex }}, '{{ addslashes($option['label']) }}')"
+                                                                       @change="toggleMultiSelect({{ $qIndex }}, '{{ addslashes($optionLabel) }}')"
+                                                                       :checked="isMultiSelected({{ $qIndex }}, '{{ addslashes($optionLabel) }}')"
                                                                        class="sr-only">
-                                                                <span class="chat-option-label">{{ $option['label'] }}</span>
-                                                                @if(!empty($option['description']))
+                                                                <span class="chat-option-label">{{ $optionLabel }}</span>
+                                                                @if(!empty($option['description']) && isset($option['label']))
                                                                     <span class="chat-option-desc">{{ $option['description'] }}</span>
                                                                 @endif
                                                             </label>
                                                         @else
                                                             {{-- Single select: radio buttons --}}
                                                             <label class="chat-question-option"
-                                                                   :class="{ 'selected': responses[{{ $qIndex }}] === '{{ addslashes($option['label']) }}', 'disabled': submitted }">
+                                                                   :class="{ 'selected': responses[{{ $qIndex }}] === '{{ addslashes($optionLabel) }}', 'disabled': submitted }">
                                                                 <input type="radio"
                                                                        name="question-{{ $message->id }}-{{ $qIndex }}"
-                                                                       value="{{ $option['label'] }}"
+                                                                       value="{{ $optionLabel }}"
                                                                        :disabled="submitted"
                                                                        x-model="responses[{{ $qIndex }}]"
                                                                        class="sr-only">
-                                                                <span class="chat-option-label">{{ $option['label'] }}</span>
-                                                                @if(!empty($option['description']))
+                                                                <span class="chat-option-label">{{ $optionLabel }}</span>
+                                                                @if(!empty($option['description']) && isset($option['label']))
                                                                     <span class="chat-option-desc">{{ $option['description'] }}</span>
                                                                 @endif
                                                             </label>
