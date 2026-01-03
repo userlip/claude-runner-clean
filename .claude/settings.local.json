@@ -11,7 +11,11 @@
       "Skill(superpowers:systematic-debugging)",
       "Bash(php artisan route:list:*)",
       "Bash(php artisan config:clear:*)",
-      "Bash(php artisan:*)"
+      "Bash(php artisan:*)",
+      "Bash(curl:*)",
+      "WebFetch(domain:claude-runner.marin.sh)",
+      "Bash(ls:*)",
+      "Bash(/usr/bin/claude:*)"
     ],
     "deny": [
       "Bash(php artisan migrate:fresh)",

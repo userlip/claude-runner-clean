@@ -628,13 +628,33 @@ class TaskChat extends Component
         $prompt = "Generate a 3-5 word title for a chat that starts with this message. Reply with ONLY the title, nothing else. No quotes, no explanation, no punctuation at the end.\n\nMessage: {$messageContent}\n\nTitle:";
 
         try {
-            // Use Claude Code CLI which is already authenticated
+            // Use Claude Code CLI with GLM provider for title generation
             $claudePath = config('services.claude.path', '/usr/bin/claude');
             $escapedPrompt = escapeshellarg($prompt);
 
+            // Build command with GLM environment variables
+            $glmProvider = \App\Models\AiProvider::where('name', 'glm')->first();
+            $envVars = [
+                'HOME' => getenv('HOME') ?: '/home/ploi',
+                'PATH' => '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
+            ];
+
+            if ($glmProvider) {
+                foreach ($glmProvider->getEnvironmentVariables() as $key => $value) {
+                    $envVars[$key] = $value;
+                }
+            }
+
+            $envCmd = 'env -i';
+            foreach ($envVars as $key => $value) {
+                $envCmd .= ' '.escapeshellarg("{$key}={$value}");
+            }
+
+            $command = "{$envCmd} {$claudePath} -p {$escapedPrompt} --output-format text --max-turns 1";
+
             // Run in temp dir to avoid picking up workspace context
             $process = proc_open(
-                "{$claudePath} -p {$escapedPrompt} --output-format text --max-turns 1",
+                $command,
                 [
                     0 => ['pipe', 'r'],
                     1 => ['pipe', 'w'],
