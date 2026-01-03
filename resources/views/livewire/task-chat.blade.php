@@ -597,7 +597,20 @@
                     @php
                         // Use cached grouped blocks for performance
                         $groupedBlocks = $groupedData['groupedBlocks'];
+                        $truncated = $groupedData['truncated'] ?? false;
+                        $totalBlockCount = $groupedData['totalBlockCount'] ?? 0;
                     @endphp
+
+                    {{-- Show truncation notice if blocks were limited --}}
+                    @if($truncated)
+                        <div wire:key="message-{{ $message->id }}-truncated" class="chat-message chat-message-assistant">
+                            <div class="chat-bubble chat-bubble-tool" style="background: rgb(254 243 199); border-color: rgb(253 230 138);">
+                                <span style="color: rgb(146 64 14); font-size: 0.75rem;">
+                                    ⚠️ Showing last {{ count($groupedBlocks) }} of {{ $totalBlockCount }} blocks ({{ $totalBlockCount - count($groupedBlocks) }} hidden for performance)
+                                </span>
+                            </div>
+                        </div>
+                    @endif
 
                     @if(count($groupedBlocks) > 0)
                     @foreach($groupedBlocks as $blockIndex => $block)

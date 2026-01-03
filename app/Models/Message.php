@@ -101,10 +101,15 @@ class Message extends Model
     }
 
     /**
+     * Maximum number of grouped blocks to render per message to prevent DOM explosion.
+     */
+    public const MAX_RENDERED_BLOCKS = 50;
+
+    /**
      * Get grouped content blocks (tool calls combined, text blocks separate).
      * This is cached to avoid re-processing on every render.
      *
-     * @return array{firstBlockIsText: bool, hasNoContentBlocks: bool, groupedBlocks: array, totalBlockCount: int}
+     * @return array{firstBlockIsText: bool, hasNoContentBlocks: bool, groupedBlocks: array, totalBlockCount: int, truncated: bool}
      */
     public function getGroupedBlocks(): array
     {
@@ -115,6 +120,7 @@ class Message extends Model
                 'hasNoContentBlocks' => true,
                 'groupedBlocks' => [],
                 'totalBlockCount' => 0,
+                'truncated' => false,
             ];
         }
 
@@ -163,11 +169,21 @@ class Message extends Model
                 $groupedBlocks[] = ['type' => 'tool_group', 'tools' => $currentToolGroup];
             }
 
+            $totalCount = count($groupedBlocks);
+            $truncated = $totalCount > self::MAX_RENDERED_BLOCKS;
+
+            // Limit to MAX_RENDERED_BLOCKS to prevent DOM explosion
+            // Keep the LAST blocks (most recent) since we want to show the latest activity
+            if ($truncated) {
+                $groupedBlocks = array_slice($groupedBlocks, -self::MAX_RENDERED_BLOCKS);
+            }
+
             return [
                 'firstBlockIsText' => $firstBlockIsText,
                 'hasNoContentBlocks' => false,
                 'groupedBlocks' => $groupedBlocks,
-                'totalBlockCount' => count($groupedBlocks),
+                'totalBlockCount' => $totalCount,
+                'truncated' => $truncated,
             ];
         });
     }
