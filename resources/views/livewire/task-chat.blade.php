@@ -853,6 +853,19 @@
                         <div class="chat-thinking-dot"></div>
                         <span class="chat-thinking-text">Claude is thinking...</span>
                     </div>
+                    <button
+                        type="button"
+                        wire:click="stopRunning"
+                        wire:loading.attr="disabled"
+                        class="chat-stop-btn"
+                        title="Stop Claude"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1rem; height: 1rem;">
+                            <path fill-rule="evenodd" d="M4.5 7.5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-9a3 3 0 01-3-3v-9z" clip-rule="evenodd" />
+                        </svg>
+                        <span wire:loading.remove wire:target="stopRunning">Stop</span>
+                        <span wire:loading wire:target="stopRunning">Stopping...</span>
+                    </button>
                 </div>
             </div>
             @endif
@@ -893,7 +906,7 @@
             </div>
         @endif
 
-        {{-- Input --}}
+{{-- Input --}}
         <div class="chat-input-area"
             x-data="{
                 prompt: '',
