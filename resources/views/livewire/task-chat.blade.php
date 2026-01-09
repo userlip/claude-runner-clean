@@ -149,6 +149,16 @@
                 </svg>
                 <span>Snippets & Files</span>
             </button>
+            <a
+                href="{{ \App\Filament\Resources\Tasks\Pages\TaskIde::getUrl(['record' => $task]) }}"
+                @click="mobileMenuOpen = false"
+                class="chat-mobile-dropdown-item"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 1.25rem; height: 1.25rem;">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" />
+                </svg>
+                <span>Open IDE</span>
+            </a>
             @if($task->isInWorkspace())
                 <div class="chat-mobile-dropdown-divider"></div>
                 @if($this->hasEnvConfigs)
@@ -319,6 +329,16 @@
         {{-- Bottom row: Action buttons (only for workspaces) --}}
         @if($task->isInWorkspace())
             <div class="chat-header-actions">
+                <a
+                    href="{{ \App\Filament\Resources\Tasks\Pages\TaskIde::getUrl(['record' => $task]) }}"
+                    class="chat-header-action-btn"
+                    title="Open in IDE"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="chat-header-action-icon">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" />
+                    </svg>
+                    <span>IDE</span>
+                </a>
                 @if($this->hasEnvConfigs)
                     <div x-data="{ open: false }" class="relative">
                         <button
@@ -385,8 +405,18 @@
                 </button>
             </div>
         @else
-            {{-- Delete Chat button only (no workspace) --}}
+            {{-- IDE + Delete Chat buttons (no workspace) --}}
             <div class="chat-header-actions">
+                <a
+                    href="{{ \App\Filament\Resources\Tasks\Pages\TaskIde::getUrl(['record' => $task]) }}"
+                    class="chat-header-action-btn"
+                    title="Open in IDE"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="chat-header-action-icon">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" />
+                    </svg>
+                    <span>IDE</span>
+                </a>
                 <button
                     wire:click="deleteTask"
                     wire:confirm="Are you sure you want to delete this chat and all its messages? This cannot be undone."
