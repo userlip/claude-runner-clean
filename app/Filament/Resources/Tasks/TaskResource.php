@@ -6,6 +6,7 @@ use App\Enums\TaskStatus;
 use App\Filament\Resources\Tasks\Pages\CreateTask;
 use App\Filament\Resources\Tasks\Pages\ListTasks;
 use App\Filament\Resources\Tasks\Pages\TaskChat;
+use App\Filament\Resources\Tasks\Pages\TaskIde;
 use App\Models\Repository;
 use App\Models\Site;
 use App\Models\Task;
@@ -167,6 +168,7 @@ class TaskResource extends Resource
             'index' => ListTasks::route('/'),
             'create' => CreateTask::route('/create'),
             'chat' => TaskChat::route('/{record}/chat'),
+            'ide' => TaskIde::route('/{record}/ide'),
         ];
     }
 }
