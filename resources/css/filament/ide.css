@@ -13,6 +13,15 @@ body.ide-immersive-mode .fi-main-ctn {
     margin-inline-start: 0 !important;
 }
 
+/* Prevent page scroll on IDE page */
+body.ide-immersive-mode {
+    overflow: hidden;
+}
+
+body.ide-immersive-mode .fi-main {
+    overflow: hidden;
+}
+
 /* Main layout */
 .ide-page-layout {
     display: flex;

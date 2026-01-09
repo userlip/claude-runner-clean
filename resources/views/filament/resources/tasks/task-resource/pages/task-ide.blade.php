@@ -25,9 +25,20 @@
                 this.isDragging = false;
                 document.body.style.cursor = '';
                 document.body.style.userSelect = '';
+            },
+            focusIde() {
+                this.$refs.ideFrame.focus();
             }
         }"
-        x-init="document.body.classList.add('ide-immersive-mode')"
+        x-init="
+            document.body.classList.add('ide-immersive-mode');
+            // Prevent space from scrolling the page - let iframe handle it
+            document.addEventListener('keydown', (e) => {
+                if (e.code === 'Space' && e.target === document.body) {
+                    e.preventDefault();
+                }
+            });
+        "
         x-on:mousemove.window="onDrag($event)"
         x-on:mouseup.window="stopDrag()"
     >
@@ -45,7 +56,10 @@
             <iframe
                 src="{{ $this->getIdeUrl() }}"
                 class="ide-frame"
-                allow="clipboard-read; clipboard-write"
+                allow="clipboard-read; clipboard-write; keyboard-map"
+                tabindex="0"
+                x-ref="ideFrame"
+                @click="focusIde()"
             ></iframe>
         </div>
 
