@@ -9,6 +9,7 @@ use Filament\Facades\Filament;
 
 beforeEach(function () {
     Filament::setCurrentPanel(Filament::getPanel('admin'));
+    $this->withoutVite();
 
     $this->user = User::factory()->create();
     $this->actingAs($this->user);
