@@ -674,6 +674,15 @@
                                     </div>
                                 </div>
                             </div>
+                        @elseif(($block['type'] ?? '') === 'collapsed_text')
+                            {{-- Collapsed short text blocks (stuck loop display) --}}
+                            <div wire:key="message-{{ $message->id }}-grouped-{{ $blockIndex }}"
+                                 class="chat-message chat-message-assistant">
+                                <div class="chat-bubble chat-bubble-collapsed">
+                                    <span class="chat-collapsed-text">{{ $block['text'] }}</span>
+                                    <span class="chat-collapsed-count">{{ $block['count'] }}</span>
+                                </div>
+                            </div>
                         @elseif(($block['type'] ?? '') === 'tool_group')
                             <div wire:key="message-{{ $message->id }}-grouped-{{ $blockIndex }}"
                                  class="chat-message chat-message-assistant">

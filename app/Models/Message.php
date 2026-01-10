@@ -169,6 +169,10 @@ class Message extends Model
                 $groupedBlocks[] = ['type' => 'tool_group', 'tools' => $currentToolGroup];
             }
 
+            // Collapse consecutive short text blocks (stuck loop detection display)
+            // If we see 2+ consecutive very short text messages, collapse them into one with a count
+            $groupedBlocks = $this->collapseShortTextBlocks($groupedBlocks);
+
             $totalCount = count($groupedBlocks);
             $truncated = $totalCount > self::MAX_RENDERED_BLOCKS;
 
@@ -186,6 +190,69 @@ class Message extends Model
                 'truncated' => $truncated,
             ];
         });
+    }
+
+    /**
+     * Collapse consecutive short text blocks into a single block with a count.
+     * This handles the "stuck loop" display where Claude outputs many "✓" or "Done." messages.
+     *
+     * @param  array  $blocks  The grouped blocks to process
+     * @return array The processed blocks with consecutive short texts collapsed
+     */
+    protected function collapseShortTextBlocks(array $blocks): array
+    {
+        $result = [];
+        $i = 0;
+
+        while ($i < count($blocks)) {
+            $block = $blocks[$i];
+
+            // Check if this is a short text block
+            if ($this->isShortTextBlock($block)) {
+                // Count consecutive short text blocks
+                $count = 1;
+                $text = trim($block['text'] ?? '');
+                $j = $i + 1;
+
+                while ($j < count($blocks) && $this->isShortTextBlock($blocks[$j])) {
+                    $count++;
+                    $j++;
+                }
+
+                // If we have 2 or more consecutive short blocks, collapse them
+                if ($count >= 2) {
+                    $result[] = [
+                        'type' => 'collapsed_text',
+                        'text' => $text,
+                        'count' => $count,
+                    ];
+                    $i = $j; // Skip past all the collapsed blocks
+                } else {
+                    // Just one short block, keep it as-is
+                    $result[] = $block;
+                    $i++;
+                }
+            } else {
+                $result[] = $block;
+                $i++;
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Check if a block is a short text block (≤5 characters).
+     */
+    protected function isShortTextBlock(array $block): bool
+    {
+        if (($block['type'] ?? '') !== 'text') {
+            return false;
+        }
+
+        $text = trim($block['text'] ?? '');
+
+        return strlen($text) <= 5 && strlen($text) > 0;
     }
 
     /**

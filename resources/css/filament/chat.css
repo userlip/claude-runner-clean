@@ -573,6 +573,45 @@
     margin: 0;
 }
 
+/* Collapsed text bubble - for repeated short messages (stuck loop display) */
+.chat-bubble-collapsed {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background-color: rgb(243 244 246);
+    border: 1px solid rgb(229 231 235);
+    border-radius: 1rem;
+    padding: 0.375rem 0.75rem;
+}
+
+.dark .chat-bubble-collapsed {
+    background-color: rgb(55 65 81);
+    border-color: rgb(75 85 99);
+}
+
+.chat-collapsed-text {
+    font-size: 0.875rem;
+    color: rgb(107 114 128);
+}
+
+.dark .chat-collapsed-text {
+    color: rgb(156 163 175);
+}
+
+.chat-collapsed-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.25rem;
+    height: 1.25rem;
+    padding: 0 0.375rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: white;
+    background-color: rgb(139 92 246);
+    border-radius: 9999px;
+}
+
 .chat-tool-calls {
     margin-top: 0.5rem;
 }
@@ -721,6 +760,44 @@
 
 .dark .chat-thinking-text {
     color: rgb(148 163 184);
+}
+
+/* Stop button for running Claude */
+.chat-stop-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    margin-left: 0.75rem;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: white;
+    background-color: rgb(239 68 68);
+    border: none;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.chat-stop-btn:hover:not(:disabled) {
+    background-color: rgb(220 38 38);
+}
+
+.chat-stop-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.dark .chat-stop-btn {
+    background-color: rgb(220 38 38);
+}
+
+.dark .chat-stop-btn:hover:not(:disabled) {
+    background-color: rgb(185 28 28);
+}
+
+.chat-stop-btn svg {
+    flex-shrink: 0;
 }
 
 .chat-input-area {
@@ -3202,4 +3279,614 @@ a,
 .fi-slideover-content {
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
+}
+
+/* ==========================================
+   Task Todo List Styles
+   ========================================== */
+
+/* Desktop sidebar todo list */
+.task-todo-list {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    border-top: 1px solid rgb(229 231 235);
+    background-color: white;
+}
+
+.dark .task-todo-list {
+    background-color: rgb(31 41 55);
+    border-top-color: rgb(55 65 81);
+}
+
+.task-todo-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.625rem 0.75rem;
+    border-bottom: 1px solid rgb(229 231 235);
+    flex-shrink: 0;
+}
+
+.dark .task-todo-header {
+    border-bottom-color: rgb(55 65 81);
+}
+
+.task-todo-title {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: rgb(17 24 39);
+    margin: 0;
+}
+
+.dark .task-todo-title {
+    color: white;
+}
+
+.task-todo-count {
+    font-size: 0.6875rem;
+    font-weight: 500;
+    color: rgb(107 114 128);
+    background-color: rgb(243 244 246);
+    padding: 0.125rem 0.5rem;
+    border-radius: 9999px;
+}
+
+.dark .task-todo-count {
+    color: rgb(156 163 175);
+    background-color: rgb(55 65 81);
+}
+
+.task-todo-form {
+    display: flex;
+    gap: 0.375rem;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid rgb(229 231 235);
+    flex-shrink: 0;
+}
+
+.dark .task-todo-form {
+    border-bottom-color: rgb(55 65 81);
+}
+
+.task-todo-input {
+    flex: 1;
+    border: 1px solid rgb(209 213 219);
+    border-radius: 0.375rem;
+    padding: 0.375rem 0.625rem;
+    font-size: 0.8125rem;
+    background-color: rgb(249 250 251);
+    color: rgb(17 24 39);
+}
+
+.dark .task-todo-input {
+    border-color: rgb(55 65 81);
+    background-color: rgb(17 24 39);
+    color: rgb(241 245 249);
+}
+
+.task-todo-input:focus {
+    outline: none;
+    border-color: rgb(59 130 246);
+    background-color: white;
+}
+
+.dark .task-todo-input:focus {
+    background-color: rgb(30 41 59);
+}
+
+.task-todo-add-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 0.375rem;
+    background-color: rgb(59 130 246);
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s;
+    flex-shrink: 0;
+}
+
+.task-todo-add-btn:hover:not(:disabled) {
+    background-color: rgb(37 99 235);
+}
+
+.task-todo-add-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.task-todo-items {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 0.25rem;
+    min-height: 0;
+}
+
+.task-todo-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.375rem 0.5rem;
+    border-radius: 0.375rem;
+    transition: background-color 0.15s;
+}
+
+.task-todo-item:hover {
+    background-color: rgb(243 244 246);
+}
+
+.dark .task-todo-item:hover {
+    background-color: rgb(55 65 81);
+}
+
+.task-todo-item.completed .task-todo-content {
+    text-decoration: line-through;
+    color: rgb(156 163 175);
+}
+
+.dark .task-todo-item.completed .task-todo-content {
+    color: rgb(107 114 128);
+}
+
+.task-todo-checkbox {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 50%;
+    border: 1px solid rgb(209 213 219);
+    background: transparent;
+    color: rgb(107 114 128);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.15s;
+}
+
+.task-todo-checkbox:hover {
+    border-color: rgb(59 130 246);
+    color: rgb(59 130 246);
+}
+
+.dark .task-todo-checkbox {
+    border-color: rgb(75 85 99);
+    color: rgb(156 163 175);
+}
+
+.dark .task-todo-checkbox:hover {
+    border-color: rgb(96 165 250);
+    color: rgb(96 165 250);
+}
+
+.task-todo-item.completed .task-todo-checkbox {
+    background-color: rgb(34 197 94);
+    border-color: rgb(34 197 94);
+    color: white;
+}
+
+.dark .task-todo-item.completed .task-todo-checkbox {
+    background-color: rgb(22 163 74);
+}
+
+.task-todo-content {
+    flex: 1;
+    font-size: 0.8125rem;
+    color: rgb(55 65 81);
+    word-break: break-word;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dark .task-todo-content {
+    color: rgb(209 213 219);
+}
+
+.task-todo-delete {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 0.25rem;
+    background: transparent;
+    border: none;
+    color: rgb(156 163 175);
+    cursor: pointer;
+    opacity: 0;
+    transition: all 0.15s;
+    flex-shrink: 0;
+}
+
+.task-todo-item:hover .task-todo-delete {
+    opacity: 1;
+}
+
+.task-todo-delete:hover {
+    background-color: rgb(254 226 226);
+    color: rgb(220 38 38);
+}
+
+.dark .task-todo-delete:hover {
+    background-color: rgb(127 29 29 / 0.5);
+    color: rgb(248 113 113);
+}
+
+.task-todo-actions {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-top: 1px solid rgb(229 231 235);
+    flex-shrink: 0;
+}
+
+.dark .task-todo-actions {
+    border-top-color: rgb(55 65 81);
+}
+
+.task-todo-action-btn {
+    font-size: 0.75rem;
+    color: rgb(107 114 128);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    transition: all 0.15s;
+}
+
+.task-todo-action-btn:hover {
+    background-color: rgb(243 244 246);
+    color: rgb(55 65 81);
+}
+
+.dark .task-todo-action-btn:hover {
+    background-color: rgb(55 65 81);
+    color: rgb(209 213 219);
+}
+
+.task-todo-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem 1rem;
+    text-align: center;
+    flex: 1;
+    min-height: 100px;
+}
+
+.task-todo-empty p {
+    margin: 0;
+    font-size: 0.8125rem;
+    color: rgb(156 163 175);
+}
+
+.task-todo-empty-hint {
+    font-size: 0.6875rem !important;
+    margin-top: 0.25rem !important;
+}
+
+/* ==========================================
+   Mobile Todo Bar Styles
+   ========================================== */
+
+.task-todo-mobile-bar {
+    display: none;
+    padding: 0.5rem 0.75rem;
+    background-color: white;
+    border-top: 1px solid rgb(229 231 235);
+    flex-shrink: 0;
+}
+
+.dark .task-todo-mobile-bar {
+    background-color: rgb(17 24 39);
+    border-top-color: rgb(55 65 81);
+}
+
+.task-todo-mobile-scroll {
+    display: flex;
+    gap: 0.5rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    padding-bottom: 0.25rem;
+}
+
+.task-todo-mobile-add {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background-color: rgb(243 244 246);
+    color: rgb(107 114 128);
+    border: none;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.15s;
+}
+
+.task-todo-mobile-add:hover {
+    background-color: rgb(229 231 235);
+    color: rgb(55 65 81);
+}
+
+.dark .task-todo-mobile-add {
+    background-color: rgb(55 65 81);
+    color: rgb(156 163 175);
+}
+
+.dark .task-todo-mobile-add:hover {
+    background-color: rgb(75 85 99);
+    color: rgb(209 213 219);
+}
+
+.task-todo-mobile-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.375rem 0.625rem;
+    border-radius: 9999px;
+    border: 1px solid rgb(209 213 219);
+    background-color: white;
+    color: rgb(55 65 81);
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    flex-shrink: 0;
+    max-width: 200px;
+}
+
+.task-todo-mobile-chip:hover {
+    background-color: rgb(243 244 246);
+}
+
+.dark .task-todo-mobile-chip {
+    background-color: rgb(30 41 59);
+    border-color: rgb(55 65 81);
+    color: rgb(209 213 219);
+}
+
+.dark .task-todo-mobile-chip:hover {
+    background-color: rgb(55 65 81);
+}
+
+.task-todo-mobile-chip.completed {
+    background-color: rgb(220 252 231);
+    border-color: rgb(34 197 94);
+    color: rgb(22 163 74);
+}
+
+.dark .task-todo-mobile-chip.completed {
+    background-color: rgb(20 83 45 / 0.5);
+    border-color: rgb(34 197 94);
+    color: rgb(134 239 172);
+}
+
+.task-todo-chip-icon {
+    width: 0.875rem;
+    height: 0.875rem;
+    flex-shrink: 0;
+}
+
+.task-todo-chip-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Mobile todo modal */
+.task-todo-mobile-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.task-todo-mobile-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.task-todo-mobile-modal-content {
+    position: relative;
+    width: 90%;
+    max-width: 20rem;
+    background-color: white;
+    border-radius: 0.75rem;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+}
+
+.dark .task-todo-mobile-modal-content {
+    background-color: rgb(31 41 55);
+}
+
+.task-todo-mobile-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem;
+    border-bottom: 1px solid rgb(229 231 235);
+}
+
+.dark .task-todo-mobile-modal-header {
+    border-bottom-color: rgb(55 65 81);
+}
+
+.task-todo-mobile-modal-header h3 {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: rgb(17 24 39);
+    margin: 0;
+}
+
+.dark .task-todo-mobile-modal-header h3 {
+    color: white;
+}
+
+.task-todo-mobile-modal-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.375rem;
+    background: transparent;
+    border: none;
+    color: rgb(107 114 128);
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.task-todo-mobile-modal-close:hover {
+    background-color: rgb(243 244 246);
+    color: rgb(55 65 81);
+}
+
+.dark .task-todo-mobile-modal-close:hover {
+    background-color: rgb(55 65 81);
+    color: rgb(209 213 219);
+}
+
+.task-todo-mobile-modal-body {
+    padding: 1rem;
+}
+
+.task-todo-mobile-input {
+    width: 100%;
+    border: 1px solid rgb(209 213 219);
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    font-size: 0.9375rem;
+    background-color: rgb(249 250 251);
+    color: rgb(17 24 39);
+}
+
+.dark .task-todo-mobile-input {
+    border-color: rgb(55 65 81);
+    background-color: rgb(17 24 39);
+    color: rgb(241 245 249);
+}
+
+.task-todo-mobile-input:focus {
+    outline: none;
+    border-color: rgb(59 130 246);
+}
+
+.task-todo-mobile-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding: 1rem;
+    border-top: 1px solid rgb(229 231 235);
+}
+
+.dark .task-todo-mobile-modal-footer {
+    border-top-color: rgb(55 65 81);
+}
+
+.task-todo-mobile-modal-cancel {
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid rgb(209 213 219);
+    background: transparent;
+    color: rgb(55 65 81);
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.dark .task-todo-mobile-modal-cancel {
+    border-color: rgb(55 65 81);
+    color: rgb(209 213 219);
+}
+
+.task-todo-mobile-modal-cancel:hover {
+    background-color: rgb(243 244 246);
+}
+
+.dark .task-todo-mobile-modal-cancel:hover {
+    background-color: rgb(55 65 81);
+}
+
+.task-todo-mobile-modal-submit {
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    border: none;
+    background-color: rgb(59 130 246);
+    color: white;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.task-todo-mobile-modal-submit:hover:not(:disabled) {
+    background-color: rgb(37 99 235);
+}
+
+.task-todo-mobile-modal-submit:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Desktop only - show full todo list in sidebar */
+@media (min-width: 768px) {
+    .task-todo-list {
+        display: flex !important;
+    }
+
+    .task-todo-mobile-bar {
+        display: none !important;
+    }
+
+    .task-todo-mobile-modal {
+        display: none !important;
+    }
+}
+
+/* Mobile - show horizontal todo bar */
+@media (max-width: 767px) {
+    .task-todo-list {
+        display: none !important;
+    }
+
+    .task-todo-mobile-bar {
+        display: block;
+    }
+
+    body.chat-immersive-mode .task-todo-mobile-bar {
+        position: fixed;
+        bottom: 3.5rem;
+        left: 0;
+        right: 0;
+        z-index: 19;
+        padding: 0.5rem 0.75rem;
+        padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+        background-color: white;
+        border-top: 1px solid rgb(229 231 235);
+    }
+
+    .dark body.chat-immersive-mode .task-todo-mobile-bar,
+    body.chat-immersive-mode.dark .task-todo-mobile-bar {
+        background-color: rgb(17 24 39);
+        border-top-color: rgb(55 65 81);
+    }
+
+    body.chat-immersive-mode.keyboard-visible .task-todo-mobile-bar {
+        display: none;
+    }
 }
