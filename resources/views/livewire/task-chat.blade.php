@@ -625,18 +625,51 @@
                 {{-- Render remaining content blocks with tool calls grouped (using cached data) --}}
                 @if($message->isFromAssistant() && !$hasNoContentBlocks)
                     @php
-                        // Use cached grouped blocks for performance
-                        $groupedBlocks = $groupedData['groupedBlocks'];
-                        $truncated = $groupedData['truncated'] ?? false;
-                        $totalBlockCount = $groupedData['totalBlockCount'] ?? 0;
+                        // Check if message is expanded (show all blocks)
+                        $isExpanded = isset($this->expandedMessageIds[$message->id]);
+
+                        // Use all blocks if expanded, otherwise use truncated version
+                        if ($isExpanded && ($groupedData['truncated'] ?? false)) {
+                            $allData = $message->getAllGroupedBlocks();
+                            $groupedBlocks = $allData['groupedBlocks'];
+                            $truncated = false;
+                            $totalBlockCount = $allData['totalBlockCount'];
+                        } else {
+                            $groupedBlocks = $groupedData['groupedBlocks'];
+                            $truncated = $groupedData['truncated'] ?? false;
+                            $totalBlockCount = $groupedData['totalBlockCount'] ?? 0;
+                        }
                     @endphp
 
-                    {{-- Show truncation notice if blocks were limited --}}
+                    {{-- Show truncation notice if blocks were limited (with expand option) --}}
                     @if($truncated)
                         <div wire:key="message-{{ $message->id }}-truncated" class="chat-message chat-message-assistant">
                             <div class="chat-bubble chat-bubble-tool" style="background: rgb(254 243 199); border-color: rgb(253 230 138);">
                                 <span style="color: rgb(146 64 14); font-size: 0.75rem;">
                                     ⚠️ Showing last {{ count($groupedBlocks) }} of {{ $totalBlockCount }} blocks ({{ $totalBlockCount - count($groupedBlocks) }} hidden for performance)
+                                    <button
+                                        wire:click="toggleExpandMessage({{ $message->id }})"
+                                        class="ml-2 underline hover:no-underline cursor-pointer"
+                                        style="color: rgb(146 64 14);"
+                                    >
+                                        Show all blocks
+                                    </button>
+                                </span>
+                            </div>
+                        </div>
+                    @elseif($isExpanded && $totalBlockCount > \App\Models\Message::MAX_RENDERED_BLOCKS)
+                        {{-- Show collapse option when expanded --}}
+                        <div wire:key="message-{{ $message->id }}-expanded" class="chat-message chat-message-assistant">
+                            <div class="chat-bubble chat-bubble-tool" style="background: rgb(220 252 231); border-color: rgb(187 247 208);">
+                                <span style="color: rgb(22 101 52); font-size: 0.75rem;">
+                                    Showing all {{ $totalBlockCount }} blocks
+                                    <button
+                                        wire:click="toggleExpandMessage({{ $message->id }})"
+                                        class="ml-2 underline hover:no-underline cursor-pointer"
+                                        style="color: rgb(22 101 52);"
+                                    >
+                                        Collapse
+                                    </button>
                                 </span>
                             </div>
                         </div>

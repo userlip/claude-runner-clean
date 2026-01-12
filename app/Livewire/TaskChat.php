@@ -52,6 +52,13 @@ class TaskChat extends Component
 
     public bool $showAdvancedOptions = false;
 
+    /**
+     * Message IDs that should show all blocks (not truncated).
+     *
+     * @var array<int, bool>
+     */
+    public array $expandedMessageIds = [];
+
     public function mount(Task $task): void
     {
         $this->task = $task;
@@ -126,6 +133,18 @@ class TaskChat extends Component
     public function loadMoreMessages(): void
     {
         $this->loadedPages++;
+    }
+
+    /**
+     * Toggle showing all blocks for a message (expand truncated blocks).
+     */
+    public function toggleExpandMessage(int $messageId): void
+    {
+        if (isset($this->expandedMessageIds[$messageId])) {
+            unset($this->expandedMessageIds[$messageId]);
+        } else {
+            $this->expandedMessageIds[$messageId] = true;
+        }
     }
 
     /**
@@ -723,6 +742,47 @@ class TaskChat extends Component
         $responses = $this->task->question_responses ?? [];
 
         return $responses["{$messageId}_{$toolId}"] ?? null;
+    }
+
+    /**
+     * Stop a running Claude process.
+     * This kills the Claude subprocess and marks the task as completed.
+     */
+    public function stopRunning(): void
+    {
+        if (! $this->task->isRunning()) {
+            return;
+        }
+
+        $sessionId = $this->task->session_id;
+
+        // Kill any Claude processes with this session ID
+        exec("pkill -f 'claude.*--session-id {$sessionId}' 2>/dev/null");
+        exec("pkill -f 'claude.*--resume {$sessionId}' 2>/dev/null");
+
+        // Also kill any Claude processes associated with this task's working directory
+        if ($this->task->working_directory) {
+            $workingDir = escapeshellarg($this->task->working_directory);
+            exec("pkill -f 'claude.*{$workingDir}' 2>/dev/null");
+        }
+
+        // Mark the task as completed
+        $this->task->markAsCompleted();
+
+        // Clear waiting state
+        $this->waitingForResponse = false;
+
+        Log::info('Claude process stopped by user', [
+            'task_id' => $this->task->id,
+            'session_id' => $sessionId,
+        ]);
+
+        // Notify the user
+        Notification::make()
+            ->title('Claude stopped')
+            ->body('You can send a new message now.')
+            ->info()
+            ->send();
     }
 
     /**

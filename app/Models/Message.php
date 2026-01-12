@@ -188,6 +188,83 @@ class Message extends Model
                 'groupedBlocks' => $groupedBlocks,
                 'totalBlockCount' => $totalCount,
                 'truncated' => $truncated,
+                'allGroupedBlocks' => $truncated ? null : $groupedBlocks, // Store all blocks only if truncated
+            ];
+        });
+    }
+
+    /**
+     * Get all grouped blocks without truncation.
+     * Used when user explicitly requests to see all blocks.
+     *
+     * @return array{firstBlockIsText: bool, hasNoContentBlocks: bool, groupedBlocks: array, totalBlockCount: int, truncated: bool}
+     */
+    public function getAllGroupedBlocks(): array
+    {
+        // Only process assistant messages with content blocks
+        if (! $this->isFromAssistant() || ! $this->content_blocks || count($this->content_blocks) === 0) {
+            return [
+                'firstBlockIsText' => false,
+                'hasNoContentBlocks' => true,
+                'groupedBlocks' => [],
+                'totalBlockCount' => 0,
+                'truncated' => false,
+            ];
+        }
+
+        // Cache based on message ID and content_blocks hash - different key for full blocks
+        $cacheKey = "message_all_grouped_blocks_{$this->id}_".md5(json_encode($this->content_blocks));
+
+        return Cache::remember($cacheKey, now()->addHours(24), function () {
+            $blocks = collect($this->content_blocks);
+            $firstBlock = $blocks->first();
+
+            $firstBlockIsText = ($firstBlock['type'] ?? '') === 'text' && ! empty($firstBlock['text']);
+
+            // Skip first block only if it was a text block (already rendered separately)
+            $blocksToProcess = $firstBlockIsText ? $blocks->skip(1)->values() : $blocks->values();
+
+            $groupedBlocks = [];
+            $currentToolGroup = [];
+
+            foreach ($blocksToProcess as $block) {
+                if (($block['type'] ?? '') === 'tool_use') {
+                    $toolName = $block['tool']['name'] ?? '';
+                    if ($toolName === 'AskUserQuestion') {
+                        if (count($currentToolGroup) > 0) {
+                            $groupedBlocks[] = ['type' => 'tool_group', 'tools' => $currentToolGroup];
+                            $currentToolGroup = [];
+                        }
+                        $groupedBlocks[] = [
+                            'type' => 'ask_user_question',
+                            'tool' => $block['tool'],
+                            'timestamp' => $block['timestamp'] ?? null,
+                        ];
+                    } else {
+                        $currentToolGroup[] = $block;
+                    }
+                } else {
+                    if (count($currentToolGroup) > 0) {
+                        $groupedBlocks[] = ['type' => 'tool_group', 'tools' => $currentToolGroup];
+                        $currentToolGroup = [];
+                    }
+                    $groupedBlocks[] = $block;
+                }
+            }
+
+            if (count($currentToolGroup) > 0) {
+                $groupedBlocks[] = ['type' => 'tool_group', 'tools' => $currentToolGroup];
+            }
+
+            // Collapse consecutive short text blocks
+            $groupedBlocks = $this->collapseShortTextBlocks($groupedBlocks);
+
+            return [
+                'firstBlockIsText' => $firstBlockIsText,
+                'hasNoContentBlocks' => false,
+                'groupedBlocks' => $groupedBlocks,
+                'totalBlockCount' => count($groupedBlocks),
+                'truncated' => false,
             ];
         });
     }
