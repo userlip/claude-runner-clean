@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Enums\TaskStatus;
+use App\Services\Ralph\RalphState;
+use App\Services\Ralph\RalphWorkspaceService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -39,6 +41,12 @@ class Task extends Model
         'completed_at',
         'last_viewed_at',
         'last_message_at',
+        'ralph_enabled',
+        'ralph_iteration',
+        'ralph_max_iterations',
+        'ralph_rotation_threshold',
+        'ralph_model_rotation',
+        'ralph_gutter_count',
     ];
 
     protected function casts(): array
@@ -54,10 +62,17 @@ class Task extends Model
             'max_turns' => 'integer',
             'question_responses' => 'array',
             'session_metadata' => 'array',
+            'todos' => 'array',
             'started_at' => 'datetime',
             'completed_at' => 'datetime',
             'last_viewed_at' => 'datetime',
             'last_message_at' => 'datetime',
+            'ralph_enabled' => 'boolean',
+            'ralph_iteration' => 'integer',
+            'ralph_max_iterations' => 'integer',
+            'ralph_rotation_threshold' => 'decimal:2',
+            'ralph_model_rotation' => 'array',
+            'ralph_gutter_count' => 'integer',
         ];
     }
 
@@ -218,5 +233,46 @@ class Task extends Model
     public function setInitStatus(string $status): void
     {
         $this->update(['init_status' => $status]);
+    }
+
+    // Ralph helper methods
+
+    public function isRalphMode(): bool
+    {
+        return $this->ralph_enabled === true;
+    }
+
+    public function shouldRotateContext(): bool
+    {
+        if (! $this->isRalphMode()) {
+            return false;
+        }
+
+        $tokensUsed = $this->messages()->sum('tokens_in');
+        $contextWindow = $this->aiProvider?->context_window ?? 200000;
+
+        return ($tokensUsed / $contextWindow) >= $this->ralph_rotation_threshold;
+    }
+
+    public function getNextRalphProvider(): ?AiProvider
+    {
+        if (empty($this->ralph_model_rotation)) {
+            return null;
+        }
+
+        $providers = $this->ralph_model_rotation;
+        $index = $this->ralph_iteration % count($providers);
+
+        return AiProvider::find($providers[$index]);
+    }
+
+    public function getRalphWorkspacePath(): string
+    {
+        return $this->workspace_path.'/.ralph';
+    }
+
+    public function getRalphState(): RalphState
+    {
+        return app(RalphWorkspaceService::class)->readState($this);
     }
 }
