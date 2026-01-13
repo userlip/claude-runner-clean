@@ -86,6 +86,13 @@
                     >
                         Session
                     </button>
+                    <button
+                        @click="activeTab = 'ralph'"
+                        :class="{ 'sidebar-tab-btn-active': activeTab === 'ralph' }"
+                        class="sidebar-tab-btn"
+                    >
+                        Ralph
+                    </button>
                 </div>
                 <div class="sidebar-tab-content">
                     <div x-show="activeTab === 'snippets'" style="height: 100%;">
@@ -97,8 +104,13 @@
                     <div x-show="activeTab === 'session'" x-cloak style="height: 100%;">
                         @livewire('session-info-sidebar', ['task' => $this->getRecord()])
                     </div>
+                    <div x-show="activeTab === 'ralph'" x-cloak style="height: 100%;">
+                        @livewire('ralph-control-panel', ['task' => $this->getRecord()])
+                    </div>
                 </div>
             </div>
+            {{-- Desktop Todo List (bottom half of sidebar) --}}
+            @livewire('task-todo-list', ['task' => $this->getRecord()])
         </div>
     </div>
 </x-filament-panels::page>
