@@ -6,7 +6,6 @@ use App\DataObjects\RalphState;
 use App\Enums\TaskStatus;
 use App\Models\Task;
 use App\Services\RalphWorkspaceService;
-use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable as FoundationQueueable;
 use Illuminate\Support\Facades\Log;
@@ -14,9 +13,13 @@ use Illuminate\Support\Process;
 
 class RunRalphJob implements ShouldQueue
 {
-    use FoundationQueueable, Queueable;
+    use FoundationQueueable;
 
     public int $timeout = 10800; // 3 hours
+
+    private const int GUTTER_THRESHOLD = 3;
+
+    private const int MAX_ITERATION_SAFEGUARD = 1000;
 
     public function __construct(
         public Task $task,
@@ -25,6 +28,13 @@ class RunRalphJob implements ShouldQueue
 
     public function handle(RalphWorkspaceService $ralph): void
     {
+        // Prevent infinite loops
+        if ($this->iteration > self::MAX_ITERATION_SAFEGUARD) {
+            $this->failWithError('max_safeguard_iterations_exceeded');
+
+            return;
+        }
+
         Log::info('Ralph iteration started', [
             'task_id' => $this->task->id,
             'iteration' => $this->iteration,
@@ -70,7 +80,7 @@ class RunRalphJob implements ShouldQueue
         }
 
         // 6. Run verification
-        $verificationPassed = $this->runVerification($story);
+        $verificationPassed = $this->runVerification($ralph, $state, $story);
 
         // 7. Log activity
         $ralph->logActivity($this->task, [
@@ -85,7 +95,7 @@ class RunRalphJob implements ShouldQueue
 
         if ($verificationPassed) {
             // 8. Update prd.json
-            $this->markStoryPassed($story);
+            $this->markStoryPassed($ralph, $state, $story);
             $ralph->updatePrd($this->task, $state->prd);
 
             // 9. Append learnings
@@ -105,11 +115,19 @@ class RunRalphJob implements ShouldQueue
         self::dispatch($this->task, $this->iteration + 1);
     }
 
+    /**
+     * Check if the context should be rotated for this iteration.
+     *
+     * @return bool True if context rotation is needed
+     */
     protected function shouldRotate(): bool
     {
         return $this->task->shouldRotateContext();
     }
 
+    /**
+     * Rotate the Claude context by starting a new session and optionally switching providers.
+     */
     protected function rotateContext(): void
     {
         Log::info('Rotating Ralph context', [
@@ -130,10 +148,30 @@ class RunRalphJob implements ShouldQueue
         }
     }
 
+    /**
+     * Execute the Claude AI to implement a user story.
+     *
+     * NOTE: This is currently a simplified stub implementation. The production version
+     * should integrate with actual Claude CLI execution from RunClaudeMessageJob
+     * with fresh context handling for each story implementation.
+     *
+     * @param  \App\DataObjects\RalphState  $state  The current Ralph state
+     * @param  array<string, mixed>  $story  The user story to implement
+     * @return array{success: bool, learnings?: string, tokens_in?: int, tokens_out?: int, duration?: int, error?: string}
+     *
+     * @todo Integrate with actual Claude CLI execution from RunClaudeMessageJob
+     */
     protected function executeClaude(RalphState $state, array $story): array
     {
         // This is a simplified version - in production, use the actual Claude execution
         // from RunClaudeMessageJob with fresh context
+        //
+        // TODO: Implement actual Claude CLI execution with:
+        // - Fresh context for each story
+        // - Token tracking (tokens_in, tokens_out)
+        // - Duration measurement
+        // - Error handling
+        // - Learning extraction
 
         $prompt = $this->buildPrompt($state, $story);
 
@@ -145,6 +183,13 @@ class RunRalphJob implements ShouldQueue
         ];
     }
 
+    /**
+     * Build the Claude prompt for implementing a specific user story.
+     *
+     * @param  \App\DataObjects\RalphState  $state  The current Ralph state
+     * @param  array<string, mixed>  $story  The user story
+     * @return string The formatted prompt for Claude
+     */
     protected function buildPrompt(RalphState $state, array $story): string
     {
         return $state->prompt."\n\n".
@@ -157,11 +202,17 @@ class RunRalphJob implements ShouldQueue
             $state->guardrails;
     }
 
-    protected function runVerification(array $story): bool
+    /**
+     * Run the verification command to check if the implementation passes.
+     *
+     * @param  \App\Services\RalphWorkspaceService  $ralph  The Ralph workspace service
+     * @param  \App\DataObjects\RalphState  $state  The current Ralph state
+     * @param  array<string, mixed>  $story  The user story being verified
+     * @return bool True if verification passed
+     */
+    protected function runVerification(RalphWorkspaceService $ralph, RalphState $state, array $story): bool
     {
         // Get verification command from prd
-        $ralph = app(RalphWorkspaceService::class);
-        $state = $ralph->readState($this->task);
         $command = $state->prd['verificationCommand'] ?? 'php artisan test';
 
         // Run in workspace directory
@@ -177,11 +228,15 @@ class RunRalphJob implements ShouldQueue
         return $passed;
     }
 
-    protected function markStoryPassed(array $story): void
+    /**
+     * Mark a user story as passed in the PRD.
+     *
+     * @param  \App\Services\RalphWorkspaceService  $ralph  The Ralph workspace service
+     * @param  \App\DataObjects\RalphState  $state  The current Ralph state
+     * @param  array<string, mixed>  $story  The user story to mark as passed
+     */
+    protected function markStoryPassed(RalphWorkspaceService $ralph, RalphState $state, array $story): void
     {
-        $ralph = app(RalphWorkspaceService::class);
-        $state = $ralph->readState($this->task);
-
         foreach ($state->prd['userStories'] as &$userStory) {
             if ($userStory['id'] === $story['id']) {
                 $userStory['passes'] = true;
@@ -193,6 +248,9 @@ class RunRalphJob implements ShouldQueue
         $ralph->updatePrd($this->task, $state->prd);
     }
 
+    /**
+     * Complete the task when all stories have passed.
+     */
     protected function completeTask(): void
     {
         $this->task->update([
@@ -202,6 +260,11 @@ class RunRalphJob implements ShouldQueue
         Log::info('Ralph task completed', ['task_id' => $this->task->id]);
     }
 
+    /**
+     * Fail the task with a specific reason.
+     *
+     * @param  string  $reason  The failure reason
+     */
     protected function failWithError(string $reason): void
     {
         $this->task->update([
@@ -214,6 +277,11 @@ class RunRalphJob implements ShouldQueue
         ]);
     }
 
+    /**
+     * Handle Claude execution failure by logging and deciding whether to continue or fail.
+     *
+     * @param  array{success: bool, error?: string}  $result  The execution result
+     */
     protected function handleExecutionFailure(array $result): void
     {
         $ralph = app(RalphWorkspaceService::class);
@@ -224,7 +292,7 @@ class RunRalphJob implements ShouldQueue
         $this->task->increment('ralph_gutter_count');
 
         // If gutter count is high, pause
-        if ($this->task->ralph_gutter_count >= 3) {
+        if ($this->task->ralph_gutter_count >= self::GUTTER_THRESHOLD) {
             $this->failWithError('gutter_detected');
         } else {
             // Try next iteration
