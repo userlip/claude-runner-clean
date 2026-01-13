@@ -37,5 +37,19 @@ class AiProviderSeeder extends Seeder
                 'quota_resets_at' => now()->addHours(5),
             ]
         );
+
+        AiProvider::firstOrCreate(
+            ['name' => 'minimax'],
+            [
+                'display_name' => 'Minimax',
+                'base_url' => 'https://api.minimax.io/anthropic',
+                'model' => 'MiniMax-M2.1',
+                'is_active' => false,
+                'is_default' => false,
+                'quota_limit' => 50000000,
+                'quota_period' => 'monthly',
+                'quota_resets_at' => now()->startOfMonth()->addMonth(),
+            ]
+        );
     }
 }

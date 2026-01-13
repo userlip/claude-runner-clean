@@ -24,7 +24,11 @@ class AiProviderSettings extends Page
 
     public string $glmApiKey = '';
 
+    public string $minimaxApiKey = '';
+
     public ?int $glmQuotaLimit = null;
+
+    public ?int $minimaxQuotaLimit = null;
 
     public ?int $claudeQuotaLimit = null;
 
@@ -32,14 +36,20 @@ class AiProviderSettings extends Page
 
     public ?int $glmContextWindow = null;
 
+    public ?int $minimaxContextWindow = null;
+
     public function mount(): void
     {
         $glm = $this->getGlmProvider();
+        $minimax = $this->getMinimaxProvider();
         $claude = $this->getClaudeProvider();
 
         $this->glmApiKey = $glm?->api_key ?? '';
         $this->glmQuotaLimit = $glm?->quota_limit;
         $this->glmContextWindow = $glm?->context_window;
+        $this->minimaxApiKey = $minimax?->api_key ?? '';
+        $this->minimaxQuotaLimit = $minimax?->quota_limit;
+        $this->minimaxContextWindow = $minimax?->context_window;
         $this->claudeQuotaLimit = $claude?->quota_limit;
         $this->claudeContextWindow = $claude?->context_window;
     }
@@ -52,6 +62,11 @@ class AiProviderSettings extends Page
     public function getGlmProvider(): ?AiProvider
     {
         return AiProvider::where('name', 'glm')->first();
+    }
+
+    public function getMinimaxProvider(): ?AiProvider
+    {
+        return AiProvider::where('name', 'minimax')->first();
     }
 
     public function saveClaudeSettings(): void
@@ -86,6 +101,25 @@ class AiProviderSettings extends Page
 
         Notification::make()
             ->title('GLM settings saved')
+            ->success()
+            ->send();
+    }
+
+    public function saveMinimaxSettings(): void
+    {
+        $minimax = $this->getMinimaxProvider();
+
+        if ($minimax) {
+            $minimax->update([
+                'api_key' => $this->minimaxApiKey ?: null,
+                'quota_limit' => $this->minimaxQuotaLimit,
+                'context_window' => $this->minimaxContextWindow,
+                'is_active' => ! empty($this->minimaxApiKey),
+            ]);
+        }
+
+        Notification::make()
+            ->title('Minimax settings saved')
             ->success()
             ->send();
     }

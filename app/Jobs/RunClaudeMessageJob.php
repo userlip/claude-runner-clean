@@ -89,6 +89,7 @@ class RunClaudeMessageJob implements ShouldQueue
             $contentBlocks = [];
             $lastTurnUsage = null; // Track the last turn's context usage
             $askUserQuestionDetected = false; // Track if we need to wait for user input
+            $minimalOutputCount = 0; // Track consecutive very short outputs (stuck loop detection)
 
             $resultReceived = false;
             while (! feof($pipes[1])) {
@@ -129,6 +130,24 @@ class RunClaudeMessageJob implements ShouldQueue
                         }
                     }
                     if (isset($parsed['content'])) {
+                        $text = trim($parsed['content']);
+
+                        // Detect stuck loop: consecutive very short outputs (e.g., "✓", "Done.", "Complete.")
+                        // This happens when Claude gets stuck after heavy context compaction
+                        if (strlen($text) <= 5) {
+                            $minimalOutputCount++;
+                            if ($minimalOutputCount >= 5) {
+                                Log::warning('Detected stuck loop - forcing termination', [
+                                    'task_id' => $this->task->id,
+                                    'minimal_output_count' => $minimalOutputCount,
+                                    'last_output' => $text,
+                                ]);
+                                break;
+                            }
+                        } else {
+                            $minimalOutputCount = 0;
+                        }
+
                         $contentBlocks[] = [
                             'type' => 'text',
                             'text' => $parsed['content'],

@@ -63,6 +63,11 @@ class AiProvider extends Model
         return $this->name === 'glm';
     }
 
+    public function isMinimax(): bool
+    {
+        return $this->name === 'minimax';
+    }
+
     public function isClaude(): bool
     {
         return $this->name === 'claude';

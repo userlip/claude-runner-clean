@@ -1,5 +1,5 @@
 <x-filament-panels::page>
-    <div style="display: grid; gap: 1.5rem; grid-template-columns: repeat(2, minmax(0, 1fr));">
+    <div style="display: grid; gap: 1.5rem; grid-template-columns: repeat(3, minmax(0, 1fr));">
         {{-- Claude Settings --}}
         <x-filament::section>
             <x-slot name="heading">
@@ -161,6 +161,97 @@
                         Save
                     </x-filament::button>
                     <x-filament::button color="gray" wire:click="resetQuota('glm')" wire:confirm="Reset GLM quota to zero?">
+                        Reset Quota
+                    </x-filament::button>
+                </div>
+            </div>
+        </x-filament::section>
+
+        {{-- Minimax Settings --}}
+        <x-filament::section>
+            <x-slot name="heading">
+                <div class="flex items-center gap-3">
+                    <div class="flex h-10 w-10 items-center justify-center rounded-lg" style="background-color: rgba(16, 185, 129, 0.1);">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 1.25rem; height: 1.25rem; color: rgb(5, 150, 105);">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0 .5 1.5m-.5-1.5h-9.5m0 0-.5 1.5m.75-9 3-3 2.148 2.148A12.061 12.061 0 0 1 16.5 7.605" />
+                        </svg>
+                    </div>
+                    <div>
+                        <span>Minimax</span>
+                        <p style="font-size: 0.75rem; font-weight: normal; color: rgb(107, 114, 128); margin: 0;">MiniMax-M2.1</p>
+                    </div>
+                </div>
+            </x-slot>
+
+            @php $minimax = $this->getMinimaxProvider(); @endphp
+
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                <div>
+                    <label style="font-size: 0.875rem; font-weight: 500;">Status</label>
+                    <p style="margin-top: 0.25rem; font-size: 0.875rem; color: {{ $minimax?->is_active ? 'rgb(22, 163, 74)' : 'rgb(202, 138, 4)' }};">
+                        {{ $minimax?->is_active ? 'Active' : 'Inactive (add API key to enable)' }}
+                    </p>
+                </div>
+
+                <div>
+                    <label style="font-size: 0.875rem; font-weight: 500;">API Key</label>
+                    <input
+                        type="password"
+                        wire:model="minimaxApiKey"
+                        style="margin-top: 0.25rem; display: block; width: 100%; border-radius: 0.5rem; border: 1px solid rgb(209, 213, 219); padding: 0.5rem 0.75rem; font-size: 0.875rem;"
+                        placeholder="Enter Minimax API key"
+                    />
+                </div>
+
+                <div>
+                    <label style="font-size: 0.875rem; font-weight: 500;">Monthly Quota Limit (tokens)</label>
+                    <input
+                        type="number"
+                        min="0"
+                        wire:model="minimaxQuotaLimit"
+                        style="margin-top: 0.25rem; display: block; width: 100%; border-radius: 0.5rem; border: 1px solid rgb(209, 213, 219); padding: 0.5rem 0.75rem; font-size: 0.875rem;"
+                        placeholder="50000000"
+                    />
+                </div>
+
+                <div>
+                    <label style="font-size: 0.875rem; font-weight: 500;">Context Window (tokens)</label>
+                    <input
+                        type="number"
+                        min="0"
+                        wire:model="minimaxContextWindow"
+                        style="margin-top: 0.25rem; display: block; width: 100%; border-radius: 0.5rem; border: 1px solid rgb(209, 213, 219); padding: 0.5rem 0.75rem; font-size: 0.875rem;"
+                        placeholder="200000 (default)"
+                    />
+                </div>
+
+                @if($minimax)
+                    <div>
+                        <label style="font-size: 0.875rem; font-weight: 500;">Current Usage</label>
+                        <div style="margin-top: 0.5rem;">
+                            <div style="display: flex; justify-content: space-between; font-size: 0.875rem; margin-bottom: 0.25rem;">
+                                <span>{{ number_format($minimax->quota_used) }} tokens</span>
+                                <span>{{ number_format($minimax->getQuotaPercentage(), 1) }}%</span>
+                            </div>
+                            <div style="height: 0.5rem; width: 100%; border-radius: 9999px; background-color: rgb(229, 231, 235);">
+                                <div
+                                    style="height: 0.5rem; border-radius: 9999px; background-color: rgb(16, 185, 129); width: {{ min(100, $minimax->getQuotaPercentage()) }}%;"
+                                ></div>
+                            </div>
+                            @if($minimax->quota_resets_at)
+                                <p style="font-size: 0.75rem; color: rgb(107, 114, 128); margin-top: 0.25rem;">
+                                    Resets {{ $minimax->quota_resets_at->diffForHumans() }}
+                                </p>
+                            @endif
+                        </div>
+                    </div>
+                @endif
+
+                <div style="display: flex; gap: 0.5rem; padding-top: 0.5rem;">
+                    <x-filament::button wire:click="saveMinimaxSettings">
+                        Save
+                    </x-filament::button>
+                    <x-filament::button color="gray" wire:click="resetQuota('minimax')" wire:confirm="Reset Minimax quota to zero?">
                         Reset Quota
                     </x-filament::button>
                 </div>

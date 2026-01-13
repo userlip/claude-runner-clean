@@ -60,6 +60,21 @@ class AiProviderFactory extends Factory
         ]);
     }
 
+    public function minimax(): static
+    {
+        return $this->state([
+            'name' => 'minimax',
+            'display_name' => 'Minimax',
+            'base_url' => 'https://api.minimax.io/anthropic',
+            'api_key' => 'test-api-key',
+            'model' => 'MiniMax-M2.1',
+            'is_default' => false,
+            'quota_period' => QuotaPeriod::Monthly,
+            'quota_limit' => 50000000,
+            'quota_resets_at' => now()->startOfMonth()->addMonth(),
+        ]);
+    }
+
     public function inactive(): static
     {
         return $this->state(['is_active' => false]);
