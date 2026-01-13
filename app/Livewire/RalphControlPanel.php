@@ -9,6 +9,8 @@ use Filament\Forms\Components\Toggle;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Form;
+use Filament\Notifications\Notification;
+use Illuminate\Support\Facades\Bus;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Reactive;
 use Livewire\Component;
@@ -43,7 +45,12 @@ class RalphControlPanel extends Component implements HasForms
         $this->ralphBranchName = $this->task->ralph_branch_name;
     }
 
-    public function form(Form $form): Form
+    /**
+     * Unused form schema - kept for potential future use with Filament form integration
+     *
+     * @private
+     */
+    private function form(Form $form): Form
     {
         return $form
             ->schema([
@@ -78,7 +85,10 @@ class RalphControlPanel extends Component implements HasForms
 
         $this->ralphEnabled = true;
 
-        $this->notify('success', 'Ralph mode enabled');
+        Notification::make()
+            ->title('Ralph mode enabled')
+            ->success()
+            ->send();
     }
 
     public function disableRalph(): void
@@ -86,26 +96,35 @@ class RalphControlPanel extends Component implements HasForms
         $this->task->update(['ralph_enabled' => false]);
         $this->ralphEnabled = false;
 
-        $this->notify('info', 'Ralph mode disabled');
+        Notification::make()
+            ->title('Ralph mode disabled')
+            ->info()
+            ->send();
     }
 
     public function startRalph(): void
     {
         \App\Jobs\RunRalphJob::dispatch($this->task);
 
-        $this->notify('success', 'Ralph loop started');
+        Notification::make()
+            ->title('Ralph loop started')
+            ->success()
+            ->send();
     }
 
     public function pauseRalph(): void
     {
         // Cancel pending jobs
-        \Illuminate\Support\Facades\Bus::dispatchSync(
+        Bus::dispatchSync(
             new \Illuminate\Bus\PendingDispatch(function () {
-                // Implementation for pausing
+                // @todo Implementation for pausing Ralph loop
             })
         );
 
-        $this->notify('info', 'Ralph loop paused');
+        Notification::make()
+            ->title('Ralph loop paused')
+            ->info()
+            ->send();
     }
 
     #[Computed]
