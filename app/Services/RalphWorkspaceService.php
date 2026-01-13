@@ -38,13 +38,41 @@ class RalphWorkspaceService
     {
         $ralphPath = $this->getRalphPath($task);
 
-        return new RalphState(
-            prompt: File::get($ralphPath.'/prompt.md'),
-            prd: json_decode(File::get($ralphPath.'/prd.json'), true),
-            progress: File::get($ralphPath.'/progress.txt'),
-            guardrails: File::exists($ralphPath.'/guardrails.md')
+        try {
+            $prompt = File::get($ralphPath.'/prompt.md');
+        } catch (\Exception $e) {
+            $prompt = '';
+        }
+
+        try {
+            $prdJson = File::get($ralphPath.'/prd.json');
+            $prd = json_decode($prdJson, true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                $prd = null;
+            }
+        } catch (\Exception $e) {
+            $prd = null;
+        }
+
+        try {
+            $progress = File::get($ralphPath.'/progress.txt');
+        } catch (\Exception $e) {
+            $progress = '';
+        }
+
+        try {
+            $guardrails = File::exists($ralphPath.'/guardrails.md')
                 ? File::get($ralphPath.'/guardrails.md')
-                : '',
+                : '';
+        } catch (\Exception $e) {
+            $guardrails = '';
+        }
+
+        return new RalphState(
+            prompt: $prompt,
+            prd: $prd,
+            progress: $progress,
+            guardrails: $guardrails,
         );
     }
 
@@ -57,7 +85,13 @@ class RalphWorkspaceService
     public function appendProgress(Task $task, string $learning): void
     {
         $ralphPath = $this->getRalphPath($task);
-        $current = File::get($ralphPath.'/progress.txt');
+
+        try {
+            $current = File::get($ralphPath.'/progress.txt');
+        } catch (\Exception $e) {
+            $current = '';
+        }
+
         $updated = $current."\n\n".$learning;
         File::put($ralphPath.'/progress.txt', $updated);
     }
@@ -126,7 +160,7 @@ MD;
     protected function writePrd(string $ralphPath, array $stories): void
     {
         $prd = [
-            'branchName' => '', // Will be set during initialization
+            'branchName' => '',
             'verificationCommand' => 'php artisan test',
             'userStories' => $stories,
         ];
