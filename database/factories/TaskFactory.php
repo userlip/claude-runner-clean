@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Enums\TaskStatus;
 use App\Models\AiProvider;
+use App\Models\Message;
 use App\Models\Repository;
 use App\Models\Site;
 use App\Models\User;
@@ -92,5 +93,16 @@ class TaskFactory extends Factory
     public function withProvider(AiProvider $provider): static
     {
         return $this->state(['ai_provider_id' => $provider->id]);
+    }
+
+    public function ralph(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'ralph_enabled' => true,
+            'ralph_iteration' => 1,
+            'ralph_max_iterations' => 25,
+            'ralph_rotation_threshold' => 0.7,
+            'ralph_branch_name' => 'ralph/test-feature',
+        ])->has(Message::factory()->count(1));
     }
 }

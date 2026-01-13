@@ -113,7 +113,7 @@ class RalphWorkspaceService
 
     protected function getRalphPath(Task $task): string
     {
-        return $task->getRalphPath();
+        return $task->getRalphWorkspacePath();
     }
 
     protected function writePrompt(string $ralphPath, array $config): void

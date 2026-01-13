@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
+use App\DataObjects\RalphState;
 use App\Enums\TaskStatus;
-use App\Services\Ralph\RalphState;
-use App\Services\Ralph\RalphWorkspaceService;
+use App\Services\RalphWorkspaceService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
