@@ -6,6 +6,7 @@ use App\Models\Task;
 use App\Services\RalphWorkspaceService;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Forms\Form;
 use Livewire\Attributes\Computed;
@@ -14,7 +15,7 @@ use Livewire\Component;
 
 class RalphControlPanel extends Component implements HasForms
 {
-    use \Filament\Forms\Contracts\HasForms;
+    use InteractsWithForms;
 
     #[Reactive]
     public Task $task;
