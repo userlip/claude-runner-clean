@@ -47,7 +47,7 @@ class AiProvider extends Model
      */
     public function getEnvironmentVariables(): array
     {
-        if ($this->name === 'claude') {
+        if ($this->name === 'claude' || $this->name === 'codex') {
             return [];
         }
 
@@ -71,6 +71,11 @@ class AiProvider extends Model
     public function isClaude(): bool
     {
         return $this->name === 'claude';
+    }
+
+    public function isCodex(): bool
+    {
+        return $this->name === 'codex';
     }
 
     public static function getDefault(): ?self

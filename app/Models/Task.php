@@ -4,6 +4,8 @@ namespace App\Models;
 
 use App\DataObjects\RalphState;
 use App\Enums\TaskStatus;
+use App\Jobs\RunClaudeMessageJob;
+use App\Jobs\RunCodexMessageJob;
 use App\Services\RalphWorkspaceService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -143,6 +145,17 @@ class Task extends Model
     public function aiProvider(): BelongsTo
     {
         return $this->belongsTo(AiProvider::class);
+    }
+
+    public function dispatchMessage(Message $userMessage, bool $continue = false): void
+    {
+        if ($this->aiProvider?->isCodex()) {
+            RunCodexMessageJob::dispatch($this, $userMessage, continue: $continue);
+
+            return;
+        }
+
+        RunClaudeMessageJob::dispatch($this, $userMessage, continue: $continue);
     }
 
     public function scrappApi(): BelongsTo

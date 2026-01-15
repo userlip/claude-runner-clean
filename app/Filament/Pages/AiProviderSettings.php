@@ -26,13 +26,19 @@ class AiProviderSettings extends Page
 
     public string $minimaxApiKey = '';
 
+    public ?string $codexModel = null;
+
     public ?int $glmQuotaLimit = null;
 
     public ?int $minimaxQuotaLimit = null;
 
+    public ?int $codexQuotaLimit = null;
+
     public ?int $claudeQuotaLimit = null;
 
     public ?int $claudeContextWindow = null;
+
+    public ?int $codexContextWindow = null;
 
     public ?int $glmContextWindow = null;
 
@@ -40,10 +46,14 @@ class AiProviderSettings extends Page
 
     public function mount(): void
     {
+        $codex = $this->getCodexProvider();
         $glm = $this->getGlmProvider();
         $minimax = $this->getMinimaxProvider();
         $claude = $this->getClaudeProvider();
 
+        $this->codexModel = $codex?->model;
+        $this->codexQuotaLimit = $codex?->quota_limit;
+        $this->codexContextWindow = $codex?->context_window;
         $this->glmApiKey = $glm?->api_key ?? '';
         $this->glmQuotaLimit = $glm?->quota_limit;
         $this->glmContextWindow = $glm?->context_window;
@@ -57,6 +67,11 @@ class AiProviderSettings extends Page
     public function getClaudeProvider(): ?AiProvider
     {
         return AiProvider::where('name', 'claude')->first();
+    }
+
+    public function getCodexProvider(): ?AiProvider
+    {
+        return AiProvider::where('name', 'codex')->first();
     }
 
     public function getGlmProvider(): ?AiProvider
@@ -82,6 +97,25 @@ class AiProviderSettings extends Page
 
         Notification::make()
             ->title('Claude settings saved')
+            ->success()
+            ->send();
+    }
+
+    public function saveCodexSettings(): void
+    {
+        $codex = $this->getCodexProvider();
+
+        if ($codex) {
+            $codex->update([
+                'model' => $this->codexModel ?: null,
+                'quota_limit' => $this->codexQuotaLimit,
+                'context_window' => $this->codexContextWindow,
+                'is_active' => true,
+            ]);
+        }
+
+        Notification::make()
+            ->title('Codex settings saved')
             ->success()
             ->send();
     }

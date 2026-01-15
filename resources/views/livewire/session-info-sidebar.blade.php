@@ -82,10 +82,22 @@
                 <div class="session-info-item">
                     <div class="session-info-item-header">
                         <span class="session-info-item-name">{{ $server['name'] ?? 'Unknown' }}</span>
-                        <span class="session-info-status session-info-status-{{ $server['status'] ?? 'unknown' }}">
-                            {{ $server['status'] ?? 'unknown' }}
-                        </span>
+                        <div class="session-info-badges">
+                            @if(!empty($server['type']))
+                                <span class="session-info-pill">
+                                    {{ $server['type'] === 'remote' ? 'Remote' : 'Local' }}
+                                </span>
+                            @endif
+                            <span class="session-info-status session-info-status-{{ $server['status'] ?? 'unknown' }}">
+                                {{ $server['status'] ?? 'unknown' }}
+                            </span>
+                        </div>
                     </div>
+                    @if(!empty($server['auth']))
+                        <div class="session-info-item-details">
+                            <span>Auth: {{ $server['auth'] }}</span>
+                        </div>
+                    @endif
                 </div>
             @endforeach
         </div>

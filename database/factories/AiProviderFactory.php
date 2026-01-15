@@ -60,6 +60,21 @@ class AiProviderFactory extends Factory
         ]);
     }
 
+    public function codex(): static
+    {
+        return $this->state([
+            'name' => 'codex',
+            'display_name' => 'Codex',
+            'base_url' => null,
+            'api_key' => null,
+            'model' => 'o3',
+            'is_default' => false,
+            'quota_period' => QuotaPeriod::Monthly,
+            'quota_limit' => 10000000,
+            'quota_resets_at' => now()->startOfMonth()->addMonth(),
+        ]);
+    }
+
     public function minimax(): static
     {
         return $this->state([

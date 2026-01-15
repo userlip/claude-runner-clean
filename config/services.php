@@ -41,6 +41,10 @@ return [
         'redirect' => env('GITHUB_REDIRECT_URI', '/admin/github/callback'),
     ],
 
+    'codex' => [
+        'path' => env('CODEX_PATH', '/home/ploi/.npm-global/bin/codex'),
+    ],
+
     'ploi' => [
         'server_id' => env('PLOI_SERVER_ID'),
         'server_name' => env('PLOI_SERVER_NAME'),

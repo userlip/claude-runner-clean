@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\ProposalType;
 use App\Jobs\CloneRepositoryJob;
 use App\Jobs\RunClaudeMessageJob;
+use App\Jobs\RunCodexMessageJob;
 use App\Models\AiProvider;
 use App\Models\Playbook;
 use App\Models\Proposal;
@@ -42,7 +43,7 @@ class ProposalExecutionService
         $prompt = $this->generatePrompt($proposal);
 
         // Create the initial message
-        $task->messages()->create([
+        $message = $task->messages()->create([
             'role' => \App\Enums\MessageRole::User,
             'content' => $prompt,
         ]);
@@ -55,12 +56,13 @@ class ProposalExecutionService
 
         // If repository exists, clone it first then run Claude
         if ($repository && $workspacePath) {
-            CloneRepositoryJob::withChain([
-                new RunClaudeMessageJob($task),
-            ])->dispatch($task);
+            $runnerJob = $task->aiProvider?->isCodex()
+                ? new RunCodexMessageJob($task, $message)
+                : new RunClaudeMessageJob($task, $message);
+
+            CloneRepositoryJob::withChain([$runnerJob])->dispatch($task);
         } else {
-            // No repository - just run Claude directly
-            RunClaudeMessageJob::dispatch($task);
+            $task->dispatchMessage($message);
         }
 
         return $task;

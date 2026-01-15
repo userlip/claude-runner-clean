@@ -76,6 +76,92 @@
             </div>
         </x-filament::section>
 
+        {{-- Codex Settings --}}
+        <x-filament::section>
+            <x-slot name="heading">
+                <div class="flex items-center gap-3">
+                    <div class="flex h-10 w-10 items-center justify-center rounded-lg" style="background-color: rgba(59, 130, 246, 0.1);">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 1.25rem; height: 1.25rem; color: rgb(37, 99, 235);">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <span>Codex</span>
+                        <p style="font-size: 0.75rem; font-weight: normal; color: rgb(107, 114, 128); margin: 0;">OpenAI Codex CLI</p>
+                    </div>
+                </div>
+            </x-slot>
+
+            @php $codex = $this->getCodexProvider(); @endphp
+
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                <div>
+                    <label style="font-size: 0.875rem; font-weight: 500;">Status</label>
+                    <p style="margin-top: 0.25rem; font-size: 0.875rem; color: {{ $codex?->is_active ? 'rgb(22, 163, 74)' : 'rgb(107, 114, 128)' }};">
+                        {{ $codex?->is_active ? 'Active (using local Codex CLI)' : 'Inactive' }}
+                    </p>
+                </div>
+
+                <div>
+                    <label style="font-size: 0.875rem; font-weight: 500;">Model</label>
+                    <input
+                        type="text"
+                        wire:model="codexModel"
+                        style="margin-top: 0.25rem; display: block; width: 100%; border-radius: 0.5rem; border: 1px solid rgb(209, 213, 219); padding: 0.5rem 0.75rem; font-size: 0.875rem;"
+                        placeholder="o3 (default)"
+                    />
+                </div>
+
+                <div>
+                    <label style="font-size: 0.875rem; font-weight: 500;">Monthly Quota Limit (tokens)</label>
+                    <input
+                        type="number"
+                        min="0"
+                        wire:model="codexQuotaLimit"
+                        style="margin-top: 0.25rem; display: block; width: 100%; border-radius: 0.5rem; border: 1px solid rgb(209, 213, 219); padding: 0.5rem 0.75rem; font-size: 0.875rem;"
+                        placeholder="10000000"
+                    />
+                </div>
+
+                <div>
+                    <label style="font-size: 0.875rem; font-weight: 500;">Context Window (tokens)</label>
+                    <input
+                        type="number"
+                        min="0"
+                        wire:model="codexContextWindow"
+                        style="margin-top: 0.25rem; display: block; width: 100%; border-radius: 0.5rem; border: 1px solid rgb(209, 213, 219); padding: 0.5rem 0.75rem; font-size: 0.875rem;"
+                        placeholder="200000 (default)"
+                    />
+                </div>
+
+                @if($codex)
+                    <div>
+                        <label style="font-size: 0.875rem; font-weight: 500;">Current Usage</label>
+                        <div style="margin-top: 0.5rem;">
+                            <div style="display: flex; justify-content: space-between; font-size: 0.875rem; margin-bottom: 0.25rem;">
+                                <span>{{ number_format($codex->quota_used) }} tokens</span>
+                                <span>{{ number_format($codex->getQuotaPercentage(), 1) }}%</span>
+                            </div>
+                            <div style="height: 0.5rem; width: 100%; border-radius: 9999px; background-color: rgb(229, 231, 235);">
+                                <div
+                                    style="height: 0.5rem; border-radius: 9999px; background-color: rgb(59, 130, 246); width: {{ min(100, $codex->getQuotaPercentage()) }}%;"
+                                ></div>
+                            </div>
+                        </div>
+                    </div>
+                @endif
+
+                <div style="display: flex; gap: 0.5rem; padding-top: 0.5rem;">
+                    <x-filament::button wire:click="saveCodexSettings">
+                        Save
+                    </x-filament::button>
+                    <x-filament::button color="gray" wire:click="resetQuota('codex')" wire:confirm="Reset Codex quota to zero?">
+                        Reset Quota
+                    </x-filament::button>
+                </div>
+            </div>
+        </x-filament::section>
+
         {{-- GLM Settings --}}
         <x-filament::section>
             <x-slot name="heading">

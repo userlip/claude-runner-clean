@@ -800,6 +800,52 @@
     flex-shrink: 0;
 }
 
+.chat-activity {
+    margin-top: 0.5rem;
+}
+
+.chat-activity-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0;
+    border: none;
+    background: none;
+    font-size: 0.75rem;
+    color: rgb(37 99 235);
+    cursor: pointer;
+}
+
+.dark .chat-activity-toggle {
+    color: rgb(96 165 250);
+}
+
+.chat-activity-log {
+    margin-top: 0.375rem;
+    padding: 0.5rem 0.625rem;
+    background-color: rgb(248 250 252);
+    border: 1px solid rgb(226 232 240);
+    border-radius: 0.5rem;
+    max-height: 12rem;
+    overflow: auto;
+}
+
+.dark .chat-activity-log {
+    background-color: rgb(15 23 42);
+    border-color: rgb(51 65 85);
+}
+
+.chat-activity-line {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 0.75rem;
+    color: rgb(71 85 105);
+    white-space: pre-wrap;
+}
+
+.dark .chat-activity-line {
+    color: rgb(148 163 184);
+}
+
 .chat-input-area {
     flex-shrink: 0;
     padding: 0.75rem 1rem;
@@ -2974,12 +3020,32 @@
     background-color: rgb(20 83 45 / 0.3);
 }
 
+.session-info-status-enabled {
+    color: rgb(22 163 74);
+    background-color: rgb(220 252 231);
+}
+
+.dark .session-info-status-enabled {
+    color: rgb(74 222 128);
+    background-color: rgb(20 83 45 / 0.3);
+}
+
 .session-info-status-disconnected {
     color: rgb(220 38 38);
     background-color: rgb(254 226 226);
 }
 
 .dark .session-info-status-disconnected {
+    color: rgb(248 113 113);
+    background-color: rgb(127 29 29 / 0.3);
+}
+
+.session-info-status-disabled {
+    color: rgb(220 38 38);
+    background-color: rgb(254 226 226);
+}
+
+.dark .session-info-status-disabled {
     color: rgb(248 113 113);
     background-color: rgb(127 29 29 / 0.3);
 }
@@ -3077,6 +3143,31 @@
 .dark .session-info-action-btn:hover {
     background-color: rgb(30 58 138 / 0.3);
     color: rgb(96 165 250);
+}
+
+.session-info-badges {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    flex-wrap: wrap;
+}
+
+.session-info-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem 0.5rem;
+    border-radius: 9999px;
+    font-size: 0.625rem;
+    font-weight: 600;
+    background-color: rgb(226 232 240);
+    color: rgb(71 85 105);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.dark .session-info-pill {
+    background-color: rgb(51 65 85);
+    color: rgb(203 213 225);
 }
 
 /* ==========================================================================

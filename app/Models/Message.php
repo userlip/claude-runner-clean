@@ -106,6 +106,109 @@ class Message extends Model
     public const MAX_RENDERED_BLOCKS = 50;
 
     /**
+     * Maximum number of activity events to render in the live activity feed.
+     */
+    public const MAX_ACTIVITY_EVENTS = 30;
+
+    /**
+     * Get a safe activity feed from raw_output (Codex only).
+     *
+     * @return array<int, string>
+     */
+    public function getActivityEvents(): array
+    {
+        if (! $this->isFromAssistant() || empty($this->raw_output)) {
+            return [];
+        }
+
+        $provider = $this->task?->aiProvider;
+        if (! $provider || ! $provider->isCodex()) {
+            return [];
+        }
+
+        $cacheKey = "message_activity_events_{$this->id}_".md5($this->raw_output);
+
+        return Cache::remember($cacheKey, now()->addMinutes(5), function () {
+            $lines = preg_split("/\r\n|\r|\n/", trim($this->raw_output));
+            if (empty($lines)) {
+                return [];
+            }
+
+            $events = [];
+
+            for ($i = count($lines) - 1; $i >= 0 && count($events) < self::MAX_ACTIVITY_EVENTS; $i--) {
+                $line = trim($lines[$i]);
+                if ($line === '') {
+                    continue;
+                }
+
+                $data = json_decode($line, true);
+                if (! is_array($data)) {
+                    continue;
+                }
+
+                $event = $this->formatActivityEvent($data);
+                if ($event !== null) {
+                    $events[] = $event;
+                }
+            }
+
+            return array_reverse($events);
+        });
+    }
+
+    protected function formatActivityEvent(array $data): ?string
+    {
+        $type = $data['type'] ?? '';
+
+        if ($type === 'thread.started') {
+            return 'Session started';
+        }
+
+        if ($type === 'turn.completed') {
+            return 'Turn completed';
+        }
+
+        if ($type === 'item.started') {
+            $item = $data['item'] ?? [];
+            if (($item['type'] ?? '') === 'command_execution') {
+                $command = $item['command'] ?? null;
+                if (! $command) {
+                    return 'Running command';
+                }
+
+                return 'Running: '.Str::limit($command, 160);
+            }
+
+            return null;
+        }
+
+        if ($type === 'item.completed') {
+            $item = $data['item'] ?? [];
+            if (($item['type'] ?? '') === 'command_execution') {
+                $exitCode = $item['exit_code'] ?? null;
+                if ($exitCode === null) {
+                    return 'Command finished';
+                }
+
+                $status = (int) $exitCode === 0 ? 'OK' : 'Exit '.$exitCode;
+
+                return "Command finished ({$status})";
+            }
+
+            return null;
+        }
+
+        if ($type === 'error') {
+            $message = $data['message'] ?? null;
+
+            return $message ? 'Error: '.Str::limit($message, 160) : 'Error encountered';
+        }
+
+        return null;
+    }
+
+    /**
      * Get grouped content blocks (tool calls combined, text blocks separate).
      * This is cached to avoid re-processing on every render.
      *

@@ -4,7 +4,6 @@ namespace App\Livewire;
 
 use App\Enums\MessageRole;
 use App\Enums\MessageStatus;
-use App\Jobs\RunClaudeMessageJob;
 use App\Models\AiProvider;
 use App\Models\Message;
 use App\Models\RepositoryEnvConfig;
@@ -13,6 +12,7 @@ use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -225,6 +225,12 @@ class TaskChat extends Component
     }
 
     #[Computed]
+    public function providerLabel(): string
+    {
+        return $this->currentProvider?->display_name ?? 'Claude';
+    }
+
+    #[Computed]
     public function envConfigs(): EloquentCollection
     {
         if (! $this->task->repository) {
@@ -360,11 +366,7 @@ class TaskChat extends Component
             'images' => ! empty($this->images) ? $this->images : null,
         ]);
 
-        RunClaudeMessageJob::dispatch(
-            $this->task,
-            $userMessage,
-            continue: $hasSuccessfulResponse
-        );
+        $this->task->dispatchMessage($userMessage, continue: $hasSuccessfulResponse);
 
         $this->prompt = '';
         $this->images = [];
@@ -745,8 +747,8 @@ class TaskChat extends Component
     }
 
     /**
-     * Stop a running Claude process.
-     * This kills the Claude subprocess and marks the task as completed.
+     * Stop a running AI process.
+     * This kills the subprocess and marks the task as completed.
      */
     public function stopRunning(): void
     {
@@ -755,15 +757,21 @@ class TaskChat extends Component
         }
 
         $sessionId = $this->task->session_id;
+        $provider = $this->task->aiProvider;
 
-        // Kill any Claude processes with this session ID
-        exec("pkill -f 'claude.*--session-id {$sessionId}' 2>/dev/null");
-        exec("pkill -f 'claude.*--resume {$sessionId}' 2>/dev/null");
+        if ($provider?->isCodex()) {
+            exec("pkill -f 'codex.*exec resume.*{$sessionId}' 2>/dev/null");
+        } else {
+            // Kill any Claude processes with this session ID
+            exec("pkill -f 'claude.*--session-id {$sessionId}' 2>/dev/null");
+            exec("pkill -f 'claude.*--resume {$sessionId}' 2>/dev/null");
+        }
 
-        // Also kill any Claude processes associated with this task's working directory
+        // Also kill any AI processes associated with this task's working directory
         if ($this->task->working_directory) {
             $workingDir = escapeshellarg($this->task->working_directory);
-            exec("pkill -f 'claude.*{$workingDir}' 2>/dev/null");
+            $pattern = $provider?->isCodex() ? 'codex.*--cd' : 'claude.*';
+            exec("pkill -f '{$pattern}.*{$workingDir}' 2>/dev/null");
         }
 
         // Mark the task as completed
@@ -772,14 +780,14 @@ class TaskChat extends Component
         // Clear waiting state
         $this->waitingForResponse = false;
 
-        Log::info('Claude process stopped by user', [
+        Log::info('AI process stopped by user', [
             'task_id' => $this->task->id,
             'session_id' => $sessionId,
         ]);
 
         // Notify the user
         Notification::make()
-            ->title('Claude stopped')
+            ->title("{$this->providerLabel} stopped")
             ->body('You can send a new message now.')
             ->info()
             ->send();
@@ -838,11 +846,7 @@ class TaskChat extends Component
         ]);
 
         // Dispatch job to continue the conversation with the response
-        RunClaudeMessageJob::dispatch(
-            $this->task,
-            $userMessage,
-            continue: true
-        );
+        $this->task->dispatchMessage($userMessage, continue: true);
 
         $this->waitingForResponse = true;
     }

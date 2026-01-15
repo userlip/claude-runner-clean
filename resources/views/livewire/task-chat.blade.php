@@ -721,9 +721,19 @@
                                  class="chat-message chat-message-assistant">
                                 <div class="chat-bubble chat-bubble-tool">
                                     @if(count($block['tools']) === 1)
+                                        @php
+                                            $toolCommand = $block['tools'][0]['tool']['input']['command'] ?? null;
+                                        @endphp
                                         <div class="chat-tool-use">
                                             <span class="chat-tool-use-icon">⚙</span>
-                                            <span class="chat-tool-use-name">{{ $block['tools'][0]['tool']['name'] ?? 'Tool' }}</span>
+                                            <span
+                                                class="chat-tool-use-name"
+                                                @if($toolCommand)
+                                                    title="{{ $toolCommand }}"
+                                                @endif
+                                            >
+                                                {{ $block['tools'][0]['tool']['name'] ?? 'Tool' }}
+                                            </span>
                                         </div>
                                     @else
                                         <div x-data="{ showTools: false }" class="chat-tool-calls-container">
@@ -736,14 +746,24 @@
                                                 <span>{{ count($block['tools']) }} tool {{ Str::plural('call', count($block['tools'])) }}</span>
                                             </button>
                                             <div x-show="showTools" x-collapse class="chat-tool-calls">
-                                                @foreach($block['tools'] as $tool)
-                                                    <div class="chat-tool-use" style="margin-bottom: 0.25rem;">
-                                                        <span class="chat-tool-use-icon">⚙</span>
-                                                        <span class="chat-tool-use-name">{{ $tool['tool']['name'] ?? 'Tool' }}</span>
-                                                    </div>
-                                                @endforeach
-                                            </div>
+                                            @foreach($block['tools'] as $tool)
+                                                @php
+                                                    $toolCommand = $tool['tool']['input']['command'] ?? null;
+                                                @endphp
+                                                <div class="chat-tool-use" style="margin-bottom: 0.25rem;">
+                                                    <span class="chat-tool-use-icon">⚙</span>
+                                                    <span
+                                                        class="chat-tool-use-name"
+                                                        @if($toolCommand)
+                                                            title="{{ $toolCommand }}"
+                                                        @endif
+                                                    >
+                                                        {{ $tool['tool']['name'] ?? 'Tool' }}
+                                                    </span>
+                                                </div>
+                                            @endforeach
                                         </div>
+                                    </div>
                                     @endif
                                     <div class="chat-message-meta">
                                         <span class="chat-message-time">{{ $blockTimestamp }}</span>
@@ -822,7 +842,7 @@
                                 <div class="chat-bubble chat-bubble-question">
                                     <div class="chat-question-header">
                                         <span class="chat-question-icon">❓</span>
-                                        <span class="chat-question-title">Claude needs your input</span>
+                                        <span class="chat-question-title">{{ $this->providerLabel }} needs your input</span>
                                     </div>
 
                                     <div class="chat-questions-list">
@@ -914,23 +934,47 @@
                 @endif
             @empty
                 <div class="chat-empty">
-                    <p>Start a conversation with Claude Code</p>
+                    <p>Start a conversation with {{ $this->providerLabel }}</p>
                 </div>
             @endforelse
 
             @if($this->isRunning || $this->waitingForResponse)
+            @php
+                $latestAssistantMessage = $this->chatMessages
+                    ->where('role', \App\Enums\MessageRole::Assistant)
+                    ->last();
+                $activityEvents = $latestAssistantMessage?->getActivityEvents() ?? [];
+                $showActivity = $this->currentProvider?->isCodex() && count($activityEvents) > 0;
+            @endphp
             <div class="chat-thinking">
                 <div class="chat-thinking-bubble">
                     <div class="chat-thinking-content">
                         <div class="chat-thinking-dot"></div>
-                        <span class="chat-thinking-text">Claude is thinking...</span>
+                        <span class="chat-thinking-text">{{ $this->providerLabel }} is thinking...</span>
                     </div>
+                    @if($showActivity)
+                        <div x-data="{ showActivity: false }" class="chat-activity">
+                            <button
+                                type="button"
+                                @click="showActivity = !showActivity"
+                                class="chat-activity-toggle"
+                            >
+                                <span x-text="showActivity ? '▼' : '▶'"></span>
+                                <span>Activity ({{ count($activityEvents) }})</span>
+                            </button>
+                            <div x-show="showActivity" x-collapse class="chat-activity-log">
+                                @foreach($activityEvents as $event)
+                                    <div class="chat-activity-line">{{ $event }}</div>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
                     <button
                         type="button"
                         wire:click="stopRunning"
                         wire:loading.attr="disabled"
                         class="chat-stop-btn"
-                        title="Stop Claude"
+                        title="Stop {{ $this->providerLabel }}"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1rem; height: 1rem;">
                             <path fill-rule="evenodd" d="M4.5 7.5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-9a3 3 0 01-3-3v-9z" clip-rule="evenodd" />
@@ -973,7 +1017,7 @@
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 0.875rem; height: 0.875rem;">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                     </svg>
-                    {{ $this->queuedMessages->count() }} {{ Str::plural('message', $this->queuedMessages->count()) }} queued - will send when Claude finishes
+                    {{ $this->queuedMessages->count() }} {{ Str::plural('message', $this->queuedMessages->count()) }} queued - will send when {{ $this->providerLabel }} finishes
                 </div>
             </div>
         @endif

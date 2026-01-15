@@ -47,7 +47,7 @@ class RunApiHealthCheckJob implements ShouldQueue
             'last_test_result' => 'running',
         ]);
 
-        RunClaudeMessageJob::dispatch($this->task, $message);
+        $this->task->dispatchMessage($message);
     }
 
     protected function buildSkillPrompt(): string

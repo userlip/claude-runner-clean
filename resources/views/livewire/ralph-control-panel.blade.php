@@ -1,73 +1,102 @@
-<x-filament::section label="Ralph Mode">
+<x-filament::section heading="Ralph Mode">
     @if(!$ralphEnabled)
         <div class="space-y-4">
-            <p class="text-sm text-gray-600">
+            <p class="text-sm text-gray-600 dark:text-gray-400">
                 Ralph Wiggum mode runs autonomous AI loops with fresh context each iteration.
                 Progress persists via files instead of chat history.
             </p>
 
-            <x-filament::form wire:submit="enableRalph">
+            <form wire:submit="enableRalph" class="space-y-4">
                 <div class="grid grid-cols-2 gap-4">
-                    <x-filament::input
-                        wire:model="ralphMaxIterations"
-                        label="Max Iterations"
-                        type="number"
-                        placeholder="25"
-                    />
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Max Iterations</label>
+                        <x-filament::input.wrapper>
+                            <x-filament::input
+                                wire:model="ralphMaxIterations"
+                                type="number"
+                                placeholder="25"
+                            />
+                        </x-filament::input.wrapper>
+                    </div>
 
-                    <x-filament::select
-                        wire:model="ralphRotationThreshold"
-                        label="Rotate at Token %"
-                        :options="[
-                            '0.5' => '50%',
-                            '0.7' => '70%',
-                            '0.9' => '90%',
-                        ]"
-                    />
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Rotate at Token %</label>
+                        <x-filament::input.wrapper>
+                            <x-filament::input.select wire:model="ralphRotationThreshold">
+                                <option value="0.5">50%</option>
+                                <option value="0.7">70%</option>
+                                <option value="0.9">90%</option>
+                            </x-filament::input.select>
+                        </x-filament::input.wrapper>
+                    </div>
                 </div>
 
-                <x-filament::input
-                    wire:model="ralphBranchName"
-                    label="Branch Name"
-                    placeholder="ralph/feature-name"
-                />
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Branch Name</label>
+                    <x-filament::input.wrapper>
+                        <x-filament::input
+                            wire:model="ralphBranchName"
+                            type="text"
+                            placeholder="ralph/feature-name"
+                        />
+                    </x-filament::input.wrapper>
+                </div>
 
-                <x-filament::input
-                    wire:model="verificationCommand"
-                    label="Verification Command"
-                    placeholder="php artisan test"
-                />
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Verification Command</label>
+                    <x-filament::input.wrapper>
+                        <x-filament::input
+                            wire:model="verificationCommand"
+                            type="text"
+                            placeholder="php artisan test"
+                        />
+                    </x-filament::input.wrapper>
+                </div>
 
-                <h4 class="font-medium mt-4">User Stories</h4>
+                <h4 class="font-medium mt-4 text-gray-900 dark:text-white">User Stories</h4>
 
-                <div wire:click="addStory" class="cursor-pointer text-sm text-primary-600">
+                <div wire:click="addStory" class="cursor-pointer text-sm text-primary-600 hover:text-primary-500">
                     + Add Story
                 </div>
 
                 @foreach($userStories as $index => $story)
-                    <div class="border rounded p-3 space-y-2">
-                        <x-filament::input
-                            wire:model="userStories.{{ $index }}.id"
-                            label="Story ID"
-                            placeholder="US-001"
-                        />
-                        <x-filament::input
-                            wire:model="userStories.{{ $index }}.title"
-                            label="Title"
-                            placeholder="Add login form"
-                        />
-                        <x-filament::input
-                            wire:model="userStories.{{ $index }}.priority"
-                            label="Priority"
-                            type="number"
-                        />
+                    <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-3 space-y-3">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Story ID</label>
+                            <x-filament::input.wrapper>
+                                <x-filament::input
+                                    wire:model="userStories.{{ $index }}.id"
+                                    type="text"
+                                    placeholder="US-001"
+                                />
+                            </x-filament::input.wrapper>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Title</label>
+                            <x-filament::input.wrapper>
+                                <x-filament::input
+                                    wire:model="userStories.{{ $index }}.title"
+                                    type="text"
+                                    placeholder="Add login form"
+                                />
+                            </x-filament::input.wrapper>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Priority</label>
+                            <x-filament::input.wrapper>
+                                <x-filament::input
+                                    wire:model="userStories.{{ $index }}.priority"
+                                    type="number"
+                                />
+                            </x-filament::input.wrapper>
+                        </div>
                     </div>
                 @endforeach
 
                 <x-filament::button type="submit">
                     Enable Ralph Mode
                 </x-filament::button>
-            </x-filament::form>
+            </form>
         </div>
     @else
         <div class="space-y-4">

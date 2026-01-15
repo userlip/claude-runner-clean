@@ -13,21 +13,6 @@
                 "@playwright/mcp@latest"
             ]
         },
-        "sentry": {
-            "command": "node",
-            "args": [
-                "/home/ploi/claude-runner.marin.sh/mcp-servers/sentry-mcp/dist/index.js"
-            ]
-        },
-        "ytdlp-health": {
-            "command": "node",
-            "args": [
-                "/home/ploi/claude-runner.marin.sh/mcp-servers/ytdlp-health-mcp/dist/index.js"
-            ],
-            "env": {
-                "YTDLP_PATH": "/home/ploi/claude-runner.marin.sh/mcp-servers/ytdlp-health-mcp/yt-dlp"
-            }
-        },
         "project-db": {
             "command": "node",
             "args": [

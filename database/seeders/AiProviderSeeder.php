@@ -25,6 +25,18 @@ class AiProviderSeeder extends Seeder
         );
 
         AiProvider::firstOrCreate(
+            ['name' => 'codex'],
+            [
+                'display_name' => 'Codex',
+                'is_active' => true,
+                'is_default' => false,
+                'quota_limit' => 10000000,
+                'quota_period' => 'monthly',
+                'quota_resets_at' => now()->startOfMonth()->addMonth(),
+            ]
+        );
+
+        AiProvider::firstOrCreate(
             ['name' => 'glm'],
             [
                 'display_name' => 'GLM (z.ai)',
