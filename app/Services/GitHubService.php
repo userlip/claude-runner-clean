@@ -104,9 +104,13 @@ class GitHubService
         $status = $response->json();
 
         if (($status['state'] ?? null) === 'pending') {
-            $checkRuns = $this->fetchCheckRunsStatus($fullName, $sha);
+            $checkRuns = $this->fetchCheckRunsSummary($fullName, $sha);
             if ($checkRuns) {
-                return $checkRuns;
+                if (($checkRuns['total_count'] ?? 0) > 0 && isset($checkRuns['state'])) {
+                    return $checkRuns;
+                }
+
+                $status['check_runs_total_count'] = $checkRuns['total_count'];
             }
         }
 
@@ -116,7 +120,7 @@ class GitHubService
     /**
      * @return array<string, mixed> | null
      */
-    private function fetchCheckRunsStatus(string $fullName, string $sha): ?array
+    private function fetchCheckRunsSummary(string $fullName, string $sha): ?array
     {
         $response = Http::withToken($this->connection->access_token)
             ->accept('application/vnd.github+json')
@@ -130,7 +134,9 @@ class GitHubService
         $runs = collect($payload['check_runs'] ?? []);
 
         if ($runs->isEmpty()) {
-            return null;
+            return [
+                'total_count' => $payload['total_count'] ?? 0,
+            ];
         }
 
         $conclusions = $runs->pluck('conclusion')->filter()->unique();

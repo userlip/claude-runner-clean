@@ -59,6 +59,7 @@ return [
     'security_ai' => [
         'orchestrator_provider_id' => env('SECURITY_ORCHESTRATOR_PROVIDER_ID'),
         'fixer_provider_id' => env('SECURITY_FIXER_PROVIDER_ID'),
+        'no_checks_grace_minutes' => env('SECURITY_NO_CHECKS_GRACE_MINUTES', 60),
     ],
 
 ];
