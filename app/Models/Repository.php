@@ -24,6 +24,10 @@ class Repository extends Model
         'default_branch',
         'private',
         'description',
+        'security_management_enabled',
+        'ploi_server_id',
+        'ploi_site_id',
+        'security_task_id',
     ];
 
     protected function casts(): array
@@ -32,6 +36,7 @@ class Repository extends Model
             'github_id' => 'integer',
             'private' => 'boolean',
             'value_tier' => ValueTier::class,
+            'security_management_enabled' => 'boolean',
         ];
     }
 
@@ -53,6 +58,16 @@ class Repository extends Model
     public function envConfigs(): HasMany
     {
         return $this->hasMany(RepositoryEnvConfig::class);
+    }
+
+    public function securityRuns(): HasMany
+    {
+        return $this->hasMany(SecurityRun::class);
+    }
+
+    public function securityTask(): BelongsTo
+    {
+        return $this->belongsTo(Task::class, 'security_task_id');
     }
 
     public function defaultEnvConfig(): ?RepositoryEnvConfig
