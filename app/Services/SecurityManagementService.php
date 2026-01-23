@@ -3,8 +3,10 @@
 namespace App\Services;
 
 use App\Enums\SecurityRunStatus;
+use App\Enums\TaskStatus;
 use App\Models\Repository;
 use App\Models\SecurityRun;
+use App\Models\Task;
 
 class SecurityManagementService
 {
@@ -42,5 +44,23 @@ class SecurityManagementService
                 ]);
             }
         }
+    }
+
+    public function ensureSecurityTask(Repository $repo): Task
+    {
+        if ($repo->securityTask) {
+            return $repo->securityTask;
+        }
+
+        $task = Task::create([
+            'title' => "Security Management: {$repo->name}",
+            'repository_id' => $repo->id,
+            'ai_provider_id' => $this->aiResolver->orchestratorProvider()?->id,
+            'status' => TaskStatus::Pending,
+        ]);
+
+        $repo->update(['security_task_id' => $task->id]);
+
+        return $task;
     }
 }
