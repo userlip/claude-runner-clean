@@ -7,6 +7,7 @@ use App\Enums\TaskStatus;
 use App\Models\Repository;
 use App\Models\SecurityRun;
 use App\Models\Task;
+use Illuminate\Support\Facades\Process;
 
 class SecurityManagementService
 {
@@ -62,5 +63,23 @@ class SecurityManagementService
         $repo->update(['security_task_id' => $task->id]);
 
         return $task;
+    }
+
+    private function deployRepository(Repository $repo): void
+    {
+        $ploi = new PloiService;
+
+        if (! $repo->ploi_site_id) {
+            $ploi->resolveSiteIdForRepository($repo, $repo->name.'.marin.sh');
+        }
+
+        if ($repo->ploi_site_id) {
+            Process::run([
+                'ploi', 'deploy',
+                '--server='.$repo->ploi_server_id,
+                '--site='.$repo->ploi_site_id,
+                '--no-interaction',
+            ]);
+        }
     }
 }

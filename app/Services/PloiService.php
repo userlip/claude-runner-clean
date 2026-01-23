@@ -123,6 +123,24 @@ class PloiService
         }
     }
 
+    public function resolveSiteIdForRepository(Repository $repo, string $domain): ?string
+    {
+        $sites = $this->fetchSites();
+
+        foreach ($sites as $site) {
+            if ($site['domain'] === $domain) {
+                $repo->update([
+                    'ploi_server_id' => $this->serverId,
+                    'ploi_site_id' => (string) $site['id'],
+                ]);
+
+                return (string) $site['id'];
+            }
+        }
+
+        return null;
+    }
+
     /**
      * Get all daemons for the server.
      *
