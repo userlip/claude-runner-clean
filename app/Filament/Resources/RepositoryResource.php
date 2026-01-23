@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\RepositoryResource\Pages;
 use App\Models\Repository;
 use App\Services\GitHubService;
+use App\Services\SecurityManagementService;
 use Filament\Actions;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
@@ -12,7 +13,6 @@ use Filament\Support\Colors\Color;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Auth;
 
 class RepositoryResource extends Resource
@@ -50,9 +50,9 @@ class RepositoryResource extends Resource
                     ->badge()
                     ->color('gray'),
 
-                Tables\Columns\IconColumn::make('security_management_enabled')
+                Tables\Columns\ToggleColumn::make('security_management_enabled')
                     ->label('Security Mgmt')
-                    ->boolean(),
+                    ->disabled(fn (): bool => ! Auth::user()?->githubConnection),
 
                 Tables\Columns\TextColumn::make('sites_count')
                     ->label('Sites')
@@ -79,7 +79,26 @@ class RepositoryResource extends Resource
                 Actions\Action::make('runSecurity')
                     ->label('Run Security Check')
                     ->icon('heroicon-o-shield-check')
-                    ->action(fn (Repository $record) => Artisan::call('security:orchestrate', ['--repo' => $record->id])),
+                    ->action(function (Repository $record): void {
+                        if (! $record->user?->githubConnection) {
+                            Notification::make()
+                                ->title('GitHub not connected')
+                                ->body('Please connect your GitHub account first.')
+                                ->danger()
+                                ->send();
+
+                            return;
+                        }
+
+                        $service = app(SecurityManagementService::class);
+                        $service->ensureSecurityTask($record);
+                        $service->processRepository($record);
+
+                        Notification::make()
+                            ->title('Security check completed')
+                            ->success()
+                            ->send();
+                    }),
 
                 Actions\Action::make('github')
                     ->label('GitHub')

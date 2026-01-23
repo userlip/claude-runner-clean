@@ -18,6 +18,8 @@ class SecurityManagementService
 
     public function processRepository(Repository $repo): void
     {
+        $this->ensureSecurityTask($repo);
+
         $connection = $repo->user?->githubConnection;
         if (! $connection) {
             return;
