@@ -101,7 +101,55 @@ class GitHubService
             throw new \RuntimeException('Failed to fetch status: '.$response->body());
         }
 
-        return $response->json();
+        $status = $response->json();
+
+        if (($status['state'] ?? null) === 'pending') {
+            $checkRuns = $this->fetchCheckRunsStatus($fullName, $sha);
+            if ($checkRuns) {
+                return $checkRuns;
+            }
+        }
+
+        return $status;
+    }
+
+    /**
+     * @return array<string, mixed> | null
+     */
+    private function fetchCheckRunsStatus(string $fullName, string $sha): ?array
+    {
+        $response = Http::withToken($this->connection->access_token)
+            ->accept('application/vnd.github+json')
+            ->get(self::API_BASE."/repos/{$fullName}/commits/{$sha}/check-runs");
+
+        if ($response->failed()) {
+            return null;
+        }
+
+        $payload = $response->json();
+        $runs = collect($payload['check_runs'] ?? []);
+
+        if ($runs->isEmpty()) {
+            return null;
+        }
+
+        $conclusions = $runs->pluck('conclusion')->filter()->unique();
+        $statuses = $runs->pluck('status')->filter()->unique();
+
+        $state = 'pending';
+        if ($conclusions->contains('failure') || $conclusions->contains('cancelled') || $conclusions->contains('timed_out') || $conclusions->contains('action_required') || $conclusions->contains('stale')) {
+            $state = 'failure';
+        } elseif ($conclusions->contains('success') && $statuses->every(fn ($status) => $status === 'completed')) {
+            $state = 'success';
+        } elseif ($statuses->contains('in_progress') || $statuses->contains('queued')) {
+            $state = 'pending';
+        }
+
+        return [
+            'state' => $state,
+            'source' => 'check_runs',
+            'total_count' => $payload['total_count'] ?? $runs->count(),
+        ];
     }
 
     /**
