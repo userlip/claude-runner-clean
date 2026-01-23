@@ -50,6 +50,10 @@ class RepositoryResource extends Resource
                     ->badge()
                     ->color('gray'),
 
+                Tables\Columns\IconColumn::make('security_management_enabled')
+                    ->label('Security Mgmt')
+                    ->boolean(),
+
                 Tables\Columns\TextColumn::make('sites_count')
                     ->label('Sites')
                     ->counts('sites'),

@@ -38,6 +38,13 @@ class RepositoryResource extends Resource
                             ->disabled(),
                         Forms\Components\TextInput::make('project_key')
                             ->helperText('Used to link proposals to this repository'),
+                        Forms\Components\Toggle::make('security_management_enabled')
+                            ->label('Security Management')
+                            ->helperText('Enable auto-merge + deploy for Dependabot PRs'),
+                        Forms\Components\TextInput::make('ploi_server_id')
+                            ->label('Ploi Server ID'),
+                        Forms\Components\TextInput::make('ploi_site_id')
+                            ->label('Ploi Site ID'),
                         Forms\Components\Select::make('value_tier')
                             ->options(ValueTier::class)
                             ->required()
