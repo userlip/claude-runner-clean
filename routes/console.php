@@ -28,6 +28,11 @@ foreach (ResearchModule::cases() as $module) {
         ->appendOutputTo(storage_path('logs/research.log'));
 }
 
+Schedule::command('security:orchestrate')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->runInBackground();
+
 // API Health Checks - Run every 2 hours to monitor Scrappa API endpoints
 // Schedule::command('scrappa:health-check')
 //     ->everyTwoHours()

@@ -12,6 +12,7 @@ use Filament\Support\Colors\Color;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Auth;
 
 class RepositoryResource extends Resource
@@ -70,6 +71,11 @@ class RepositoryResource extends Resource
                     ->label('Manage .env')
                     ->icon('heroicon-o-cog-6-tooth')
                     ->url(fn (Repository $record) => static::getUrl('view', ['record' => $record])),
+
+                Actions\Action::make('runSecurity')
+                    ->label('Run Security Check')
+                    ->icon('heroicon-o-shield-check')
+                    ->action(fn (Repository $record) => Artisan::call('security:orchestrate', ['--repo' => $record->id])),
 
                 Actions\Action::make('github')
                     ->label('GitHub')
