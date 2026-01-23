@@ -69,4 +69,56 @@ class GitHubService
 
         return $synced;
     }
+
+    public function fetchDependabotPullRequests(string $fullName): Collection
+    {
+        $response = Http::withToken($this->connection->access_token)
+            ->accept('application/vnd.github+json')
+            ->get(self::API_BASE."/repos/{$fullName}/pulls", [
+                'state' => 'open',
+                'per_page' => 100,
+            ]);
+
+        if ($response->failed()) {
+            throw new \RuntimeException('Failed to fetch PRs: '.$response->body());
+        }
+
+        return collect($response->json())
+            ->filter(fn ($pr) => ($pr['user']['login'] ?? '') === 'dependabot[bot]')
+            ->values();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function fetchCombinedStatus(string $fullName, string $sha): array
+    {
+        $response = Http::withToken($this->connection->access_token)
+            ->accept('application/vnd.github+json')
+            ->get(self::API_BASE."/repos/{$fullName}/commits/{$sha}/status");
+
+        if ($response->failed()) {
+            throw new \RuntimeException('Failed to fetch status: '.$response->body());
+        }
+
+        return $response->json();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function mergePullRequest(string $fullName, int $number): array
+    {
+        $response = Http::withToken($this->connection->access_token)
+            ->accept('application/vnd.github+json')
+            ->put(self::API_BASE."/repos/{$fullName}/pulls/{$number}/merge", [
+                'merge_method' => 'squash',
+            ]);
+
+        if ($response->failed()) {
+            throw new \RuntimeException('Failed to merge PR: '.$response->body());
+        }
+
+        return $response->json();
+    }
 }
