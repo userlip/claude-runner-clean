@@ -56,4 +56,9 @@ return [
         'subject' => env('VAPID_SUBJECT'),
     ],
 
+    'security_ai' => [
+        'orchestrator_provider_id' => env('SECURITY_ORCHESTRATOR_PROVIDER_ID'),
+        'fixer_provider_id' => env('SECURITY_FIXER_PROVIDER_ID'),
+    ],
+
 ];
