@@ -65,6 +65,11 @@ class Repository extends Model
         return $this->hasMany(SecurityRun::class);
     }
 
+    public function majorUpgradeRuns(): HasMany
+    {
+        return $this->hasMany(MajorUpgradeRun::class);
+    }
+
     public function securityTask(): BelongsTo
     {
         return $this->belongsTo(Task::class, 'security_task_id');
