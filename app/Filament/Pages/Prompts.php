@@ -35,7 +35,7 @@ class Prompts extends Page implements HasTable
     public function table(Table $table): Table
     {
         return $table
-            ->records($this->getPromptRecords())
+            ->records(fn () => $this->getPromptRecords())
             ->columns([
                 TextColumn::make('id')
                     ->label('Path')
@@ -67,12 +67,22 @@ class Prompts extends Page implements HasTable
                             ->extraAttributes(['class' => 'font-mono text-sm'])
                             ->required(),
                     ])
-                    ->mountUsing(function (Actions\Action $action, array $record): void {
-                        $path = $this->promptPath($record['id']);
-                        $action->formData([
-                            'path' => $record['id'],
+                    ->fillForm(function ($record): array {
+                        $id = is_array($record) ? ($record['id'] ?? '') : (string) $record;
+
+                        if ($id === '') {
+                            return [
+                                'path' => '',
+                                'content' => '',
+                            ];
+                        }
+
+                        $path = $this->promptPath($id);
+
+                        return [
+                            'path' => $id,
                             'content' => File::exists($path) ? File::get($path) : '',
-                        ]);
+                        ];
                     })
                     ->action(function (array $data): void {
                         $path = $this->promptPath($data['path']);

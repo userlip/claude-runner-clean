@@ -251,4 +251,22 @@ class GitHubService
 
         return $response->json();
     }
+
+    /**
+     * Add a comment to a pull request (via the issues API since PRs are issues).
+     */
+    public function addPullRequestComment(string $fullName, int $number, string $body): array
+    {
+        $response = Http::withToken($this->connection->access_token)
+            ->accept('application/vnd.github+json')
+            ->post(self::API_BASE."/repos/{$fullName}/issues/{$number}/comments", [
+                'body' => $body,
+            ]);
+
+        if ($response->failed()) {
+            throw new \RuntimeException('Failed to add comment to PR: '.$response->body());
+        }
+
+        return $response->json();
+    }
 }

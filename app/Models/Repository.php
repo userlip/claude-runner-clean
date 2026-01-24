@@ -26,7 +26,9 @@ class Repository extends Model
         'description',
         'security_management_enabled',
         'ploi_server_id',
+        'ploi_server_name',
         'ploi_site_id',
+        'ploi_site_domain',
         'security_task_id',
     ];
 

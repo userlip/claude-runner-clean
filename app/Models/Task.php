@@ -137,6 +137,11 @@ class Task extends Model
         return $this->repository_id === null;
     }
 
+    public function isSystemTask(): bool
+    {
+        return Repository::where('security_task_id', $this->id)->exists();
+    }
+
     public function messages(): HasMany
     {
         return $this->hasMany(Message::class);

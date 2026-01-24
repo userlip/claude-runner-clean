@@ -41,6 +41,22 @@ class RepositoryResource extends Resource
                         Forms\Components\Toggle::make('security_management_enabled')
                             ->label('Security Management')
                             ->helperText('Enable auto-merge + deploy for Dependabot PRs'),
+                        Forms\Components\TextInput::make('ploi_url')
+                            ->label('Ploi URL')
+                            ->placeholder('https://ploi.io/servers/12345/sites/67890')
+                            ->helperText('Paste a Ploi URL to auto-fill server and site IDs')
+                            ->live(onBlur: true)
+                            ->afterStateUpdated(function (Forms\Set $set, ?string $state) {
+                                if (! $state) {
+                                    return;
+                                }
+
+                                // Parse URL like: https://ploi.io/servers/12345/sites/67890
+                                if (preg_match('#/servers/(\d+)/sites/(\d+)#', $state, $matches)) {
+                                    $set('ploi_server_id', $matches[1]);
+                                    $set('ploi_site_id', $matches[2]);
+                                }
+                            }),
                         Forms\Components\TextInput::make('ploi_server_id')
                             ->label('Ploi Server ID'),
                         Forms\Components\TextInput::make('ploi_site_id')

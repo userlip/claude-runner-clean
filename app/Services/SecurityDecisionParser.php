@@ -5,10 +5,14 @@ namespace App\Services;
 class SecurityDecisionParser
 {
     /**
-     * @return array<string, mixed>
+     * @return array<string, mixed>|null
      */
-    public function parse(string $content): array
+    public function parse(?string $content): ?array
     {
+        if (! $content) {
+            return null;
+        }
+
         if (preg_match('/```json\n(.*?)\n```/s', $content, $matches)) {
             $data = json_decode($matches[1], true);
             if (is_array($data)) {
@@ -16,9 +20,6 @@ class SecurityDecisionParser
             }
         }
 
-        return [
-            'merge_allowed' => false,
-            'risk_level' => 'unknown',
-        ];
+        return null;
     }
 }

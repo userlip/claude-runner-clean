@@ -15,6 +15,8 @@ class SecurityRun extends Model
         'repository_id',
         'github_pr_id',
         'github_pr_number',
+        'pr_title',
+        'risk_level',
         'status',
         'decision_summary',
         'merge_commit_sha',

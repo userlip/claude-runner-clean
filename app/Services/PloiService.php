@@ -144,6 +144,156 @@ class PloiService
         return null;
     }
 
+    /**
+     * Smartly find a Ploi site for a repository by searching across ALL servers.
+     * Matches by repository name appearing in the domain.
+     */
+    public function smartResolveSiteForRepository(Repository $repo): bool
+    {
+        $servers = $this->listServers();
+        $repoName = strtolower($repo->name);
+
+        foreach ($servers as $server) {
+            if ((int) $server['sites'] === 0) {
+                continue;
+            }
+
+            try {
+                $sites = $this->fetchSitesForServer($server['name']);
+
+                foreach ($sites as $site) {
+                    $domain = strtolower($site['domain']);
+
+                    // Check if repo name is in the domain (e.g., "squashleague" in "squashleague.example.com")
+                    if (str_contains($domain, $repoName)) {
+                        $repo->update([
+                            'ploi_server_id' => $server['id'],
+                            'ploi_server_name' => $server['name'],
+                            'ploi_site_id' => (string) $site['id'],
+                            'ploi_site_domain' => $site['domain'],
+                        ]);
+
+                        Log::info("Auto-matched repository {$repo->name} to site {$site['domain']} on server {$server['name']}");
+
+                        return true;
+                    }
+                }
+            } catch (\Throwable $e) {
+                Log::warning("Failed to fetch sites for server {$server['name']}: {$e->getMessage()}");
+
+                continue;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * List all Ploi servers.
+     *
+     * @return array<int, array{id: string, name: string, ip: string, php_version: string, sites: string, status: string}>
+     */
+    public function listServers(): array
+    {
+        $result = Process::run([
+            'ploi', 'server:list',
+            '--no-interaction',
+        ]);
+
+        if (! $result->successful()) {
+            Log::error('Failed to list Ploi servers', ['output' => $result->errorOutput()]);
+
+            throw new \RuntimeException('Failed to list servers from Ploi: '.$result->errorOutput());
+        }
+
+        return $this->parseServerOutput($result->output());
+    }
+
+    /**
+     * @return array<int, array{id: string, name: string, ip: string, php_version: string, sites: string, status: string}>
+     */
+    protected function parseServerOutput(string $output): array
+    {
+        $servers = [];
+        $lines = explode("\n", $output);
+
+        foreach ($lines as $line) {
+            // Skip header, separator, and empty lines
+            if (! str_contains($line, '|') || str_contains($line, '---') || str_contains($line, 'ID')) {
+                continue;
+            }
+
+            $columns = array_map('trim', explode('|', $line));
+            $columns = array_values(array_filter($columns, fn ($c) => $c !== ''));
+
+            if (count($columns) >= 7) {
+                $servers[] = [
+                    'id' => $columns[0],
+                    'name' => $columns[1],
+                    'ip' => $columns[2],
+                    'php_version' => $columns[3],
+                    'mysql_version' => $columns[4],
+                    'sites' => $columns[5],
+                    'status' => $columns[6],
+                ];
+            }
+        }
+
+        return $servers;
+    }
+
+    /**
+     * Fetch sites for a specific server by name.
+     *
+     * @return array<int, array{id: string, server_id: string, domain: string, php_version: string, project_type: string, has_repository: bool}>
+     */
+    public function fetchSitesForServer(string $serverName): array
+    {
+        $result = Process::run([
+            'ploi', 'site:list',
+            '--server='.$serverName,
+            '--no-interaction',
+        ]);
+
+        if (! $result->successful()) {
+            throw new \RuntimeException('Failed to fetch sites from Ploi: '.$result->errorOutput());
+        }
+
+        return $this->parseSiteOutputWithServer($result->output());
+    }
+
+    /**
+     * @return array<int, array{id: string, server_id: string, domain: string, php_version: string, project_type: string, has_repository: bool}>
+     */
+    protected function parseSiteOutputWithServer(string $output): array
+    {
+        $sites = [];
+        $lines = explode("\n", $output);
+
+        foreach ($lines as $line) {
+            // Skip header, separator, and empty lines
+            if (! str_contains($line, '|') || str_contains($line, '---') || str_contains($line, 'ID')) {
+                continue;
+            }
+
+            $columns = array_map('trim', explode('|', $line));
+            $columns = array_values(array_filter($columns, fn ($c) => $c !== ''));
+
+            if (count($columns) >= 7) {
+                $sites[] = [
+                    'id' => $columns[0],
+                    'server_id' => $columns[1],
+                    'domain' => $columns[2],
+                    'project_type' => $columns[3],
+                    'php_version' => $columns[5],
+                    'has_repository' => $columns[6] === 'Yes',
+                ];
+            }
+        }
+
+        return $sites;
+    }
+
     public function createReadonlyDbUser(string $serverId, string $database, string $user, string $password): bool
     {
         $result = Process::run([

@@ -48,6 +48,8 @@ return [
     'ploi' => [
         'server_id' => env('PLOI_SERVER_ID'),
         'server_name' => env('PLOI_SERVER_NAME'),
+        'api_url' => env('PLOI_API_URL', 'https://ploi.io/api'),
+        'api_token' => env('PLOI_API_TOKEN'),
     ],
 
     'vapid' => [
@@ -60,6 +62,7 @@ return [
         'orchestrator_provider_id' => env('SECURITY_ORCHESTRATOR_PROVIDER_ID'),
         'fixer_provider_id' => env('SECURITY_FIXER_PROVIDER_ID'),
         'no_checks_grace_minutes' => env('SECURITY_NO_CHECKS_GRACE_MINUTES', 60),
+        'fixing_ci_grace_minutes' => env('SECURITY_FIXING_CI_GRACE_MINUTES', 30),
     ],
 
 ];

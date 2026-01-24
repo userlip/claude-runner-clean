@@ -18,6 +18,7 @@ use App\Models\SecurityRun;
 use App\Models\Task;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Process;
 
 class SecurityManagementService
@@ -44,9 +45,14 @@ class SecurityManagementService
                 ['repository_id' => $repo->id, 'github_pr_id' => $pr['id']],
                 [
                     'github_pr_number' => $pr['number'],
+                    'pr_title' => $pr['title'] ?? null,
                     'status' => SecurityRunStatus::Pending,
                 ]
             );
+
+            if (! $run->pr_title && isset($pr['title'])) {
+                $run->update(['pr_title' => $pr['title']]);
+            }
 
             if (! in_array($run->status, [SecurityRunStatus::Pending, SecurityRunStatus::WaitingCi], true)) {
                 continue;
@@ -56,10 +62,13 @@ class SecurityManagementService
             $noChecks = ($status['total_count'] ?? 0) === 0 && ($status['check_runs_total_count'] ?? 0) === 0;
             $graceMinutes = (int) config('services.security_ai.no_checks_grace_minutes', 60);
             $pastGrace = $noChecks && $this->isPastNoChecksGrace($pr, $graceMinutes);
+            $ciFailure = $status['state'] === 'failure' || $status['state'] === 'error';
 
-            $nextStatus = ($status['state'] === 'success' || $pastGrace)
-                ? SecurityRunStatus::Researching
-                : SecurityRunStatus::WaitingCi;
+            $nextStatus = match (true) {
+                $status['state'] === 'success' || $pastGrace => SecurityRunStatus::Researching,
+                $ciFailure => SecurityRunStatus::FixingCi,
+                default => SecurityRunStatus::WaitingCi,
+            };
 
             $statusChanged = $run->status !== $nextStatus;
 
@@ -78,6 +87,12 @@ class SecurityManagementService
                 continue;
             }
 
+            if ($nextStatus === SecurityRunStatus::FixingCi) {
+                $this->dispatchCiFixerPrompt($task, $repo, $pr, $status);
+
+                continue;
+            }
+
             if ($nextStatus === SecurityRunStatus::Researching) {
                 if ($pastGrace) {
                     $this->postNoChecksGraceMessage($task, $pr, $graceMinutes);
@@ -86,7 +101,208 @@ class SecurityManagementService
             }
         }
 
+        $this->processFixingCiRuns($repo, $task, $github);
         $this->processResearchingRuns($repo, $task, $github);
+        $this->syncClosedPrs($repo, $github);
+    }
+
+    /**
+     * Check if any tracked PRs have been closed on GitHub and update their status.
+     */
+    private function syncClosedPrs(Repository $repo, GitHubService $github): void
+    {
+        // Get runs that are in non-terminal states (might have been closed externally)
+        $activeRuns = SecurityRun::query()
+            ->where('repository_id', $repo->id)
+            ->whereIn('status', [
+                SecurityRunStatus::NeedsUserAction->value,
+                SecurityRunStatus::Researching->value,
+                SecurityRunStatus::FixingCi->value,
+                SecurityRunStatus::WaitingCi->value,
+                SecurityRunStatus::Pending->value,
+            ])
+            ->get();
+
+        foreach ($activeRuns as $run) {
+            try {
+                $pr = $github->fetchPullRequest($repo->full_name, $run->github_pr_number);
+
+                if (! $pr) {
+                    continue;
+                }
+
+                // If PR is closed (not merged), mark as Closed
+                if (($pr['state'] ?? 'open') === 'closed' && ! ($pr['merged'] ?? false)) {
+                    $run->update([
+                        'status' => SecurityRunStatus::Closed,
+                        'error_message' => 'PR was closed on GitHub',
+                    ]);
+
+                    Log::info("Marked PR #{$run->github_pr_number} as Closed (detected from GitHub)");
+                }
+
+                // If PR was merged externally, update status
+                if (($pr['merged'] ?? false) && $run->status !== SecurityRunStatus::Merged && $run->status !== SecurityRunStatus::Deployed) {
+                    $run->update([
+                        'status' => SecurityRunStatus::Merged,
+                        'merge_commit_sha' => $pr['merge_commit_sha'] ?? null,
+                    ]);
+
+                    Log::info("Marked PR #{$run->github_pr_number} as Merged (detected from GitHub)");
+                }
+            } catch (\Throwable $e) {
+                // PR might not exist anymore, ignore
+                continue;
+            }
+        }
+    }
+
+    /**
+     * Process runs in FixingCi status - check if CI now passes after fixer worked on it.
+     */
+    private function processFixingCiRuns(Repository $repo, Task $task, GitHubService $github): void
+    {
+        $runs = SecurityRun::query()
+            ->where('repository_id', $repo->id)
+            ->where('status', SecurityRunStatus::FixingCi->value)
+            ->get();
+
+        foreach ($runs as $run) {
+            $pr = $github->fetchPullRequest($repo->full_name, $run->github_pr_number);
+            if (! $pr) {
+                continue;
+            }
+
+            $headSha = $pr['head']['sha'] ?? null;
+            if (! $headSha) {
+                continue;
+            }
+
+            $status = $github->fetchCombinedStatus($repo->full_name, $headSha);
+
+            // If CI now passes, move to Researching
+            if ($status['state'] === 'success') {
+                $run->update([
+                    'status' => SecurityRunStatus::Researching,
+                    'last_checked_at' => now(),
+                ]);
+
+                Message::create([
+                    'task_id' => $task->id,
+                    'role' => MessageRole::Assistant,
+                    'status' => MessageStatus::Sent,
+                    'content' => "CI is now passing for PR #{$run->github_pr_number}. Proceeding with security review.",
+                ]);
+
+                // Dispatch the security review prompt
+                $this->dispatchOrchestratorPrompt($task, $repo, $pr, $status);
+
+                continue;
+            }
+
+            // Check if CI fixer has given up (responded with ci_fixed: false or needs_manual_intervention: true)
+            $ciFixerGaveUp = $this->hasCiFixerGivenUp($task, $run);
+
+            // Also check if we've been stuck in FixingCi for too long (grace period)
+            $fixingCiGraceMinutes = (int) config('services.security_ai.fixing_ci_grace_minutes', 30);
+            $stuckTooLong = $run->last_checked_at &&
+                $run->last_checked_at->diffInMinutes(now()) > $fixingCiGraceMinutes;
+
+            if ($ciFixerGaveUp || $stuckTooLong) {
+                // CI fixer can't fix it or we're stuck - move to Researching so the main orchestrator can decide
+                // The orchestrator will then either IGNORE (close PR) or ESCALATE based on security risk
+                $run->update([
+                    'status' => SecurityRunStatus::Researching,
+                    'last_checked_at' => now(),
+                ]);
+
+                $reason = $ciFixerGaveUp
+                    ? 'CI fixer could not resolve the issue'
+                    : "CI still failing after {$fixingCiGraceMinutes} minutes";
+
+                Message::create([
+                    'task_id' => $task->id,
+                    'role' => MessageRole::Assistant,
+                    'status' => MessageStatus::Sent,
+                    'content' => "PR #{$run->github_pr_number}: {$reason}. Proceeding with security review to determine if we should ignore or escalate.",
+                ]);
+
+                // Dispatch the orchestrator prompt - it will decide to IGNORE (close PR) or ESCALATE
+                $this->dispatchOrchestratorPrompt($task, $repo, $pr, $status);
+
+                continue;
+            }
+
+            // Still waiting for CI fixer to respond or complete
+            $run->update(['last_checked_at' => now()]);
+        }
+    }
+
+    /**
+     * Check if the CI fixer has responded that it cannot fix the issue,
+     * or if a CI fixer prompt was sent but never got a response.
+     */
+    private function hasCiFixerGivenUp(Task $task, SecurityRun $run): bool
+    {
+        // Look for CI fixer prompt (user message) for this PR
+        $ciFixerPrompt = Message::query()
+            ->where('task_id', $task->id)
+            ->where('role', MessageRole::User)
+            ->where('content', 'like', '%CI Fixer%')
+            ->where('content', 'like', "%\"pr_number\": {$run->github_pr_number}%")
+            ->where('created_at', '>', now()->subHours(2))
+            ->orderBy('created_at', 'desc')
+            ->first();
+
+        // If no CI fixer prompt was sent, we haven't even tried yet
+        if (! $ciFixerPrompt) {
+            return false;
+        }
+
+        // Look for CI fixer responses (assistant messages) after the prompt
+        $recentResponses = Message::query()
+            ->where('task_id', $task->id)
+            ->where('role', MessageRole::Assistant)
+            ->where('created_at', '>', $ciFixerPrompt->created_at)
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        // Check each response to see if it's a CI fixer response for this PR
+        foreach ($recentResponses as $message) {
+            $content = $message->content ?? '';
+
+            // Skip empty responses
+            if (empty(trim($content))) {
+                continue;
+            }
+
+            // Look for CI fixer JSON response with ci_fixed field
+            if (preg_match('/```json\s*(.*?)\s*```/s', $content, $matches)) {
+                $data = json_decode($matches[1], true);
+                if (is_array($data) && array_key_exists('ci_fixed', $data)) {
+                    // This is a CI fixer response
+                    $ciFixed = $data['ci_fixed'] ?? null;
+                    $needsManual = $data['needs_manual_intervention'] ?? false;
+
+                    if ($ciFixed === false || $needsManual === true) {
+                        return true;
+                    }
+
+                    // If ci_fixed is true, the fixer succeeded - don't mark as gave up
+                    if ($ciFixed === true) {
+                        return false;
+                    }
+                }
+            }
+        }
+
+        // If task is not running and no CI fixer response came back, consider it "gave up"
+        // This handles the case where multiple prompts were sent but the AI didn't respond to all
+        if (! $task->isRunning() && $recentResponses->filter(fn ($m) => ! empty(trim($m->content)))->isEmpty()) {
+            return true;
+        }
+
+        return false;
     }
 
     public function ensureSecurityTask(Repository $repo): Task
@@ -107,32 +323,51 @@ class SecurityManagementService
         return $task;
     }
 
-    private function deployRepository(Repository $repo): void
+    /**
+     * Deploy the repository via Ploi.
+     *
+     * @return bool True if deployment was attempted and succeeded, false if no deployment configured
+     *
+     * @throws \RuntimeException If deployment was attempted but failed
+     */
+    private function deployRepository(Repository $repo): bool
     {
-        $ploi = new PloiService;
+        // Skip deployment if no Ploi site is configured
+        if (! $repo->ploi_site_id || ! $repo->ploi_server_id) {
+            // Try to smart-resolve the site by searching ALL servers
+            try {
+                $ploi = new PloiService;
+                $found = $ploi->smartResolveSiteForRepository($repo);
+                if ($found) {
+                    $repo->refresh();
+                }
+            } catch (\Throwable $e) {
+                // Ploi service unavailable - skip deployment
+                Log::info("Could not resolve Ploi site for {$repo->name}: {$e->getMessage()}");
 
-        if (! $repo->ploi_site_id) {
-            $ploi->resolveSiteIdForRepository($repo, $repo->name.'.marin.sh');
+                return false;
+            }
         }
 
-        if (! $repo->ploi_site_id) {
-            return;
+        if (! $repo->ploi_site_domain || ! $repo->ploi_server_name) {
+            return false;
         }
 
         $command = [
             'ploi', 'deploy',
-            '--server='.$repo->ploi_server_id,
-            '--site='.$repo->ploi_site_id,
+            '--server='.$repo->ploi_server_name,
+            '--site='.$repo->ploi_site_domain,
             '--no-interaction',
         ];
 
         $result = Process::run($command);
 
         if ($result->successful()) {
-            return;
+            return true;
         }
 
         if ($this->isUntrackedMergeError($result->errorOutput())) {
+            $ploi = new PloiService;
             $updated = $ploi->ensureDeployScriptCleanup(
                 (string) $repo->ploi_server_id,
                 (string) $repo->ploi_site_id,
@@ -141,12 +376,14 @@ class SecurityManagementService
 
             if ($updated) {
                 $result = Process::run($command);
+
+                if ($result->successful()) {
+                    return true;
+                }
             }
         }
 
-        if (! $result->successful()) {
-            throw new \RuntimeException('Deploy failed: '.$result->errorOutput());
-        }
+        throw new \RuntimeException('Deploy failed: '.$result->errorOutput());
     }
 
     private function isUntrackedMergeError(string $errorOutput): bool
@@ -178,33 +415,42 @@ class SecurityManagementService
 
             $run->update([
                 'decision_summary' => json_encode($decision, JSON_UNESCAPED_SLASHES),
+                'risk_level' => $decision['risk_level'] ?? null,
             ]);
 
             $updateDetails = $this->determineUpdateDetails($payload, $repo, $run, $github);
 
-            if ($updateDetails['update_type'] === 'major') {
-                $this->createMajorUpgradeRun(
-                    $repo,
-                    $run->github_pr_number,
-                    $payload['pull_request'] ?? $payload
-                );
+            // Check AI decision
+            $mergeAllowed = filter_var($decision['merge_allowed'] ?? false, FILTER_VALIDATE_BOOLEAN);
+            $action = $decision['action'] ?? ($mergeAllowed ? 'merge' : 'escalate');
+            $this->postDecisionMessage($task, $run, $decision, $mergeAllowed);
+
+            // Handle "ignore" action - close the PR, no real security risk but CI fails
+            if ($action === 'ignore') {
+                $this->closePrViaComment($github, $repo, $run, $task);
+                $run->update(['status' => SecurityRunStatus::Closed]);
+
+                continue;
+            }
+
+            // Handle "escalate" action - real security risk, user must decide
+            if (! $mergeAllowed || $action === 'escalate') {
+                if ($updateDetails['update_type'] === 'major') {
+                    $this->createMajorUpgradeRun(
+                        $repo,
+                        $run->github_pr_number,
+                        $payload['pull_request'] ?? $payload
+                    );
+                }
                 $this->createUserNeededAction($task, $repo, $run, $decision, $updateDetails);
                 $run->update(['status' => SecurityRunStatus::NeedsUserAction]);
 
                 continue;
             }
 
-            $mergeAllowed = filter_var($decision['merge_allowed'] ?? false, FILTER_VALIDATE_BOOLEAN);
-            $this->postDecisionMessage($task, $run, $decision, $mergeAllowed);
-
-            if (! $mergeAllowed) {
-                $run->update(['status' => SecurityRunStatus::Failed]);
-
-                continue;
-            }
-
             $run->update(['status' => SecurityRunStatus::Approved]);
 
+            // Step 1: Try to merge the PR
             try {
                 $mergeResult = $github->mergePullRequest($repo->full_name, $run->github_pr_number);
                 $run->update([
@@ -213,11 +459,6 @@ class SecurityManagementService
                 ]);
 
                 $this->postMergedMessage($task, $run, $mergeResult);
-
-                $this->deployRepository($repo);
-                $run->update(['status' => SecurityRunStatus::Deployed]);
-
-                $this->postDeployedMessage($task, $run);
             } catch (\Throwable $e) {
                 $run->update([
                     'status' => SecurityRunStatus::Failed,
@@ -225,6 +466,39 @@ class SecurityManagementService
                 ]);
 
                 $this->postFailedMessage($task, $run, $e->getMessage());
+
+                continue;
+            }
+
+            // Step 2: Try to deploy (optional - don't fail the run if deploy fails)
+            try {
+                $deployed = $this->deployRepository($repo);
+
+                if ($deployed) {
+                    $run->update(['status' => SecurityRunStatus::Deployed]);
+                    $this->postDeployedMessage($task, $run);
+                } else {
+                    // No deployment configured/available - stay at Merged status
+                    Message::create([
+                        'task_id' => $task->id,
+                        'role' => MessageRole::Assistant,
+                        'status' => MessageStatus::Sent,
+                        'content' => "PR #{$run->github_pr_number} merged successfully. Deployment skipped (no Ploi site configured for this repository).",
+                    ]);
+                }
+            } catch (\Throwable $e) {
+                // Deploy failed but PR is merged - log the error but don't fail the run
+                Log::warning("Deploy failed for PR #{$run->github_pr_number} after merge", [
+                    'error' => $e->getMessage(),
+                    'repository' => $repo->full_name,
+                ]);
+
+                Message::create([
+                    'task_id' => $task->id,
+                    'role' => MessageRole::Assistant,
+                    'status' => MessageStatus::Sent,
+                    'content' => "PR #{$run->github_pr_number} merged successfully, but deployment failed: {$e->getMessage()}. Manual deployment may be required.",
+                ]);
             }
         }
     }
@@ -237,46 +511,68 @@ class SecurityManagementService
      */
     private function findDecisionContextForRun(Task $task, SecurityRun $run): ?array
     {
+        // Get all user messages with PR payloads (in ascending order)
         $userMessages = Message::query()
             ->where('task_id', $task->id)
             ->where('role', MessageRole::User)
-            ->orderByDesc('id')
+            ->orderBy('id')
             ->get();
 
-        foreach ($userMessages as $userMessage) {
+        // Find all user messages that are PR prompts and their position
+        $prPrompts = [];
+        $targetIndex = null;
+        $targetPayload = null;
+
+        foreach ($userMessages as $index => $userMessage) {
             $payload = $this->extractJsonBlock($userMessage->content ?? '');
             if (! $payload) {
                 continue;
             }
 
             $payloadNumber = $this->extractPrNumber($payload);
-            if (! $payloadNumber || $payloadNumber !== $run->github_pr_number) {
+            if (! $payloadNumber) {
                 continue;
             }
 
-            $assistantMessage = Message::query()
-                ->where('task_id', $task->id)
-                ->where('role', MessageRole::Assistant)
-                ->where('id', '>', $userMessage->id)
-                ->orderBy('id')
-                ->first();
-
-            if (! $assistantMessage) {
-                return null;
-            }
-
-            $decision = $this->parser->parse($assistantMessage->content ?? '');
-            if (! $decision) {
-                return null;
-            }
-
-            return [
-                'decision' => $decision,
-                'payload' => $payload,
+            $prPrompts[] = [
+                'id' => $userMessage->id,
+                'pr_number' => $payloadNumber,
             ];
+
+            if ($payloadNumber === $run->github_pr_number) {
+                $targetIndex = count($prPrompts) - 1;
+                $targetPayload = $payload;
+            }
         }
 
-        return null;
+        if ($targetIndex === null || ! $targetPayload) {
+            return null;
+        }
+
+        // Get assistant messages with valid decisions (in order)
+        $assistantMessages = Message::query()
+            ->where('task_id', $task->id)
+            ->where('role', MessageRole::Assistant)
+            ->orderBy('id')
+            ->get();
+
+        $decisions = [];
+        foreach ($assistantMessages as $assistantMessage) {
+            $decision = $this->parser->parse($assistantMessage->content ?? '');
+            if ($decision) {
+                $decisions[] = $decision;
+            }
+        }
+
+        // Match by position - nth prompt should match nth decision
+        if (! isset($decisions[$targetIndex])) {
+            return null;
+        }
+
+        return [
+            'decision' => $decisions[$targetIndex],
+            'payload' => $targetPayload,
+        ];
     }
 
     /**
@@ -530,6 +826,104 @@ class SecurityManagementService
     }
 
     /**
+     * @param  array<string, mixed>  $pr
+     * @param  array<string, mixed>  $status
+     */
+    private function dispatchCiFixerPrompt(Task $task, Repository $repo, array $pr, array $status): void
+    {
+        $content = $this->buildCiFixerPrompt($repo, $pr, $status);
+
+        if ($task->isRunning()) {
+            Message::create([
+                'task_id' => $task->id,
+                'role' => MessageRole::User,
+                'status' => MessageStatus::Queued,
+                'content' => $content,
+            ]);
+
+            return;
+        }
+
+        $userMessage = Message::create([
+            'task_id' => $task->id,
+            'role' => MessageRole::User,
+            'status' => MessageStatus::Sent,
+            'content' => $content,
+        ]);
+
+        $task->dispatchMessage($userMessage);
+    }
+
+    /**
+     * @param  array<string, mixed>  $pr
+     * @param  array<string, mixed>  $status
+     */
+    private function buildCiFixerPrompt(Repository $repo, array $pr, array $status): string
+    {
+        $promptPath = resource_path('prompts/security/ci-fixer.md');
+        $template = File::exists($promptPath)
+            ? File::get($promptPath)
+            : 'You are the CI Fixer. Investigate and fix CI failures.';
+
+        $payload = [
+            'repo' => $repo->full_name,
+            'pr_number' => $pr['number'] ?? null,
+            'head_sha' => $pr['head']['sha'] ?? null,
+            'ci_state' => $status['state'] ?? 'unknown',
+        ];
+
+        // Include Ploi PHP version if available - helps CI fixer match production env
+        $phpVersion = $this->getPloiPhpVersion($repo);
+        if ($phpVersion) {
+            $payload['ploi_php_version'] = $phpVersion;
+        }
+
+        $json = json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+
+        return rtrim($template)."\n\n```json\n{$json}\n```";
+    }
+
+    /**
+     * Get the PHP version from Ploi for a repository's site.
+     */
+    private function getPloiPhpVersion(Repository $repo): ?string
+    {
+        // First ensure repo has Ploi site info
+        if (! $repo->ploi_server_name || ! $repo->ploi_site_domain) {
+            try {
+                $ploi = new PloiService;
+                $found = $ploi->smartResolveSiteForRepository($repo);
+                if ($found) {
+                    $repo->refresh();
+                }
+            } catch (\Throwable $e) {
+                Log::debug("Could not resolve Ploi site for {$repo->name}: {$e->getMessage()}");
+
+                return null;
+            }
+        }
+
+        if (! $repo->ploi_server_name || ! $repo->ploi_site_domain) {
+            return null;
+        }
+
+        try {
+            $ploi = new PloiService;
+            $sites = $ploi->fetchSitesForServer($repo->ploi_server_name);
+
+            foreach ($sites as $site) {
+                if ($site['domain'] === $repo->ploi_site_domain) {
+                    return $site['php_version'] ?? null;
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::debug("Could not fetch Ploi PHP version for {$repo->name}: {$e->getMessage()}");
+        }
+
+        return null;
+    }
+
+    /**
      * @return array<string, mixed>|null
      */
     private function extractJsonBlock(string $content): ?array
@@ -537,14 +931,17 @@ class SecurityManagementService
         if (! preg_match_all('/```json\n(.*?)\n```/s', $content, $matches)) {
             return null;
         }
+
+        // Return the LAST valid JSON block (the payload is appended at the end)
+        $lastValid = null;
         foreach ($matches[1] as $block) {
             $data = json_decode($block, true);
             if (is_array($data)) {
-                return $data;
+                $lastValid = $data;
             }
         }
 
-        return null;
+        return $lastValid;
     }
 
     private function buildOrchestratorPrompt(Repository $repo, array $pr, array $status): string
@@ -647,5 +1044,38 @@ class SecurityManagementService
             'status' => MessageStatus::Sent,
             'content' => "Security run failed for PR #{$run->github_pr_number}: {$message}",
         ]);
+    }
+
+    /**
+     * Close a PR by commenting @dependabot close - used when CI fails but there's no real security risk.
+     */
+    private function closePrViaComment(GitHubService $github, Repository $repo, SecurityRun $run, Task $task): void
+    {
+        try {
+            $github->addPullRequestComment(
+                $repo->full_name,
+                $run->github_pr_number,
+                "@dependabot close\n\nClosing this PR automatically. CI is failing and this update doesn't address a critical security vulnerability. The site is working fine with the current version. We'll pick up this update naturally when it becomes compatible."
+            );
+
+            Message::create([
+                'task_id' => $task->id,
+                'role' => MessageRole::Assistant,
+                'status' => MessageStatus::Sent,
+                'content' => "Closed PR #{$run->github_pr_number} via @dependabot close. CI was failing but no real security risk - site works fine as-is.",
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning("Failed to close PR #{$run->github_pr_number} via comment", [
+                'error' => $e->getMessage(),
+                'repository' => $repo->full_name,
+            ]);
+
+            Message::create([
+                'task_id' => $task->id,
+                'role' => MessageRole::Assistant,
+                'status' => MessageStatus::Sent,
+                'content' => "Attempted to close PR #{$run->github_pr_number} but failed: {$e->getMessage()}",
+            ]);
+        }
     }
 }

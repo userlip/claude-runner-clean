@@ -13,6 +13,7 @@ use Filament\Actions;
 use Filament\Forms;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Schema;
 use Filament\Support\Colors\Color;
@@ -82,7 +83,7 @@ class ProposalResource extends Resource
                             ->required()
                             ->default('other'),
 
-                        Forms\Components\Fieldset::make('Proposed Action')
+                        Fieldset::make('Proposed Action')
                             ->schema([
                                 Forms\Components\TextInput::make('proposed_action.target')
                                     ->label('Target')
