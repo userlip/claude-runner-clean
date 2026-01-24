@@ -168,6 +168,32 @@ class PloiService
         return $result->successful();
     }
 
+    public function buildReviewEnv(
+        string $env,
+        string $appUrl,
+        string $dbUser,
+        string $dbPass,
+        ?string $sessionDomain = null
+    ): string {
+        $env = preg_replace('/^APP_URL=.*/m', "APP_URL={$appUrl}", $env) ?? $env;
+        $env = preg_replace('/^DB_USERNAME=.*/m', "DB_USERNAME={$dbUser}", $env) ?? $env;
+        $env = preg_replace('/^DB_PASSWORD=.*/m', "DB_PASSWORD={$dbPass}", $env) ?? $env;
+
+        if ($sessionDomain !== null) {
+            $env = preg_replace('/^SESSION_DOMAIN=.*/m', "SESSION_DOMAIN={$sessionDomain}", $env) ?? $env;
+        }
+
+        if (! str_contains($env, 'APP_URL=')) {
+            $env .= "\nAPP_URL={$appUrl}";
+        }
+
+        if ($sessionDomain !== null && ! str_contains($env, 'SESSION_DOMAIN=')) {
+            $env .= "\nSESSION_DOMAIN={$sessionDomain}";
+        }
+
+        return $env;
+    }
+
     public function fetchSiteDetails(string $serverId, string $siteId): ?array
     {
         $token = $this->getApiToken();
