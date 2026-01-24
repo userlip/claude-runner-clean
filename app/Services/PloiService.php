@@ -5,6 +5,9 @@ namespace App\Services;
 use App\Enums\SiteStatus;
 use App\Models\Repository;
 use App\Models\Site;
+use App\Support\DeployScriptHelper;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Process;
 
@@ -136,6 +139,132 @@ class PloiService
 
                 return (string) $site['id'];
             }
+        }
+
+        return null;
+    }
+
+    public function createReadonlyDbUser(string $serverId, string $database, string $user, string $password): bool
+    {
+        $result = Process::run([
+            'ploi', 'database:create-user',
+            '--server='.$serverId,
+            '--database='.$database,
+            '--user='.$user,
+            '--password='.$password,
+            '--readonly',
+            '--no-interaction',
+        ]);
+
+        if (! $result->successful()) {
+            Log::error('Failed to create readonly DB user on Ploi', [
+                'server_id' => $serverId,
+                'database' => $database,
+                'user' => $user,
+                'output' => $result->errorOutput(),
+            ]);
+        }
+
+        return $result->successful();
+    }
+
+    public function fetchSiteDetails(string $serverId, string $siteId): ?array
+    {
+        $token = $this->getApiToken();
+
+        if (! $token) {
+            Log::warning('Ploi API token missing, cannot fetch site details.');
+
+            return null;
+        }
+
+        $response = Http::withToken($token)
+            ->acceptJson()
+            ->get($this->getApiUrl()."/servers/{$serverId}/sites/{$siteId}");
+
+        if ($response->failed()) {
+            Log::warning('Failed to fetch Ploi site details.', [
+                'server_id' => $serverId,
+                'site_id' => $siteId,
+                'status' => $response->status(),
+            ]);
+
+            return null;
+        }
+
+        return $response->json('data');
+    }
+
+    public function updateSiteDeployScript(string $serverId, string $siteId, string $deployScript): bool
+    {
+        $token = $this->getApiToken();
+
+        if (! $token) {
+            Log::warning('Ploi API token missing, cannot update deploy script.');
+
+            return false;
+        }
+
+        $response = Http::withToken($token)
+            ->acceptJson()
+            ->patch($this->getApiUrl()."/servers/{$serverId}/sites/{$siteId}", [
+                'deploy_script' => $deployScript,
+            ]);
+
+        if ($response->failed()) {
+            Log::warning('Failed to update Ploi deploy script.', [
+                'server_id' => $serverId,
+                'site_id' => $siteId,
+                'status' => $response->status(),
+            ]);
+
+            return false;
+        }
+
+        return true;
+    }
+
+    public function ensureDeployScriptCleanup(string $serverId, string $siteId, string $cleanupCommand): bool
+    {
+        if (! $serverId || ! $siteId) {
+            return false;
+        }
+
+        $site = $this->fetchSiteDetails($serverId, $siteId);
+        $current = $site['deploy_script'] ?? null;
+
+        if ($current === null) {
+            return false;
+        }
+
+        $updated = DeployScriptHelper::ensureCleanup($current, $cleanupCommand);
+
+        if ($updated === $current) {
+            return false;
+        }
+
+        return $this->updateSiteDeployScript($serverId, $siteId, $updated);
+    }
+
+    protected function getApiUrl(): string
+    {
+        return config('services.ploi.api_url', 'https://ploi.io/api');
+    }
+
+    protected function getApiToken(): ?string
+    {
+        $token = config('services.ploi.api_token');
+
+        if ($token) {
+            return $token;
+        }
+
+        $configPath = '/home/ploi/.ploi/config.php';
+
+        if (File::exists($configPath)) {
+            $config = require $configPath;
+
+            return $config['token'] ?? null;
         }
 
         return null;
