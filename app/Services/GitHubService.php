@@ -91,6 +91,22 @@ class GitHubService
     /**
      * @return array<string, mixed>
      */
+    public function fetchPullRequest(string $fullName, int $number): array
+    {
+        $response = Http::withToken($this->connection->access_token)
+            ->accept('application/vnd.github+json')
+            ->get(self::API_BASE."/repos/{$fullName}/pulls/{$number}");
+
+        if ($response->failed()) {
+            throw new \RuntimeException('Failed to fetch PR: '.$response->body());
+        }
+
+        return $response->json();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
     public function fetchCombinedStatus(string $fullName, string $sha): array
     {
         $response = Http::withToken($this->connection->access_token)
@@ -102,16 +118,33 @@ class GitHubService
         }
 
         $status = $response->json();
+        $filteredStatuses = collect($status['statuses'] ?? [])
+            ->reject(fn (array $item) => $this->isIgnoredStatusContext($item['context'] ?? ''));
 
-        if (($status['state'] ?? null) === 'pending') {
-            $checkRuns = $this->fetchCheckRunsSummary($fullName, $sha);
-            if ($checkRuns) {
-                if (($checkRuns['total_count'] ?? 0) > 0 && isset($checkRuns['state'])) {
-                    return $checkRuns;
-                }
+        $checkRuns = $this->fetchCheckRunsSummary($fullName, $sha);
 
-                $status['check_runs_total_count'] = $checkRuns['total_count'];
-            }
+        $status['total_count'] = $filteredStatuses->count();
+        $status['check_runs_total_count'] = $checkRuns['total_count'] ?? 0;
+        $status['check_runs_ignored_count'] = $checkRuns['ignored_total_count'] ?? 0;
+
+        $states = [];
+        if ($filteredStatuses->isNotEmpty()) {
+            $states[] = $this->calculateLegacyStatusState($filteredStatuses);
+        }
+
+        if (($checkRuns['total_count'] ?? 0) > 0 && isset($checkRuns['state'])) {
+            $states[] = $checkRuns['state'];
+            $status['source'] = $checkRuns['source'] ?? 'check_runs';
+        }
+
+        if (empty($states)) {
+            $status['state'] = 'pending';
+        } elseif (in_array('failure', $states, true)) {
+            $status['state'] = 'failure';
+        } elseif (in_array('pending', $states, true)) {
+            $status['state'] = 'pending';
+        } else {
+            $status['state'] = 'success';
         }
 
         return $status;
@@ -132,15 +165,20 @@ class GitHubService
 
         $payload = $response->json();
         $runs = collect($payload['check_runs'] ?? []);
+        $filteredRuns = $runs->reject(fn (array $run) => $this->isIgnoredCheckRun($run))->values();
+        $ignoredCount = $runs->count() - $filteredRuns->count();
 
-        if ($runs->isEmpty()) {
+        if ($filteredRuns->isEmpty()) {
             return [
-                'total_count' => $payload['total_count'] ?? 0,
+                'state' => 'pending',
+                'source' => 'check_runs',
+                'total_count' => 0,
+                'ignored_total_count' => $ignoredCount,
             ];
         }
 
-        $conclusions = $runs->pluck('conclusion')->filter()->unique();
-        $statuses = $runs->pluck('status')->filter()->unique();
+        $conclusions = $filteredRuns->pluck('conclusion')->filter()->unique();
+        $statuses = $filteredRuns->pluck('status')->filter()->unique();
 
         $state = 'pending';
         if ($conclusions->contains('failure') || $conclusions->contains('cancelled') || $conclusions->contains('timed_out') || $conclusions->contains('action_required') || $conclusions->contains('stale')) {
@@ -154,8 +192,46 @@ class GitHubService
         return [
             'state' => $state,
             'source' => 'check_runs',
-            'total_count' => $payload['total_count'] ?? $runs->count(),
+            'total_count' => $filteredRuns->count(),
+            'ignored_total_count' => $ignoredCount,
         ];
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, array<string, mixed>>  $statuses
+     */
+    private function calculateLegacyStatusState(\Illuminate\Support\Collection $statuses): string
+    {
+        $states = $statuses->pluck('state')->filter()->unique();
+
+        if ($states->contains('failure')) {
+            return 'failure';
+        }
+
+        if ($states->contains('pending')) {
+            return 'pending';
+        }
+
+        return $states->contains('success') ? 'success' : 'pending';
+    }
+
+    private function isIgnoredStatusContext(string $context): bool
+    {
+        $context = strtolower($context);
+
+        return str_contains($context, 'claude')
+            || str_contains($context, 'code review');
+    }
+
+    /**
+     * @param  array<string, mixed>  $run
+     */
+    private function isIgnoredCheckRun(array $run): bool
+    {
+        $name = strtolower((string) ($run['name'] ?? $run['app']['name'] ?? $run['external_id'] ?? ''));
+
+        return str_contains($name, 'claude')
+            || str_contains($name, 'code review');
     }
 
     /**
