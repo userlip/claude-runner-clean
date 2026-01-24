@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Repository;
+use App\Services\MajorUpgradeService;
 use App\Services\SecurityManagementService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -15,7 +16,7 @@ class RunSecurityManagementJob implements ShouldQueue
 
     public function __construct(private ?int $repoId = null) {}
 
-    public function handle(SecurityManagementService $service): void
+    public function handle(SecurityManagementService $service, MajorUpgradeService $majorUpgradeService): void
     {
         $query = Repository::where('security_management_enabled', true);
 
@@ -23,6 +24,9 @@ class RunSecurityManagementJob implements ShouldQueue
             $query->whereKey($this->repoId);
         }
 
-        $query->each(fn (Repository $repo) => $service->processRepository($repo));
+        $query->each(function (Repository $repo) use ($service, $majorUpgradeService) {
+            $service->processRepository($repo);
+            $majorUpgradeService->dispatchPendingRunsForRepository($repo);
+        });
     }
 }
