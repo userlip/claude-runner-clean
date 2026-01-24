@@ -139,7 +139,13 @@ class Task extends Model
 
     public function isSystemTask(): bool
     {
-        return Repository::where('security_task_id', $this->id)->exists();
+        // Check if linked as current security task for a repository
+        if (Repository::where('security_task_id', $this->id)->exists()) {
+            return true;
+        }
+
+        // Also check by title pattern for older security tasks no longer linked
+        return str_starts_with($this->title ?? '', 'Security Management:');
     }
 
     public function messages(): HasMany

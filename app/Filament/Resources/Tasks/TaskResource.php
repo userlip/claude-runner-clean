@@ -153,12 +153,22 @@ class TaskResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
+        $securityTaskIds = Repository::whereNotNull('security_task_id')
+            ->pluck('security_task_id')
+            ->toArray();
+
         return parent::getEloquentQuery()
             ->where(function (Builder $query) {
                 // Tasks with repositories owned by the user
                 $query->whereHas('repository', fn (Builder $q) => $q->where('user_id', Auth::id()))
                     // OR general chats owned by the user
                     ->orWhere('user_id', Auth::id());
+            })
+            // Exclude security management tasks
+            ->when(count($securityTaskIds) > 0, fn (Builder $q) => $q->whereNotIn('id', $securityTaskIds))
+            ->where(function (Builder $q) {
+                $q->whereNull('title')
+                    ->orWhere('title', 'not like', 'Security Management:%');
             });
     }
 

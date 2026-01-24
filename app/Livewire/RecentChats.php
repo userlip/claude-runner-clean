@@ -34,8 +34,14 @@ class RecentChats extends Component
                     // OR general chats owned by the user
                     ->orWhere('user_id', Auth::id());
             })
-            ->when(! $this->showSystemTasks && count($securityTaskIds) > 0, function ($query) use ($securityTaskIds) {
-                $query->whereNotIn('id', $securityTaskIds);
+            ->when(! $this->showSystemTasks, function ($query) use ($securityTaskIds) {
+                // Exclude security tasks by ID (current linked tasks)
+                $query->when(count($securityTaskIds) > 0, fn ($q) => $q->whereNotIn('id', $securityTaskIds));
+                // Also exclude by title pattern (older unlinked security tasks)
+                $query->where(function ($q) {
+                    $q->whereNull('title')
+                        ->orWhere('title', 'not like', 'Security Management:%');
+                });
             })
             ->latest('updated_at')
             ->limit(10)
