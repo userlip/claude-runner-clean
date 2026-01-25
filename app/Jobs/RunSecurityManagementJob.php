@@ -2,7 +2,9 @@
 
 namespace App\Jobs;
 
+use App\Enums\SecurityRunStatus;
 use App\Models\Repository;
+use App\Models\SecurityRun;
 use App\Services\MajorUpgradeService;
 use App\Services\SecurityManagementService;
 use Illuminate\Bus\Queueable;
@@ -18,15 +20,33 @@ class RunSecurityManagementJob implements ShouldQueue
 
     public function handle(SecurityManagementService $service, MajorUpgradeService $majorUpgradeService): void
     {
+        // Check if there are already active security runs - if so, don't start more
+        // This ensures we process 1 at a time instead of hammering the API
+        $maxConcurrent = (int) config('services.security_ai.max_concurrent_tasks', 2);
+        $activeRuns = SecurityRun::query()
+            ->whereIn('status', [
+                SecurityRunStatus::Researching->value,
+                SecurityRunStatus::FixingCi->value,
+            ])
+            ->count();
+
+        if ($activeRuns >= $maxConcurrent) {
+            // Already at max capacity, don't process more repos
+            return;
+        }
+
         $query = Repository::where('security_management_enabled', true);
 
         if ($this->repoId) {
             $query->whereKey($this->repoId);
         }
 
-        $query->each(function (Repository $repo) use ($service, $majorUpgradeService) {
+        // Only process ONE repo per job run to avoid hammering APIs
+        $repo = $query->first();
+
+        if ($repo) {
             $service->processRepository($repo);
             $majorUpgradeService->dispatchPendingRunsForRepository($repo);
-        });
+        }
     }
 }
