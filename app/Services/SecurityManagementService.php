@@ -38,6 +38,14 @@ class SecurityManagementService
         }
 
         $github = new GitHubService($connection);
+
+        // Check if GitHub API rate limit is available before proceeding
+        if (! $github->hasRateLimitRemaining()) {
+            Log::info("Skipping security processing for {$repo->name}: GitHub API rate limit exhausted");
+
+            return;
+        }
+
         $prs = $github->fetchDependabotPullRequests($repo->full_name);
 
         foreach ($prs as $pr) {

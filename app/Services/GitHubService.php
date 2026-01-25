@@ -15,6 +15,44 @@ class GitHubService
         private GitHubConnection $connection
     ) {}
 
+    /**
+     * Check if the GitHub API rate limit has remaining requests.
+     *
+     * @return array{remaining: int, limit: int, reset: int, has_remaining: bool}
+     */
+    public function checkRateLimit(): array
+    {
+        $response = Http::withToken($this->connection->access_token)
+            ->accept('application/vnd.github+json')
+            ->get(self::API_BASE.'/rate_limit');
+
+        if ($response->failed()) {
+            return [
+                'remaining' => 0,
+                'limit' => 0,
+                'reset' => time(),
+                'has_remaining' => false,
+            ];
+        }
+
+        $core = $response->json('resources.core', []);
+
+        return [
+            'remaining' => $core['remaining'] ?? 0,
+            'limit' => $core['limit'] ?? 0,
+            'reset' => $core['reset'] ?? time(),
+            'has_remaining' => ($core['remaining'] ?? 0) > 50, // Keep buffer of 50
+        ];
+    }
+
+    /**
+     * Check if we have enough rate limit to proceed with operations.
+     */
+    public function hasRateLimitRemaining(): bool
+    {
+        return $this->checkRateLimit()['has_remaining'];
+    }
+
     public function fetchRepositories(): Collection
     {
         $repos = collect();
