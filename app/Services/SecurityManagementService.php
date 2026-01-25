@@ -17,6 +17,7 @@ use App\Models\Repository;
 use App\Models\SecurityRun;
 use App\Models\Task;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Process;
@@ -94,20 +95,34 @@ class SecurityManagementService
                 continue;
             }
 
-            // For Researching or FixingCi, check concurrency before updating status
-            // This prevents runs from getting "stuck" in these states when we can't actually dispatch
-            if (! $this->canDispatchSecurityTask($task)) {
-                // Don't update status yet - keep in Pending/WaitingCi until we can actually dispatch
+            // For Researching or FixingCi, use atomic lock to prevent race conditions
+            // Multiple repositories process in parallel, so we need to lock before checking/updating
+            $lockKey = 'security_dispatch_lock';
+            $lock = Cache::lock($lockKey, 10);
+
+            if (! $lock->get()) {
+                // Another process has the lock, skip for now
                 $run->update(['last_checked_at' => now()]);
 
                 continue;
             }
 
-            // Now we can dispatch - update status
-            $run->update([
-                'status' => $nextStatus,
-                'last_checked_at' => now(),
-            ]);
+            try {
+                // Re-check concurrency inside the lock
+                if (! $this->canDispatchSecurityTask($task)) {
+                    $run->update(['last_checked_at' => now()]);
+
+                    continue;
+                }
+
+                // Now we can dispatch - update status
+                $run->update([
+                    'status' => $nextStatus,
+                    'last_checked_at' => now(),
+                ]);
+            } finally {
+                $lock->release();
+            }
 
             if (! $statusChanged) {
                 continue;
