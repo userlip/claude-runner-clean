@@ -80,18 +80,36 @@ class SecurityManagementService
 
             $statusChanged = $run->status !== $nextStatus;
 
+            // For WaitingCi, update status immediately
+            if ($nextStatus === SecurityRunStatus::WaitingCi) {
+                $run->update([
+                    'status' => $nextStatus,
+                    'last_checked_at' => now(),
+                ]);
+
+                if ($statusChanged) {
+                    $this->postWaitingForCiMessage($task, $pr, $status);
+                }
+
+                continue;
+            }
+
+            // For Researching or FixingCi, check concurrency before updating status
+            // This prevents runs from getting "stuck" in these states when we can't actually dispatch
+            if (! $this->canDispatchSecurityTask($task)) {
+                // Don't update status yet - keep in Pending/WaitingCi until we can actually dispatch
+                $run->update(['last_checked_at' => now()]);
+
+                continue;
+            }
+
+            // Now we can dispatch - update status
             $run->update([
                 'status' => $nextStatus,
                 'last_checked_at' => now(),
             ]);
 
             if (! $statusChanged) {
-                continue;
-            }
-
-            if ($nextStatus === SecurityRunStatus::WaitingCi) {
-                $this->postWaitingForCiMessage($task, $pr, $status);
-
                 continue;
             }
 
