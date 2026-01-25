@@ -63,6 +63,7 @@ return [
         'fixer_provider_id' => env('SECURITY_FIXER_PROVIDER_ID'),
         'no_checks_grace_minutes' => env('SECURITY_NO_CHECKS_GRACE_MINUTES', 60),
         'fixing_ci_grace_minutes' => env('SECURITY_FIXING_CI_GRACE_MINUTES', 30),
+        'max_concurrent_tasks' => env('SECURITY_MAX_CONCURRENT_TASKS', 2),
     ],
 
 ];

@@ -800,6 +800,23 @@ class SecurityManagementService
         ]);
     }
 
+    /**
+     * Check if we can dispatch a new security task (limit concurrent tasks).
+     */
+    private function canDispatchSecurityTask(Task $currentTask): bool
+    {
+        $maxConcurrent = (int) config('services.security_ai.max_concurrent_tasks', 2);
+
+        // Count currently running security tasks (excluding the current one if it's already running)
+        $runningCount = Task::query()
+            ->where('status', TaskStatus::Running)
+            ->whereIn('id', Repository::whereNotNull('security_task_id')->pluck('security_task_id'))
+            ->where('id', '!=', $currentTask->id)
+            ->count();
+
+        return $runningCount < $maxConcurrent;
+    }
+
     private function dispatchOrchestratorPrompt(Task $task, Repository $repo, array $pr, array $status): void
     {
         $content = $this->buildOrchestratorPrompt($repo, $pr, $status);
@@ -810,7 +827,21 @@ class SecurityManagementService
             $task->update(['ai_provider_id' => $orchestratorProvider->id]);
         }
 
+        // If task is already running, queue the message
         if ($task->isRunning()) {
+            Message::create([
+                'task_id' => $task->id,
+                'role' => MessageRole::User,
+                'status' => MessageStatus::Queued,
+                'content' => $content,
+            ]);
+
+            return;
+        }
+
+        // Check concurrency limit before dispatching new task
+        if (! $this->canDispatchSecurityTask($task)) {
+            // Queue the message instead of dispatching - will be processed later
             Message::create([
                 'task_id' => $task->id,
                 'role' => MessageRole::User,
@@ -845,7 +876,21 @@ class SecurityManagementService
             $task->update(['ai_provider_id' => $fixerProvider->id]);
         }
 
+        // If task is already running, queue the message
         if ($task->isRunning()) {
+            Message::create([
+                'task_id' => $task->id,
+                'role' => MessageRole::User,
+                'status' => MessageStatus::Queued,
+                'content' => $content,
+            ]);
+
+            return;
+        }
+
+        // Check concurrency limit before dispatching new task
+        if (! $this->canDispatchSecurityTask($task)) {
+            // Queue the message instead of dispatching - will be processed later
             Message::create([
                 'task_id' => $task->id,
                 'role' => MessageRole::User,
