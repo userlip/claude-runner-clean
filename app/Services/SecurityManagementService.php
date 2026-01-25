@@ -833,14 +833,16 @@ class SecurityManagementService
     {
         $maxConcurrent = (int) config('services.security_ai.max_concurrent_tasks', 2);
 
-        // Count currently running security tasks (excluding the current one if it's already running)
-        $runningCount = Task::query()
-            ->where('status', TaskStatus::Running)
-            ->whereIn('id', Repository::whereNotNull('security_task_id')->pluck('security_task_id'))
-            ->where('id', '!=', $currentTask->id)
+        // Count SecurityRuns that are actively being processed (Researching or FixingCi)
+        // This is more accurate than counting running Tasks since Tasks may finish quickly
+        $activeRunCount = SecurityRun::query()
+            ->whereIn('status', [
+                SecurityRunStatus::Researching->value,
+                SecurityRunStatus::FixingCi->value,
+            ])
             ->count();
 
-        return $runningCount < $maxConcurrent;
+        return $activeRunCount < $maxConcurrent;
     }
 
     private function dispatchOrchestratorPrompt(Task $task, Repository $repo, array $pr, array $status): void
