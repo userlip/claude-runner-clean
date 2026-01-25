@@ -804,6 +804,12 @@ class SecurityManagementService
     {
         $content = $this->buildOrchestratorPrompt($repo, $pr, $status);
 
+        // Ensure we're using the orchestrator provider (may have been switched to fixer)
+        $orchestratorProvider = $this->aiResolver->orchestratorProvider();
+        if ($orchestratorProvider) {
+            $task->update(['ai_provider_id' => $orchestratorProvider->id]);
+        }
+
         if ($task->isRunning()) {
             Message::create([
                 'task_id' => $task->id,
@@ -832,6 +838,12 @@ class SecurityManagementService
     private function dispatchCiFixerPrompt(Task $task, Repository $repo, array $pr, array $status): void
     {
         $content = $this->buildCiFixerPrompt($repo, $pr, $status);
+
+        // Switch to CI fixer provider for this message
+        $fixerProvider = $this->aiResolver->fixerProvider();
+        if ($fixerProvider) {
+            $task->update(['ai_provider_id' => $fixerProvider->id]);
+        }
 
         if ($task->isRunning()) {
             Message::create([
