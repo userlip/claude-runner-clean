@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\DataObjects\RalphState;
 use App\Enums\TaskStatus;
+use App\Jobs\DeleteTaskJob;
 use App\Jobs\RunClaudeMessageJob;
 use App\Jobs\RunCodexMessageJob;
 use App\Services\RalphWorkspaceService;
@@ -202,6 +203,7 @@ class Task extends Model
             'completed_at' => now(),
         ]);
 
+        $this->handleScheduleCompletion();
         $this->updateProposalExecution(true);
     }
 
@@ -212,6 +214,7 @@ class Task extends Model
             'completed_at' => now(),
         ]);
 
+        $this->handleScheduleCompletion();
         $this->updateProposalExecution(false);
     }
 
@@ -306,5 +309,22 @@ class Task extends Model
     public function getRalphState(): RalphState
     {
         return app(RalphWorkspaceService::class)->readState($this);
+    }
+
+    protected function handleScheduleCompletion(): void
+    {
+        if (! $this->taskSchedule) {
+            return;
+        }
+
+        $this->taskSchedule->update([
+            'last_run_status' => $this->status->value,
+            'last_task_id' => $this->id,
+        ]);
+
+        if ($this->taskSchedule->delete_after_minutes) {
+            DeleteTaskJob::dispatch($this->id)
+                ->delay(now()->addMinutes($this->taskSchedule->delete_after_minutes));
+        }
     }
 }

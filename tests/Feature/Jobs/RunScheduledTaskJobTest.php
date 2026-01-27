@@ -1,11 +1,13 @@
 <?php
 
 use App\Jobs\CloneRepositoryJob;
+use App\Jobs\DeleteTaskJob;
 use App\Jobs\RunScheduledPromptJob;
 use App\Jobs\RunScheduledTaskJob;
 use App\Models\Task;
 use App\Models\TaskSchedule;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Queue;
 
 it('creates a task and chains clone + prompt for schedules', function () {
     Bus::fake();
@@ -26,4 +28,19 @@ it('creates a task and chains clone + prompt for schedules', function () {
         CloneRepositoryJob::class,
         RunScheduledPromptJob::class,
     ]);
+});
+
+it('schedules delete after completion when configured', function () {
+    Queue::fake();
+
+    $schedule = TaskSchedule::factory()->create(['delete_after_minutes' => 10]);
+    $task = Task::factory()->create([
+        'task_schedule_id' => $schedule->id,
+        'repository_id' => $schedule->repository_id,
+        'user_id' => $schedule->user_id,
+    ]);
+
+    $task->markAsCompleted();
+
+    Queue::assertPushed(DeleteTaskJob::class);
 });
