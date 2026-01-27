@@ -49,6 +49,11 @@
         </a>
         <div class="chat-mobile-title-area">
             <h1 class="chat-mobile-title">{{ $task->title ?? ($task->repository?->name ?? 'Chat') }}</h1>
+            @if($task->taskSchedule)
+                <span class="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                    Scheduled: {{ $task->taskSchedule->name }}
+                </span>
+            @endif
             <p class="chat-mobile-subtitle">
                 {{ $this->locationLabel }}
                 @if($task->isInWorkspace() && $task->isInitializing())

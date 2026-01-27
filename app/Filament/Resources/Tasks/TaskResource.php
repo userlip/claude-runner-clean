@@ -8,6 +8,7 @@ use App\Filament\Resources\Tasks\Pages\ListTasks;
 use App\Filament\Resources\Tasks\Pages\TaskChat;
 use App\Filament\Resources\Tasks\Pages\TaskIde;
 use App\Models\Repository;
+use App\Models\SecurityRun;
 use App\Models\Site;
 use App\Models\Task;
 use Filament\Actions;
@@ -77,17 +78,20 @@ class TaskResource extends Resource
 
     public static function table(Table $table): Table
     {
-        $securityTaskIds = Repository::whereNotNull('security_task_id')
-            ->pluck('security_task_id')
+        $securityTaskIds = SecurityRun::whereNotNull('task_id')
+            ->pluck('task_id')
             ->toArray();
 
         return $table
             ->modifyQueryUsing(function (Builder $query) use ($securityTaskIds) {
-                // Exclude security management tasks from the list view only
+                // Exclude security tasks from the list view only (both old and new formats)
                 $query->when(count($securityTaskIds) > 0, fn (Builder $q) => $q->whereNotIn('id', $securityTaskIds))
                     ->where(function (Builder $q) {
                         $q->whereNull('title')
-                            ->orWhere('title', 'not like', 'Security Management:%');
+                            ->orWhere(function (Builder $inner) {
+                                $inner->where('title', 'not like', 'Security PR #%')
+                                    ->where('title', 'not like', 'Security Management:%');
+                            });
                     });
             })
             ->columns([
@@ -97,6 +101,10 @@ class TaskResource extends Resource
                     ->searchable()
                     ->sortable()
                     ->limit(40),
+                Tables\Columns\TextColumn::make('taskSchedule.name')
+                    ->label('Schedule')
+                    ->placeholder('-')
+                    ->toggleable(),
                 Tables\Columns\TextColumn::make('repository.full_name')
                     ->label('Repository')
                     ->placeholder('General Chat')
