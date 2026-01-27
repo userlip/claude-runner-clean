@@ -38,7 +38,7 @@ class TaskScheduleResource extends Resource
 
     protected static ?int $navigationSort = 4;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Automation';
+    protected static UnitEnum|string|null $navigationGroup = 'Automation';
 
     public static function form(Schema $schema): Schema
     {

@@ -3,7 +3,7 @@
 namespace App\Livewire;
 
 use App\Filament\Resources\Tasks\TaskResource;
-use App\Models\Repository;
+use App\Models\SecurityRun;
 use App\Models\Task;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -23,8 +23,8 @@ class RecentChats extends Component
     #[Computed]
     public function recentChats(): Collection
     {
-        $securityTaskIds = Repository::whereNotNull('security_task_id')
-            ->pluck('security_task_id')
+        $securityTaskIds = SecurityRun::whereNotNull('task_id')
+            ->pluck('task_id')
             ->toArray();
 
         return Task::query()
@@ -35,12 +35,15 @@ class RecentChats extends Component
                     ->orWhere('user_id', Auth::id());
             })
             ->when(! $this->showSystemTasks, function ($query) use ($securityTaskIds) {
-                // Exclude security tasks by ID (current linked tasks)
+                // Exclude security tasks by ID (linked to SecurityRuns)
                 $query->when(count($securityTaskIds) > 0, fn ($q) => $q->whereNotIn('id', $securityTaskIds));
-                // Also exclude by title pattern (older unlinked security tasks)
+                // Also exclude by title pattern (both old and new formats)
                 $query->where(function ($q) {
                     $q->whereNull('title')
-                        ->orWhere('title', 'not like', 'Security Management:%');
+                        ->orWhere(function ($inner) {
+                            $inner->where('title', 'not like', 'Security PR #%')
+                                ->where('title', 'not like', 'Security Management:%');
+                        });
                 });
             })
             ->latest('updated_at')

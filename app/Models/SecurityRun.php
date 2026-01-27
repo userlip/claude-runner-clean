@@ -13,6 +13,7 @@ class SecurityRun extends Model
 
     protected $fillable = [
         'repository_id',
+        'task_id',
         'github_pr_id',
         'github_pr_number',
         'pr_title',
@@ -35,5 +36,10 @@ class SecurityRun extends Model
     public function repository(): BelongsTo
     {
         return $this->belongsTo(Repository::class);
+    }
+
+    public function task(): BelongsTo
+    {
+        return $this->belongsTo(Task::class);
     }
 }
