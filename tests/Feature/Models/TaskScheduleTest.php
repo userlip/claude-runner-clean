@@ -2,6 +2,7 @@
 
 use App\Models\AiProvider;
 use App\Models\Repository;
+use App\Models\Task;
 use App\Models\TaskSchedule;
 use App\Models\User;
 
@@ -23,4 +24,15 @@ it('creates a task schedule with repository, user, and provider', function () {
     expect($schedule->repository->is($repository))->toBeTrue();
     expect($schedule->aiProvider->is($provider))->toBeTrue();
     expect($schedule->is_active)->toBeTrue();
+});
+
+it('links tasks back to schedules', function () {
+    $schedule = TaskSchedule::factory()->create();
+    $task = Task::factory()->create([
+        'repository_id' => $schedule->repository_id,
+        'user_id' => $schedule->user_id,
+        'task_schedule_id' => $schedule->id,
+    ]);
+
+    expect($task->taskSchedule->is($schedule))->toBeTrue();
 });

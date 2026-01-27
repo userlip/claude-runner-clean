@@ -23,6 +23,7 @@ class Task extends Model
         'user_id',
         'title',
         'repository_id',
+        'task_schedule_id',
         'site_id',
         'ai_provider_id',
         'scrapp_api_id',
@@ -103,6 +104,11 @@ class Task extends Model
         return $this->belongsTo(Repository::class);
     }
 
+    public function taskSchedule(): BelongsTo
+    {
+        return $this->belongsTo(TaskSchedule::class);
+    }
+
     public function site(): BelongsTo
     {
         return $this->belongsTo(Site::class);
@@ -139,13 +145,15 @@ class Task extends Model
 
     public function isSystemTask(): bool
     {
-        // Check if linked as current security task for a repository
-        if (Repository::where('security_task_id', $this->id)->exists()) {
+        // Check if linked to a SecurityRun (each PR has its own task)
+        if (SecurityRun::where('task_id', $this->id)->exists()) {
             return true;
         }
 
-        // Also check by title pattern for older security tasks no longer linked
-        return str_starts_with($this->title ?? '', 'Security Management:');
+        // Also check by title pattern for security tasks (both old and new formats)
+        $title = $this->title ?? '';
+
+        return str_starts_with($title, 'Security PR #') || str_starts_with($title, 'Security Management:');
     }
 
     public function messages(): HasMany
