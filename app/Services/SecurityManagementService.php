@@ -10,6 +10,9 @@ use App\Enums\ProposalStatus;
 use App\Enums\ProposalType;
 use App\Enums\SecurityRunStatus;
 use App\Enums\TaskStatus;
+use App\Jobs\CloneRepositoryJob;
+use App\Jobs\RunClaudeMessageJob;
+use App\Jobs\RunCodexMessageJob;
 use App\Models\MajorUpgradeRun;
 use App\Models\Message;
 use App\Models\Proposal;
@@ -191,7 +194,7 @@ class SecurityManagementService
 
             if ($queuedMessage) {
                 $queuedMessage->update(['status' => MessageStatus::Sent]);
-                $run->task->dispatchMessage($queuedMessage);
+                $this->dispatchMessageWithCloneIfNeeded($run->task, $queuedMessage);
 
                 Log::info("Dispatched queued message for PR #{$run->github_pr_number}");
             }
@@ -855,7 +858,7 @@ class SecurityManagementService
             'content' => $content,
         ]);
 
-        $task->dispatchMessage($userMessage);
+        $this->dispatchMessageWithCloneIfNeeded($task, $userMessage);
     }
 
     private function dispatchCiFixerPrompt(Task $task, SecurityRun $run, Repository $repo, array $pr, array $status): void
@@ -896,7 +899,7 @@ class SecurityManagementService
             'content' => $content,
         ]);
 
-        $task->dispatchMessage($userMessage);
+        $this->dispatchMessageWithCloneIfNeeded($task, $userMessage);
     }
 
     private function buildCiFixerPrompt(Repository $repo, array $pr, array $status): string
@@ -1092,5 +1095,42 @@ class SecurityManagementService
                 'content' => "Attempted to close but failed: {$e->getMessage()}",
             ]);
         }
+    }
+
+    /**
+     * Dispatch a message, cloning the repository first if needed.
+     *
+     * If the task has a repository and workspace_path but hasn't been cloned yet,
+     * this will dispatch CloneRepositoryJob with the message job chained after it.
+     */
+    private function dispatchMessageWithCloneIfNeeded(Task $task, Message $message): void
+    {
+        $repository = $task->repository;
+        $workspacePath = $task->workspace_path;
+
+        // Check if we need to clone first
+        $needsClone = $repository
+            && $workspacePath
+            && $task->init_status !== 'completed'
+            && ! is_dir($workspacePath);
+
+        if ($needsClone) {
+            $runnerJob = $task->aiProvider?->isCodex()
+                ? new RunCodexMessageJob($task, $message)
+                : new RunClaudeMessageJob($task, $message);
+
+            CloneRepositoryJob::withChain([$runnerJob])->dispatch($task);
+
+            Log::info('Dispatching CloneRepositoryJob for security task', [
+                'task_id' => $task->id,
+                'repository' => $repository->full_name,
+                'workspace' => $workspacePath,
+            ]);
+
+            return;
+        }
+
+        // Already cloned or no repository - dispatch message directly
+        $task->dispatchMessage($message);
     }
 }
