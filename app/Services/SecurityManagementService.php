@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Process;
+use Illuminate\Support\Str;
 
 class SecurityManagementService
 {
@@ -210,11 +211,15 @@ class SecurityManagementService
             }
         }
 
+        // Generate workspace path for Claude to access the repository code
+        $workspacePath = '/home/ploi/workspaces/'.Str::slug($repo->name).'-'.Str::random(8);
+
         // Create a new task specifically for this PR
         $task = Task::create([
             'title' => "Security PR #{$run->github_pr_number}: {$run->pr_title}",
             'repository_id' => $repo->id,
             'ai_provider_id' => $this->aiResolver->orchestratorProvider()?->id,
+            'workspace_path' => $workspacePath,
             'status' => TaskStatus::Pending,
         ]);
 
@@ -767,10 +772,14 @@ class SecurityManagementService
             return $existing;
         }
 
+        // Generate workspace path for Claude to access the repository code
+        $workspacePath = '/home/ploi/workspaces/'.Str::slug($repo->name).'-'.Str::random(8);
+
         $task = Task::create([
             'title' => "Major Upgrade: {$repo->name} PR #{$prNumber}",
             'repository_id' => $repo->id,
             'ai_provider_id' => $this->aiResolver->orchestratorProvider()?->id,
+            'workspace_path' => $workspacePath,
             'status' => TaskStatus::Pending,
         ]);
 
