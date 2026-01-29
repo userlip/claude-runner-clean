@@ -785,6 +785,7 @@ class SecurityManagementService
 
     /**
      * Check if we can dispatch a new security task (limit concurrent tasks).
+     * Only counts runs where the AI task is actually running, not pending tasks.
      */
     private function canDispatchSecurityTask(): bool
     {
@@ -795,6 +796,7 @@ class SecurityManagementService
                 SecurityRunStatus::Researching->value,
                 SecurityRunStatus::FixingCi->value,
             ])
+            ->whereHas('task', fn ($q) => $q->where('status', TaskStatus::Running->value))
             ->count();
 
         return $activeRunCount < $maxConcurrent;

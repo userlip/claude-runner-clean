@@ -21,14 +21,15 @@ class RunSecurityManagementJob implements ShouldQueue
 
     public function handle(SecurityManagementService $service, MajorUpgradeService $majorUpgradeService): void
     {
-        // Check if there are already active security runs - if so, don't start more
-        // This ensures we process 1 at a time instead of hammering the API
+        // Check if there are already active security runs with running tasks
+        // Only count runs where AI task is actually running, not pending
         $maxConcurrent = (int) config('services.security_ai.max_concurrent_tasks', 2);
         $activeRuns = SecurityRun::query()
             ->whereIn('status', [
                 SecurityRunStatus::Researching->value,
                 SecurityRunStatus::FixingCi->value,
             ])
+            ->whereHas('task', fn ($q) => $q->where('status', 'running'))
             ->count();
 
         if ($activeRuns >= $maxConcurrent) {
