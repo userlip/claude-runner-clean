@@ -154,7 +154,8 @@ class SecurityManagementService
             return;
         }
 
-        // Find runs in researching/fixing_ci that have pending tasks with queued messages
+        // Find runs in researching/fixing_ci that have tasks with queued messages
+        // Include both Pending and Completed tasks (Completed tasks may have queued follow-up messages)
         $runsWithQueuedMessages = SecurityRun::query()
             ->whereIn('status', [
                 SecurityRunStatus::Researching->value,
@@ -164,7 +165,12 @@ class SecurityManagementService
             ->with('task')
             ->get()
             ->filter(function ($run) {
-                if (! $run->task || $run->task->status !== TaskStatus::Pending) {
+                if (! $run->task) {
+                    return false;
+                }
+
+                // Skip running tasks - they're already being processed
+                if ($run->task->status === TaskStatus::Running) {
                     return false;
                 }
 
