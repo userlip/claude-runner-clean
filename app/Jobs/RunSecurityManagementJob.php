@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Enums\SecurityRunStatus;
+use App\Enums\TaskStatus;
 use App\Models\Repository;
 use App\Models\SecurityRun;
 use App\Services\MajorUpgradeService;
@@ -43,14 +44,37 @@ class RunSecurityManagementJob implements ShouldQueue
             $query->whereKey($this->repoId);
             $repo = $query->first();
         } else {
-            // Round-robin through repositories using a cached offset
-            $repo = $this->getNextRepository($query);
+            // Priority 1: Process repos with completed tasks waiting for decision processing
+            $repo = $this->getRepoWithCompletedTasks();
+
+            // Priority 2: Round-robin through repositories
+            if (! $repo) {
+                $repo = $this->getNextRepository($query);
+            }
         }
 
         if ($repo) {
             $service->processRepository($repo);
             $majorUpgradeService->dispatchPendingRunsForRepository($repo);
         }
+    }
+
+    /**
+     * Find a repository that has security runs with completed tasks waiting for decision processing.
+     */
+    private function getRepoWithCompletedTasks(): ?Repository
+    {
+        $runWithCompletedTask = SecurityRun::query()
+            ->whereIn('status', [
+                SecurityRunStatus::Researching->value,
+                SecurityRunStatus::FixingCi->value,
+            ])
+            ->whereNull('decision_summary')
+            ->whereHas('task', fn ($q) => $q->where('status', TaskStatus::Completed->value))
+            ->with('repository')
+            ->first();
+
+        return $runWithCompletedTask?->repository;
     }
 
     /**
