@@ -38,20 +38,26 @@ class RunSecurityManagementJob implements ShouldQueue
             return;
         }
 
-        $query = Repository::where('security_management_enabled', true);
-
+        // If specific repo requested, only process that one
         if ($this->repoId) {
-            $query->whereKey($this->repoId);
-            $repo = $query->first();
-        } else {
-            // Priority 1: Process repos with completed tasks waiting for decision processing
-            $repo = $this->getRepoWithCompletedTasks();
+            $repo = Repository::where('security_management_enabled', true)
+                ->whereKey($this->repoId)
+                ->first();
 
-            // Priority 2: Round-robin through repositories
-            if (! $repo) {
-                $repo = $this->getNextRepository($query);
+            if ($repo) {
+                $service->processRepository($repo);
+                $majorUpgradeService->dispatchPendingRunsForRepository($repo);
             }
+
+            return;
         }
+
+        // Process ALL repos with completed tasks first (decision processing is fast)
+        $this->processAllReposWithCompletedTasks($service, $majorUpgradeService);
+
+        // Then do one round-robin repo for new PR discovery
+        $query = Repository::where('security_management_enabled', true);
+        $repo = $this->getNextRepository($query);
 
         if ($repo) {
             $service->processRepository($repo);
@@ -60,21 +66,35 @@ class RunSecurityManagementJob implements ShouldQueue
     }
 
     /**
-     * Find a repository that has security runs with completed tasks waiting for decision processing.
+     * Process all repositories that have completed tasks waiting for decision processing.
      */
-    private function getRepoWithCompletedTasks(): ?Repository
+    private function processAllReposWithCompletedTasks(SecurityManagementService $service, MajorUpgradeService $majorUpgradeService): void
     {
-        $runWithCompletedTask = SecurityRun::query()
-            ->whereIn('status', [
-                SecurityRunStatus::Researching->value,
-                SecurityRunStatus::FixingCi->value,
-            ])
-            ->whereNull('decision_summary')
-            ->whereHas('task', fn ($q) => $q->where('status', TaskStatus::Completed->value))
-            ->with('repository')
-            ->first();
+        $processedRepoIds = [];
 
-        return $runWithCompletedTask?->repository;
+        // Keep processing until no more completed tasks
+        while (true) {
+            $runWithCompletedTask = SecurityRun::query()
+                ->whereIn('status', [
+                    SecurityRunStatus::Researching->value,
+                    SecurityRunStatus::FixingCi->value,
+                ])
+                ->whereNull('decision_summary')
+                ->whereHas('task', fn ($q) => $q->where('status', TaskStatus::Completed->value))
+                ->whereNotIn('repository_id', $processedRepoIds)
+                ->with('repository')
+                ->first();
+
+            if (! $runWithCompletedTask) {
+                break;
+            }
+
+            $repo = $runWithCompletedTask->repository;
+            $processedRepoIds[] = $repo->id;
+
+            $service->processRepository($repo);
+            $majorUpgradeService->dispatchPendingRunsForRepository($repo);
+        }
     }
 
     /**
