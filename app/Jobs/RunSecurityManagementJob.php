@@ -12,6 +12,7 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class RunSecurityManagementJob implements ShouldQueue
 {
@@ -33,8 +34,15 @@ class RunSecurityManagementJob implements ShouldQueue
             ->whereHas('task', fn ($q) => $q->where('status', 'running'))
             ->count();
 
+        Log::debug('SecurityManagement: Job started', [
+            'repo_id' => $this->repoId,
+            'active_runs' => $activeRuns,
+            'max_concurrent' => $maxConcurrent,
+        ]);
+
         if ($activeRuns >= $maxConcurrent) {
-            // Already at max capacity, don't process more repos
+            Log::debug('SecurityManagement: Skipping - at max capacity');
+
             return;
         }
 
@@ -86,11 +94,20 @@ class RunSecurityManagementJob implements ShouldQueue
                 ->first();
 
             if (! $runWithCompletedTask) {
+                Log::debug('SecurityManagement: No more completed tasks to process', [
+                    'processed_repo_ids' => $processedRepoIds,
+                ]);
                 break;
             }
 
             $repo = $runWithCompletedTask->repository;
             $processedRepoIds[] = $repo->id;
+
+            Log::info('SecurityManagement: Processing repo with completed task', [
+                'repo' => $repo->full_name,
+                'run_id' => $runWithCompletedTask->id,
+                'pr_number' => $runWithCompletedTask->github_pr_number,
+            ]);
 
             $service->processRepository($repo);
             $majorUpgradeService->dispatchPendingRunsForRepository($repo);
