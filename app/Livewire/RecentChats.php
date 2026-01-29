@@ -37,12 +37,13 @@ class RecentChats extends Component
             ->when(! $this->showSystemTasks, function ($query) use ($securityTaskIds) {
                 // Exclude security tasks by ID (linked to SecurityRuns)
                 $query->when(count($securityTaskIds) > 0, fn ($q) => $q->whereNotIn('id', $securityTaskIds));
-                // Also exclude by title pattern (both old and new formats)
+                // Also exclude by title pattern (security and major upgrade tasks)
                 $query->where(function ($q) {
                     $q->whereNull('title')
                         ->orWhere(function ($inner) {
                             $inner->where('title', 'not like', 'Security PR #%')
-                                ->where('title', 'not like', 'Security Management:%');
+                                ->where('title', 'not like', 'Security Management:%')
+                                ->where('title', 'not like', 'Major Upgrade:%');
                         });
                 });
             })
