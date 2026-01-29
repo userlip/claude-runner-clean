@@ -141,6 +141,54 @@ class SecurityManagementService
         $this->processFixingCiRuns($repo, $github);
         $this->processResearchingRuns($repo, $github);
         $this->syncClosedPrs($repo, $github);
+        $this->dispatchQueuedMessages();
+    }
+
+    /**
+     * Dispatch any queued messages for security runs when capacity is available.
+     * This handles the case where messages were queued because we were at max concurrent tasks.
+     */
+    private function dispatchQueuedMessages(): void
+    {
+        if (! $this->canDispatchSecurityTask()) {
+            return;
+        }
+
+        // Find runs in researching/fixing_ci that have pending tasks with queued messages
+        $runsWithQueuedMessages = SecurityRun::query()
+            ->whereIn('status', [
+                SecurityRunStatus::Researching->value,
+                SecurityRunStatus::FixingCi->value,
+            ])
+            ->whereNotNull('task_id')
+            ->with('task')
+            ->get()
+            ->filter(function ($run) {
+                if (! $run->task || $run->task->status !== TaskStatus::Pending) {
+                    return false;
+                }
+
+                return $run->task->messages()
+                    ->where('status', MessageStatus::Queued->value)
+                    ->exists();
+            });
+
+        foreach ($runsWithQueuedMessages as $run) {
+            if (! $this->canDispatchSecurityTask()) {
+                break;
+            }
+
+            $queuedMessage = $run->task->messages()
+                ->where('status', MessageStatus::Queued->value)
+                ->first();
+
+            if ($queuedMessage) {
+                $queuedMessage->update(['status' => MessageStatus::Sent]);
+                $run->task->dispatchMessage($queuedMessage);
+
+                Log::info("Dispatched queued message for PR #{$run->github_pr_number}");
+            }
+        }
     }
 
     /**
