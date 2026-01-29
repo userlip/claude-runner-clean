@@ -40,6 +40,11 @@ class TaskScheduleResource extends Resource
 
     protected static UnitEnum|string|null $navigationGroup = 'Automation';
 
+    public static function canCreate(): bool
+    {
+        return true;
+    }
+
     public static function form(Schema $schema): Schema
     {
         return $schema
