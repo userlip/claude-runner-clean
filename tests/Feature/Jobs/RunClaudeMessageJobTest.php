@@ -1,5 +1,6 @@
 <?php
 
+use App\Exceptions\RateLimitException;
 use App\Jobs\RunClaudeMessageJob;
 use App\Models\AiProvider;
 use App\Models\Message;
@@ -96,14 +97,25 @@ test('job has correct timeout', function () {
     expect($job->timeout)->toBe(10800); // 3 hours for complex tasks
 });
 
-test('job has single try', function () {
+test('job has three tries for rate limit retries', function () {
     $site = Site::factory()->active()->create();
     $task = Task::factory()->create(['site_id' => $site->id]);
     $message = Message::factory()->user()->create(['task_id' => $task->id]);
 
     $job = new RunClaudeMessageJob($task, $message);
 
-    expect($job->tries)->toBe(1);
+    expect($job->tries)->toBe(3);
+});
+
+test('job has backoff intervals for rate limit retries', function () {
+    $site = Site::factory()->active()->create();
+    $task = Task::factory()->create(['site_id' => $site->id]);
+    $message = Message::factory()->user()->create(['task_id' => $task->id]);
+
+    $job = new RunClaudeMessageJob($task, $message);
+
+    // 30 minutes, 1 hour, 2 hours
+    expect($job->backoff)->toBe([1800, 3600, 7200]);
 });
 
 test('it uses task provider env vars', function () {
@@ -121,4 +133,106 @@ test('it uses task provider env vars', function () {
 
     expect($env)->toHaveKey('ANTHROPIC_BASE_URL')
         ->and($env['ANTHROPIC_MODEL'])->toBe('GLM-4.6');
+});
+
+test('parseLine detects rate limit error with error field', function () {
+    $site = Site::factory()->active()->create();
+    $task = Task::factory()->create(['site_id' => $site->id]);
+    $message = Message::factory()->user()->create(['task_id' => $task->id]);
+
+    $job = new RunClaudeMessageJob($task, $message);
+
+    // Use reflection to access private parseLine method
+    $method = new ReflectionMethod($job, 'parseLine');
+    $method->setAccessible(true);
+
+    $rateLimitLine = json_encode([
+        'type' => 'assistant',
+        'message' => [
+            'content' => [
+                ['type' => 'text', 'text' => "You've hit your limit · resets 6pm (UTC)"],
+            ],
+        ],
+        'error' => 'rate_limit',
+        'isApiErrorMessage' => true,
+    ]);
+
+    $result = $method->invoke($job, $rateLimitLine);
+
+    expect($result)->toHaveKey('rate_limit');
+    expect($result['rate_limit']['message'])->toContain("You've hit your limit");
+    expect($result['rate_limit']['reset_time'])->toBe('6pm (UTC)');
+    expect($result['rate_limit']['error_type'])->toBe('rate_limit');
+});
+
+test('parseLine detects rate limit error with isApiErrorMessage flag', function () {
+    $site = Site::factory()->active()->create();
+    $task = Task::factory()->create(['site_id' => $site->id]);
+    $message = Message::factory()->user()->create(['task_id' => $task->id]);
+
+    $job = new RunClaudeMessageJob($task, $message);
+
+    $method = new ReflectionMethod($job, 'parseLine');
+    $method->setAccessible(true);
+
+    // Some rate limit errors may only have isApiErrorMessage without the error field
+    $rateLimitLine = json_encode([
+        'type' => 'assistant',
+        'message' => [
+            'content' => [
+                ['type' => 'text', 'text' => 'API rate limit exceeded'],
+            ],
+        ],
+        'isApiErrorMessage' => true,
+    ]);
+
+    $result = $method->invoke($job, $rateLimitLine);
+
+    expect($result)->toHaveKey('rate_limit');
+    expect($result['rate_limit']['message'])->toBe('API rate limit exceeded');
+});
+
+test('parseLine does not flag normal assistant messages as rate limited', function () {
+    $site = Site::factory()->active()->create();
+    $task = Task::factory()->create(['site_id' => $site->id]);
+    $message = Message::factory()->user()->create(['task_id' => $task->id]);
+
+    $job = new RunClaudeMessageJob($task, $message);
+
+    $method = new ReflectionMethod($job, 'parseLine');
+    $method->setAccessible(true);
+
+    $normalLine = json_encode([
+        'type' => 'assistant',
+        'message' => [
+            'content' => [
+                ['type' => 'text', 'text' => 'Hello! How can I help you today?'],
+            ],
+        ],
+    ]);
+
+    $result = $method->invoke($job, $normalLine);
+
+    expect($result)->not->toHaveKey('rate_limit');
+    expect($result)->toHaveKey('content');
+    expect($result['content'])->toBe('Hello! How can I help you today?');
+});
+
+test('RateLimitException stores reset time', function () {
+    $exception = new RateLimitException(
+        resetTime: '6pm (UTC)',
+        message: 'Rate limit exceeded'
+    );
+
+    expect($exception->getMessage())->toBe('Rate limit exceeded');
+    expect($exception->getResetDescription())->toBe('6pm (UTC)');
+});
+
+test('RateLimitException handles null reset time', function () {
+    $exception = new RateLimitException(
+        resetTime: null,
+        message: 'Rate limit exceeded'
+    );
+
+    expect($exception->getResetDescription())->toBe('unknown time');
 });

@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Enums\MessageRole;
 use App\Enums\MessageStatus;
+use App\Exceptions\RateLimitException;
 use App\Models\Message;
 use App\Models\Task;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -17,7 +18,15 @@ class RunClaudeMessageJob implements ShouldQueue
 
     public int $timeout = 10800; // 3 hours for complex tasks
 
-    public int $tries = 1;
+    public int $tries = 3; // Allow retries for rate limit errors
+
+    /**
+     * Backoff intervals in seconds for rate limit retries.
+     * 30 minutes, then 1 hour, then 2 hours.
+     *
+     * @var array<int>
+     */
+    public array $backoff = [1800, 3600, 7200];
 
     public function __construct(
         public Task $task,
@@ -90,6 +99,7 @@ class RunClaudeMessageJob implements ShouldQueue
             $lastTurnUsage = null; // Track the last turn's context usage
             $askUserQuestionDetected = false; // Track if we need to wait for user input
             $minimalOutputCount = 0; // Track consecutive very short outputs (stuck loop detection)
+            $rateLimitInfo = null; // Track rate limit errors for retry handling
 
             $resultReceived = false;
             while (! feof($pipes[1])) {
@@ -206,6 +216,16 @@ class RunClaudeMessageJob implements ShouldQueue
                         ]);
                         $this->task->update(['needs_compact' => true]);
                     }
+                    if (isset($parsed['rate_limit'])) {
+                        Log::warning('Rate limit detected from Claude API', [
+                            'task_id' => $this->task->id,
+                            'reset_time' => $parsed['rate_limit']['reset_time'] ?? 'unknown',
+                            'message' => $parsed['rate_limit']['message'] ?? '',
+                        ]);
+                        $rateLimitInfo = $parsed['rate_limit'];
+                        // Don't break immediately - let the process finish naturally
+                        // We'll handle this after the loop
+                    }
                     if (isset($parsed['usage'])) {
                         Log::info('Result event received - breaking loop', [
                             'task_id' => $this->task->id,
@@ -286,6 +306,35 @@ class RunClaudeMessageJob implements ShouldQueue
                 return;
             }
 
+            // Handle rate limit errors BEFORE checking resultReceived
+            // Rate limits can occur with or without a result event
+            if ($rateLimitInfo !== null) {
+                $resetTime = $rateLimitInfo['reset_time'] ?? null;
+                $message = $rateLimitInfo['message'] ?? 'Rate limit exceeded';
+
+                Log::warning('Rate limit detected - throwing exception for retry', [
+                    'task_id' => $this->task->id,
+                    'reset_time' => $resetTime,
+                    'attempt' => $this->attempts(),
+                    'max_tries' => $this->tries,
+                ]);
+
+                // Update the assistant message to show rate limit info
+                $assistantMessage->update([
+                    'content' => $message,
+                ]);
+
+                // Mark task as pending so it can be retried
+                // Don't mark as completed or failed - the job will retry
+                $this->task->update(['status' => \App\Enums\TaskStatus::Pending]);
+
+                // Throw exception to trigger Laravel's retry mechanism with backoff
+                throw new RateLimitException(
+                    resetTime: $resetTime,
+                    message: $message
+                );
+            }
+
             if ($resultReceived) {
                 // Claude finished responding - mark completed and notify
                 $this->task->markAsCompleted();
@@ -314,6 +363,10 @@ class RunClaudeMessageJob implements ShouldQueue
                 $this->task->markAsCompleted();
             }
 
+        } catch (RateLimitException $e) {
+            // Rate limit exceptions should NOT mark the task as failed
+            // They will be retried with backoff - just re-throw
+            throw $e;
         } catch (\Throwable $e) {
             Log::error("Claude execution failed: {$e->getMessage()}");
 
@@ -669,6 +722,26 @@ class RunClaudeMessageJob implements ShouldQueue
      */
     public function failed(\Throwable $exception): void
     {
+        // Rate limit exceptions should not mark the task as failed if there are retries remaining
+        // The task status was already set to pending in the handle() method
+        if ($exception instanceof RateLimitException) {
+            Log::warning('RunClaudeMessageJob rate limit exhausted all retries', [
+                'task_id' => $this->task->id,
+                'reset_time' => $exception->getResetDescription(),
+            ]);
+
+            // Only mark as failed after all retries are exhausted
+            $this->task->markAsFailed();
+
+            $this->sendPushNotification(
+                'Task Rate Limited',
+                "Rate limit exceeded. Resets: {$exception->getResetDescription()}",
+                false
+            );
+
+            return;
+        }
+
         Log::error('RunClaudeMessageJob failed', [
             'task_id' => $this->task->id,
             'exception' => $exception->getMessage(),
@@ -701,6 +774,35 @@ class RunClaudeMessageJob implements ShouldQueue
         $result = [];
 
         if (($data['type'] ?? '') === 'assistant') {
+            // Check for rate limit error FIRST (before content parsing)
+            // Rate limit errors appear as: {"type":"assistant","error":"rate_limit","isApiErrorMessage":true,...}
+            if (($data['error'] ?? '') === 'rate_limit' || ($data['isApiErrorMessage'] ?? false)) {
+                $rateLimitMessage = '';
+                $resetTime = null;
+
+                // Extract the message text if present
+                if (isset($data['message']['content'])) {
+                    foreach ($data['message']['content'] as $block) {
+                        if (($block['type'] ?? '') === 'text') {
+                            $rateLimitMessage = $block['text'] ?? '';
+                            // Try to extract reset time from message like "resets 6pm (UTC)"
+                            if (preg_match('/resets?\s+(\d+[ap]m\s*\([^)]+\))/i', $rateLimitMessage, $matches)) {
+                                $resetTime = trim($matches[1]);
+                            }
+                            break;
+                        }
+                    }
+                }
+
+                $result['rate_limit'] = [
+                    'message' => $rateLimitMessage ?: 'Rate limit exceeded',
+                    'reset_time' => $resetTime,
+                    'error_type' => $data['error'] ?? 'rate_limit',
+                ];
+
+                return $result;
+            }
+
             if (isset($data['message']['content'])) {
                 foreach ($data['message']['content'] as $block) {
                     if (($block['type'] ?? '') === 'text') {
