@@ -36,18 +36,25 @@ class RunTaskSchedulesCommand extends Command
                 }
 
                 DB::transaction(function () use ($schedule, $now) {
-                    $schedule->refresh();
+                    $lockedSchedule = TaskSchedule::query()
+                        ->where('id', $schedule->id)
+                        ->lockForUpdate()
+                        ->first();
 
-                    $alreadyRan = $schedule->last_run_at
-                        && $schedule->last_run_at->format('Y-m-d H:i') === $now->format('Y-m-d H:i');
+                    if (! $lockedSchedule) {
+                        return;
+                    }
+
+                    $alreadyRan = $lockedSchedule->last_run_at
+                        && $lockedSchedule->last_run_at->format('Y-m-d H:i') === $now->format('Y-m-d H:i');
 
                     if ($alreadyRan) {
                         return;
                     }
 
-                    $schedule->update(['last_run_at' => $now]);
+                    $lockedSchedule->update(['last_run_at' => $now]);
 
-                    RunScheduledTaskJob::dispatch($schedule->id);
+                    RunScheduledTaskJob::dispatch($lockedSchedule->id);
                 });
             });
 

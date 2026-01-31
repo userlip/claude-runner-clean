@@ -35,6 +35,7 @@ Schedule::command('security:orchestrate')
 
 Schedule::command('tasks:run-schedules')
     ->everyMinute()
+    ->withoutOverlapping()
     ->runInBackground();
 
 // API Health Checks - Run every 2 hours to monitor Scrappa API endpoints
