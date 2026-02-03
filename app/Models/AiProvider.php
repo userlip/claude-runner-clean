@@ -78,6 +78,11 @@ class AiProvider extends Model
         return $this->name === 'codex';
     }
 
+    public function isKimi(): bool
+    {
+        return $this->name === 'kimi';
+    }
+
     public static function getDefault(): ?self
     {
         return static::where('is_default', true)->where('is_active', true)->first()

@@ -90,6 +90,22 @@ class AiProviderFactory extends Factory
         ]);
     }
 
+    public function kimi(): static
+    {
+        return $this->state([
+            'name' => 'kimi',
+            'display_name' => 'Kimi',
+            'base_url' => 'https://api.kimi.com/coding/',
+            'api_key' => 'test-api-key',
+            'model' => 'kimi-k2.5',
+            'context_window' => 262144,
+            'is_default' => false,
+            'quota_period' => QuotaPeriod::Monthly,
+            'quota_limit' => 50000000,
+            'quota_resets_at' => now()->startOfMonth()->addMonth(),
+        ]);
+    }
+
     public function inactive(): static
     {
         return $this->state(['is_active' => false]);

@@ -343,5 +343,109 @@
                 </div>
             </div>
         </x-filament::section>
+
+        {{-- Kimi Settings --}}
+        <x-filament::section>
+            <x-slot name="heading">
+                <div class="flex items-center gap-3">
+                    <div class="flex h-10 w-10 items-center justify-center rounded-lg" style="background-color: rgba(139, 92, 246, 0.1);">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 1.25rem; height: 1.25rem; color: rgb(124, 58, 237);">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <span>Kimi</span>
+                        <p style="font-size: 0.75rem; font-weight: normal; color: rgb(107, 114, 128); margin: 0;">Kimi K2 (Moonshot AI)</p>
+                    </div>
+                </div>
+            </x-slot>
+
+            @php $kimi = $this->getKimiProvider(); @endphp
+
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                <div>
+                    <label style="font-size: 0.875rem; font-weight: 500;">Status</label>
+                    <p style="margin-top: 0.25rem; font-size: 0.875rem; color: {{ $kimi?->is_active ? 'rgb(22, 163, 74)' : 'rgb(202, 138, 4)' }};">
+                        {{ $kimi?->is_active ? 'Active' : 'Inactive (add API key to enable)' }}
+                    </p>
+                </div>
+
+                <div>
+                    <label style="font-size: 0.875rem; font-weight: 500;">API Key</label>
+                    <input
+                        type="password"
+                        wire:model="kimiApiKey"
+                        style="margin-top: 0.25rem; display: block; width: 100%; border-radius: 0.5rem; border: 1px solid rgb(209, 213, 219); padding: 0.5rem 0.75rem; font-size: 0.875rem;"
+                        placeholder="Enter Kimi API key"
+                    />
+                </div>
+
+                <div>
+                    <label style="font-size: 0.875rem; font-weight: 500;">Model</label>
+                    <input
+                        type="text"
+                        wire:model="kimiModel"
+                        style="margin-top: 0.25rem; display: block; width: 100%; border-radius: 0.5rem; border: 1px solid rgb(209, 213, 219); padding: 0.5rem 0.75rem; font-size: 0.875rem;"
+                        placeholder="kimi-k2.5 (default)"
+                    />
+                    <p style="font-size: 0.75rem; color: rgb(107, 114, 128); margin-top: 0.25rem;">
+                        Available: kimi-k2.5
+                    </p>
+                </div>
+
+                <div>
+                    <label style="font-size: 0.875rem; font-weight: 500;">Monthly Quota Limit (tokens)</label>
+                    <input
+                        type="number"
+                        min="0"
+                        wire:model="kimiQuotaLimit"
+                        style="margin-top: 0.25rem; display: block; width: 100%; border-radius: 0.5rem; border: 1px solid rgb(209, 213, 219); padding: 0.5rem 0.75rem; font-size: 0.875rem;"
+                        placeholder="50000000"
+                    />
+                </div>
+
+                <div>
+                    <label style="font-size: 0.875rem; font-weight: 500;">Context Window (tokens)</label>
+                    <input
+                        type="number"
+                        min="0"
+                        wire:model="kimiContextWindow"
+                        style="margin-top: 0.25rem; display: block; width: 100%; border-radius: 0.5rem; border: 1px solid rgb(209, 213, 219); padding: 0.5rem 0.75rem; font-size: 0.875rem;"
+                        placeholder="262144 (default)"
+                    />
+                </div>
+
+                @if($kimi)
+                    <div>
+                        <label style="font-size: 0.875rem; font-weight: 500;">Current Usage</label>
+                        <div style="margin-top: 0.5rem;">
+                            <div style="display: flex; justify-content: space-between; font-size: 0.875rem; margin-bottom: 0.25rem;">
+                                <span>{{ number_format($kimi->quota_used) }} tokens</span>
+                                <span>{{ number_format($kimi->getQuotaPercentage(), 1) }}%</span>
+                            </div>
+                            <div style="height: 0.5rem; width: 100%; border-radius: 9999px; background-color: rgb(229, 231, 235);">
+                                <div
+                                    style="height: 0.5rem; border-radius: 9999px; background-color: rgb(139, 92, 246); width: {{ min(100, $kimi->getQuotaPercentage()) }}%;"
+                                ></div>
+                            </div>
+                            @if($kimi->quota_resets_at)
+                                <p style="font-size: 0.75rem; color: rgb(107, 114, 128); margin-top: 0.25rem;">
+                                    Resets {{ $kimi->quota_resets_at->diffForHumans() }}
+                                </p>
+                            @endif
+                        </div>
+                    </div>
+                @endif
+
+                <div style="display: flex; gap: 0.5rem; padding-top: 0.5rem;">
+                    <x-filament::button wire:click="saveKimiSettings">
+                        Save
+                    </x-filament::button>
+                    <x-filament::button color="gray" wire:click="resetQuota('kimi')" wire:confirm="Reset Kimi quota to zero?">
+                        Reset Quota
+                    </x-filament::button>
+                </div>
+            </div>
+        </x-filament::section>
     </div>
 </x-filament-panels::page>

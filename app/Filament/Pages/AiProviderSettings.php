@@ -26,11 +26,17 @@ class AiProviderSettings extends Page
 
     public string $minimaxApiKey = '';
 
+    public string $kimiApiKey = '';
+
     public ?string $codexModel = null;
+
+    public ?string $kimiModel = null;
 
     public ?int $glmQuotaLimit = null;
 
     public ?int $minimaxQuotaLimit = null;
+
+    public ?int $kimiQuotaLimit = null;
 
     public ?int $codexQuotaLimit = null;
 
@@ -44,11 +50,14 @@ class AiProviderSettings extends Page
 
     public ?int $minimaxContextWindow = null;
 
+    public ?int $kimiContextWindow = null;
+
     public function mount(): void
     {
         $codex = $this->getCodexProvider();
         $glm = $this->getGlmProvider();
         $minimax = $this->getMinimaxProvider();
+        $kimi = $this->getKimiProvider();
         $claude = $this->getClaudeProvider();
 
         $this->codexModel = $codex?->model;
@@ -60,6 +69,10 @@ class AiProviderSettings extends Page
         $this->minimaxApiKey = $minimax?->api_key ?? '';
         $this->minimaxQuotaLimit = $minimax?->quota_limit;
         $this->minimaxContextWindow = $minimax?->context_window;
+        $this->kimiApiKey = $kimi?->api_key ?? '';
+        $this->kimiModel = $kimi?->model;
+        $this->kimiQuotaLimit = $kimi?->quota_limit;
+        $this->kimiContextWindow = $kimi?->context_window;
         $this->claudeQuotaLimit = $claude?->quota_limit;
         $this->claudeContextWindow = $claude?->context_window;
     }
@@ -82,6 +95,11 @@ class AiProviderSettings extends Page
     public function getMinimaxProvider(): ?AiProvider
     {
         return AiProvider::where('name', 'minimax')->first();
+    }
+
+    public function getKimiProvider(): ?AiProvider
+    {
+        return AiProvider::where('name', 'kimi')->first();
     }
 
     public function saveClaudeSettings(): void
@@ -154,6 +172,26 @@ class AiProviderSettings extends Page
 
         Notification::make()
             ->title('Minimax settings saved')
+            ->success()
+            ->send();
+    }
+
+    public function saveKimiSettings(): void
+    {
+        $kimi = $this->getKimiProvider();
+
+        if ($kimi) {
+            $kimi->update([
+                'api_key' => $this->kimiApiKey ?: null,
+                'model' => $this->kimiModel ?: 'kimi-k2.5',
+                'quota_limit' => $this->kimiQuotaLimit,
+                'context_window' => $this->kimiContextWindow,
+                'is_active' => ! empty($this->kimiApiKey),
+            ]);
+        }
+
+        Notification::make()
+            ->title('Kimi settings saved')
             ->success()
             ->send();
     }

@@ -63,5 +63,21 @@ class AiProviderSeeder extends Seeder
                 'quota_resets_at' => now()->startOfMonth()->addMonth(),
             ]
         );
+
+        AiProvider::firstOrCreate(
+            ['name' => 'kimi'],
+            [
+                'display_name' => 'Kimi',
+                'base_url' => 'https://api.kimi.com/coding/',
+                'api_key' => 'env('KIMI_API_KEY')',
+                'model' => 'kimi-k2.5',
+                'context_window' => 262144,
+                'is_active' => true,
+                'is_default' => false,
+                'quota_limit' => 50000000,
+                'quota_period' => 'monthly',
+                'quota_resets_at' => now()->startOfMonth()->addMonth(),
+            ]
+        );
     }
 }
