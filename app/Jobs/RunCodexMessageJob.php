@@ -468,7 +468,7 @@ class RunCodexMessageJob implements ShouldQueue
             $itemType = $item['type'] ?? '';
 
             if (in_array($itemType, ['agent_message', 'assistant_message'], true)) {
-                $result['content'] = $item['text'] ?? '';
+                $result['content'] = $this->stripCitationMarkers($item['text'] ?? '');
             }
 
             if ($itemType === 'command_execution') {
@@ -657,5 +657,20 @@ class RunCodexMessageJob implements ShouldQueue
             "Error: {$exception->getMessage()}",
             false
         );
+    }
+
+    /**
+     * Strip OpenAI citation markers from content.
+     *
+     * OpenAI models with web browsing produce markers like "citeturn0search0" or "citeturn6open0"
+     * wrapped in Unicode private-use area characters (U+E200-U+E2FF).
+     */
+    protected function stripCitationMarkers(string $content): string
+    {
+        // Remove Unicode private-use area characters that wrap citations
+        $content = preg_replace('/[\x{E200}-\x{E2FF}]+/u', '', $content);
+
+        // Remove plain citeturn markers
+        return preg_replace('/\s*citeturn\d+\w*\d*/i', '', $content);
     }
 }
