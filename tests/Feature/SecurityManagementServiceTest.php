@@ -5,12 +5,14 @@ namespace Tests\Feature;
 use App\Enums\MessageRole;
 use App\Enums\MessageStatus;
 use App\Enums\SecurityRunStatus;
+use App\Enums\TaskStatus;
 use App\Jobs\RunCodexMessageJob;
 use App\Models\AiProvider;
 use App\Models\GitHubConnection;
 use App\Models\Message;
 use App\Models\Repository;
 use App\Models\SecurityRun;
+use App\Models\Task;
 use App\Services\SecurityManagementService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -45,6 +47,9 @@ class SecurityManagementServiceTest extends TestCase
         ]);
 
         Http::fake([
+            'https://api.github.com/rate_limit' => Http::response([
+                'resources' => ['core' => ['remaining' => 1000, 'limit' => 5000, 'reset' => time() + 3600]],
+            ]),
             'https://api.github.com/repos/org/repo/pulls*' => Http::response([
                 ['id' => 1, 'number' => 10, 'user' => ['login' => 'dependabot[bot]'], 'head' => ['sha' => 'abc']],
             ]),
@@ -60,7 +65,7 @@ class SecurityManagementServiceTest extends TestCase
         ]);
     }
 
-    public function test_posts_waiting_ci_message_when_pending(): void
+    public function test_waiting_ci_status_does_not_create_task(): void
     {
         $orchestrator = $this->ensureCodexProvider();
         config([
@@ -75,7 +80,7 @@ class SecurityManagementServiceTest extends TestCase
         ]);
         GitHubConnection::factory()->create(['user_id' => $repo->user_id, 'access_token' => 'token']);
 
-        SecurityRun::create([
+        $run = SecurityRun::create([
             'repository_id' => $repo->id,
             'github_pr_id' => 1,
             'github_pr_number' => 10,
@@ -83,6 +88,9 @@ class SecurityManagementServiceTest extends TestCase
         ]);
 
         Http::fake([
+            'https://api.github.com/rate_limit' => Http::response([
+                'resources' => ['core' => ['remaining' => 1000, 'limit' => 5000, 'reset' => time() + 3600]],
+            ]),
             'https://api.github.com/repos/org/repo/pulls*' => Http::response([
                 [
                     'id' => 1,
@@ -98,14 +106,15 @@ class SecurityManagementServiceTest extends TestCase
 
         app(SecurityManagementService::class)->processRepository($repo);
 
-        $task = $repo->fresh()->securityTask;
-        $this->assertNotNull($task);
+        // In the new architecture, no task is created for WaitingCi status
+        // Tasks are only created when status transitions to Researching or FixingCi
+        $this->assertNull($run->fresh()->task_id);
 
-        $message = Message::where('task_id', $task->id)->latest()->first();
-        $this->assertNotNull($message);
-        $this->assertSame(MessageRole::Assistant, $message->role);
-        $this->assertSame(MessageStatus::Sent, $message->status);
-        $this->assertStringContainsString('Waiting for CI', $message->content ?? '');
+        // Status should be updated to WaitingCi
+        $this->assertDatabaseHas('security_runs', [
+            'id' => $run->id,
+            'status' => SecurityRunStatus::WaitingCi->value,
+        ]);
 
         Queue::assertNothingPushed();
     }
@@ -122,7 +131,7 @@ class SecurityManagementServiceTest extends TestCase
         ]);
         GitHubConnection::factory()->create(['user_id' => $repo->user_id, 'access_token' => 'token']);
 
-        SecurityRun::create([
+        $run = SecurityRun::create([
             'repository_id' => $repo->id,
             'github_pr_id' => 1,
             'github_pr_number' => 10,
@@ -130,6 +139,9 @@ class SecurityManagementServiceTest extends TestCase
         ]);
 
         Http::fake([
+            'https://api.github.com/rate_limit' => Http::response([
+                'resources' => ['core' => ['remaining' => 1000, 'limit' => 5000, 'reset' => time() + 3600]],
+            ]),
             'https://api.github.com/repos/org/repo/pulls*' => Http::response([
                 [
                     'id' => 1,
@@ -146,7 +158,8 @@ class SecurityManagementServiceTest extends TestCase
 
         app(SecurityManagementService::class)->processRepository($repo);
 
-        $task = $repo->fresh()->securityTask;
+        // Task is now on the run, not the repo
+        $task = $run->fresh()->task;
         $this->assertNotNull($task);
 
         $message = Message::where('task_id', $task->id)
@@ -158,7 +171,8 @@ class SecurityManagementServiceTest extends TestCase
         $this->assertStringContainsString('Security Management orchestrator', $message->content ?? '');
         $this->assertStringContainsString('"pr_number": 10', $message->content ?? '');
 
-        Queue::assertPushed(RunCodexMessageJob::class);
+        // In the new architecture, CloneRepositoryJob is dispatched first with RunCodexMessageJob chained
+        Queue::assertPushed(\App\Jobs\CloneRepositoryJob::class);
     }
 
     protected function ensureCodexProvider(): AiProvider
@@ -192,6 +206,9 @@ class SecurityManagementServiceTest extends TestCase
         ]);
 
         Http::fake([
+            'https://api.github.com/rate_limit' => Http::response([
+                'resources' => ['core' => ['remaining' => 1000, 'limit' => 5000, 'reset' => time() + 3600]],
+            ]),
             'https://api.github.com/repos/org/repo/pulls*' => Http::response([
                 [
                     'id' => 1,
@@ -223,7 +240,8 @@ class SecurityManagementServiceTest extends TestCase
             'status' => SecurityRunStatus::Researching->value,
         ]);
 
-        Queue::assertPushed(RunCodexMessageJob::class);
+        // In the new architecture, CloneRepositoryJob is dispatched first with RunCodexMessageJob chained
+        Queue::assertPushed(\App\Jobs\CloneRepositoryJob::class);
     }
 
     public function test_orchestrator_prompt_is_minimal_with_repo_and_sha(): void
@@ -238,7 +256,7 @@ class SecurityManagementServiceTest extends TestCase
         ]);
         GitHubConnection::factory()->create(['user_id' => $repo->user_id, 'access_token' => 'token']);
 
-        SecurityRun::create([
+        $run = SecurityRun::create([
             'repository_id' => $repo->id,
             'github_pr_id' => 1,
             'github_pr_number' => 10,
@@ -246,6 +264,9 @@ class SecurityManagementServiceTest extends TestCase
         ]);
 
         Http::fake([
+            'https://api.github.com/rate_limit' => Http::response([
+                'resources' => ['core' => ['remaining' => 1000, 'limit' => 5000, 'reset' => time() + 3600]],
+            ]),
             'https://api.github.com/repos/org/repo/pulls*' => Http::response([
                 [
                     'id' => 1,
@@ -262,7 +283,8 @@ class SecurityManagementServiceTest extends TestCase
 
         app(SecurityManagementService::class)->processRepository($repo);
 
-        $task = $repo->fresh()->securityTask;
+        // Task is now on the run, not the repo
+        $task = $run->fresh()->task;
         $this->assertNotNull($task);
 
         $message = Message::where('task_id', $task->id)
@@ -301,8 +323,14 @@ class SecurityManagementServiceTest extends TestCase
             'status' => SecurityRunStatus::Researching,
         ]);
 
-        $service = app(SecurityManagementService::class);
-        $task = $service->ensureSecurityTask($repo);
+        // Create task for the run (simulating what processRepository would do)
+        $task = Task::create([
+            'title' => "Security PR #{$run->github_pr_number}",
+            'repository_id' => $repo->id,
+            'ai_provider_id' => $orchestrator->id,
+            'status' => TaskStatus::Pending,
+        ]);
+        $run->update(['task_id' => $task->id]);
 
         Message::create([
             'task_id' => $task->id,
@@ -319,6 +347,12 @@ class SecurityManagementServiceTest extends TestCase
         ]);
 
         Http::fake(function ($request) {
+            if ($request->url() === 'https://api.github.com/rate_limit') {
+                return Http::response([
+                    'resources' => ['core' => ['remaining' => 1000, 'limit' => 5000, 'reset' => time() + 3600]],
+                ]);
+            }
+
             if ($request->url() === 'https://api.github.com/repos/org/repo/pulls/10/merge') {
                 return Http::response(['sha' => 'merge-sha']);
             }
@@ -330,7 +364,7 @@ class SecurityManagementServiceTest extends TestCase
             return Http::response([], 404);
         });
 
-        $service->processRepository($repo->fresh());
+        app(SecurityManagementService::class)->processRepository($repo->fresh());
 
         $this->assertDatabaseHas('security_runs', [
             'id' => $run->id,
@@ -373,8 +407,14 @@ class SecurityManagementServiceTest extends TestCase
             'status' => SecurityRunStatus::Researching,
         ]);
 
-        $service = app(SecurityManagementService::class);
-        $task = $service->ensureSecurityTask($repo);
+        // Create task for the run (simulating what processRepository would do)
+        $task = Task::create([
+            'title' => "Security PR #{$run->github_pr_number}",
+            'repository_id' => $repo->id,
+            'ai_provider_id' => $orchestrator->id,
+            'status' => TaskStatus::Pending,
+        ]);
+        $run->update(['task_id' => $task->id]);
 
         Message::create([
             'task_id' => $task->id,
@@ -391,6 +431,12 @@ class SecurityManagementServiceTest extends TestCase
         ]);
 
         Http::fake(function ($request) {
+            if ($request->url() === 'https://api.github.com/rate_limit') {
+                return Http::response([
+                    'resources' => ['core' => ['remaining' => 1000, 'limit' => 5000, 'reset' => time() + 3600]],
+                ]);
+            }
+
             if ($request->url() === 'https://api.github.com/repos/org/repo/pulls/10/merge') {
                 return Http::response(['sha' => 'merge-sha']);
             }
@@ -402,7 +448,7 @@ class SecurityManagementServiceTest extends TestCase
             return Http::response([], 404);
         });
 
-        $service->processRepository($repo->fresh());
+        app(SecurityManagementService::class)->processRepository($repo->fresh());
 
         $this->assertDatabaseHas('security_runs', [
             'id' => $run->id,
@@ -430,8 +476,14 @@ class SecurityManagementServiceTest extends TestCase
             'status' => SecurityRunStatus::Researching,
         ]);
 
-        $service = app(SecurityManagementService::class);
-        $task = $service->ensureSecurityTask($repo);
+        // Create task for the run (simulating what processRepository would do)
+        $task = Task::create([
+            'title' => "Security PR #{$run->github_pr_number}",
+            'repository_id' => $repo->id,
+            'ai_provider_id' => $orchestrator->id,
+            'status' => TaskStatus::Pending,
+        ]);
+        $run->update(['task_id' => $task->id]);
 
         Message::create([
             'task_id' => $task->id,
@@ -449,10 +501,13 @@ class SecurityManagementServiceTest extends TestCase
         ]);
 
         Http::fake([
+            'https://api.github.com/rate_limit' => Http::response([
+                'resources' => ['core' => ['remaining' => 1000, 'limit' => 5000, 'reset' => time() + 3600]],
+            ]),
             'https://api.github.com/repos/org/repo/pulls*' => Http::response([]),
         ]);
 
-        $service->processRepository($repo->fresh());
+        app(SecurityManagementService::class)->processRepository($repo->fresh());
 
         $this->assertDatabaseHas('security_runs', [
             'id' => $run->id,
@@ -490,8 +545,14 @@ class SecurityManagementServiceTest extends TestCase
             'status' => SecurityRunStatus::Researching,
         ]);
 
-        $service = app(SecurityManagementService::class);
-        $task = $service->ensureSecurityTask($repo);
+        // Create task for the run (simulating what processRepository would do)
+        $task = Task::create([
+            'title' => "Security PR #{$run->github_pr_number}",
+            'repository_id' => $repo->id,
+            'ai_provider_id' => $orchestrator->id,
+            'status' => TaskStatus::Pending,
+        ]);
+        $run->update(['task_id' => $task->id]);
 
         Message::create([
             'task_id' => $task->id,
@@ -509,6 +570,12 @@ class SecurityManagementServiceTest extends TestCase
         ]);
 
         Http::fake(function ($request) {
+            if ($request->url() === 'https://api.github.com/rate_limit') {
+                return Http::response([
+                    'resources' => ['core' => ['remaining' => 1000, 'limit' => 5000, 'reset' => time() + 3600]],
+                ]);
+            }
+
             if ($request->url() === 'https://api.github.com/repos/org/repo/pulls/10/merge') {
                 return Http::response(['sha' => 'merge-sha']);
             }
@@ -520,7 +587,7 @@ class SecurityManagementServiceTest extends TestCase
             return Http::response([], 404);
         });
 
-        $service->processRepository($repo->fresh());
+        app(SecurityManagementService::class)->processRepository($repo->fresh());
 
         // Should be deployed, not needs_user_action
         $this->assertDatabaseHas('security_runs', [
@@ -554,8 +621,14 @@ class SecurityManagementServiceTest extends TestCase
             'status' => SecurityRunStatus::Researching,
         ]);
 
-        $service = app(SecurityManagementService::class);
-        $task = $service->ensureSecurityTask($repo);
+        // Create task for the run (simulating what processRepository would do)
+        $task = Task::create([
+            'title' => "Security PR #{$run->github_pr_number}",
+            'repository_id' => $repo->id,
+            'ai_provider_id' => $orchestrator->id,
+            'status' => TaskStatus::Pending,
+        ]);
+        $run->update(['task_id' => $task->id]);
 
         Message::create([
             'task_id' => $task->id,
@@ -573,11 +646,14 @@ class SecurityManagementServiceTest extends TestCase
         ]);
 
         Http::fake([
+            'https://api.github.com/rate_limit' => Http::response([
+                'resources' => ['core' => ['remaining' => 1000, 'limit' => 5000, 'reset' => time() + 3600]],
+            ]),
             'https://api.github.com/repos/org/repo/issues/10/comments' => Http::response(['id' => 1]),
             'https://api.github.com/repos/org/repo/pulls*' => Http::response([]),
         ]);
 
-        $service->processRepository($repo->fresh());
+        app(SecurityManagementService::class)->processRepository($repo->fresh());
 
         // Should be closed, not needs_user_action
         $this->assertDatabaseHas('security_runs', [

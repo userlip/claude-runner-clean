@@ -13,6 +13,9 @@ it('updates deploy script and retries on untracked merge error', function () {
     ]);
 
     Http::fake([
+        'https://api.github.com/rate_limit' => Http::response([
+            'resources' => ['core' => ['remaining' => 1000, 'limit' => 5000, 'reset' => time() + 3600]],
+        ]),
         'https://ploi.io/api/*' => Http::sequence()
             ->push(['data' => ['deploy_script' => "git fetch origin\n"]], 200)
             ->push(['data' => []], 200),
@@ -38,6 +41,8 @@ it('updates deploy script and retries on untracked merge error', function () {
     $repo = Repository::factory()->create([
         'ploi_server_id' => '32593',
         'ploi_site_id' => '95778',
+        'ploi_server_name' => 'test-server',
+        'ploi_site_domain' => 'example.com',
     ]);
 
     $service = app(SecurityManagementService::class);

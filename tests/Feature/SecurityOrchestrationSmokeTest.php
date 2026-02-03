@@ -7,6 +7,7 @@ use App\Models\Repository;
 use App\Services\SecurityManagementService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class SecurityOrchestrationSmokeTest extends TestCase
@@ -15,6 +16,8 @@ class SecurityOrchestrationSmokeTest extends TestCase
 
     public function test_orchestrator_creates_runs_for_dependabot_prs(): void
     {
+        Queue::fake();
+
         $repo = Repository::factory()->create([
             'security_management_enabled' => true,
             'full_name' => 'org/repo',
@@ -26,6 +29,9 @@ class SecurityOrchestrationSmokeTest extends TestCase
         ]);
 
         Http::fake([
+            'https://api.github.com/rate_limit' => Http::response([
+                'resources' => ['core' => ['remaining' => 1000, 'limit' => 5000, 'reset' => time() + 3600]],
+            ]),
             'https://api.github.com/repos/org/repo/pulls*' => Http::response([
                 ['id' => 123, 'number' => 5, 'user' => ['login' => 'dependabot[bot]'], 'head' => ['sha' => 'abc']],
             ]),
