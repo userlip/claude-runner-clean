@@ -10,6 +10,7 @@ use App\Models\AiProvider;
 use App\Models\Repository;
 use App\Models\TaskSchedule;
 use App\Models\User;
+use App\Rules\CronExpressionRule;
 use BackedEnum;
 use Cron\CronExpression;
 use Filament\Actions;
@@ -165,13 +166,7 @@ class TaskScheduleResource extends Resource
                                     ->rules([
                                         'string',
                                         'max:255',
-                                        function (string $attribute, $value, $fail) {
-                                            try {
-                                                new CronExpression((string) $value);
-                                            } catch (\Throwable $e) {
-                                                $fail('Invalid cron expression.');
-                                            }
-                                        },
+                                        new CronExpressionRule,
                                     ]),
 
                                 Forms\Components\TextInput::make('delete_after_minutes')
