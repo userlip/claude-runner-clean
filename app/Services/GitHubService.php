@@ -307,4 +307,99 @@ class GitHubService
 
         return $response->json();
     }
+
+    /**
+     * @param  array<string, mixed>  $query
+     * @return array<int, array<string, mixed>>
+     */
+    public function fetchPullRequests(string $fullName, array $query = []): array
+    {
+        $response = Http::withToken($this->connection->access_token)
+            ->accept('application/vnd.github+json')
+            ->get(self::API_BASE."/repos/{$fullName}/pulls", $query);
+
+        if ($response->failed()) {
+            throw new \RuntimeException('Failed to fetch PRs: '.$response->body());
+        }
+
+        $data = $response->json();
+
+        return is_array($data) ? $data : [];
+    }
+
+    /**
+     * Fetch check runs for a commit SHA, filtering ignored runs.
+     *
+     * @return array<string, mixed>
+     */
+    public function fetchCheckRuns(string $fullName, string $sha): array
+    {
+        $response = Http::withToken($this->connection->access_token)
+            ->accept('application/vnd.github+json')
+            ->get(self::API_BASE."/repos/{$fullName}/commits/{$sha}/check-runs");
+
+        if ($response->failed()) {
+            throw new \RuntimeException('Failed to fetch check runs: '.$response->body());
+        }
+
+        $payload = $response->json();
+        if (! is_array($payload)) {
+            return [
+                'total_count' => 0,
+                'check_runs' => [],
+                'ignored_total_count' => 0,
+            ];
+        }
+
+        $runs = collect($payload['check_runs'] ?? []);
+        $filtered = $runs->reject(fn (array $run) => $this->isIgnoredCheckRun($run))->values();
+        $ignoredCount = $runs->count() - $filtered->count();
+
+        $payload['check_runs'] = $filtered->all();
+        $payload['total_count'] = $filtered->count();
+        $payload['ignored_total_count'] = $ignoredCount;
+
+        return $payload;
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function fetchPullRequestReviews(string $fullName, int $number): array
+    {
+        $response = Http::withToken($this->connection->access_token)
+            ->accept('application/vnd.github+json')
+            ->get(self::API_BASE."/repos/{$fullName}/pulls/{$number}/reviews");
+
+        if ($response->failed()) {
+            throw new \RuntimeException('Failed to fetch PR reviews: '.$response->body());
+        }
+
+        $data = $response->json();
+
+        return is_array($data) ? $data : [];
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function fetchIssueComments(string $fullName, int $number, ?string $sinceIso8601 = null): array
+    {
+        $query = [];
+        if ($sinceIso8601) {
+            $query['since'] = $sinceIso8601;
+        }
+
+        $response = Http::withToken($this->connection->access_token)
+            ->accept('application/vnd.github+json')
+            ->get(self::API_BASE."/repos/{$fullName}/issues/{$number}/comments", $query);
+
+        if ($response->failed()) {
+            throw new \RuntimeException('Failed to fetch issue comments: '.$response->body());
+        }
+
+        $data = $response->json();
+
+        return is_array($data) ? $data : [];
+    }
 }

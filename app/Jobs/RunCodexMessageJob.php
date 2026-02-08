@@ -6,6 +6,7 @@ use App\Enums\MessageRole;
 use App\Enums\MessageStatus;
 use App\Models\Message;
 use App\Models\Task;
+use App\Services\TaskPullRequestDetectionService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Log;
@@ -155,6 +156,16 @@ class RunCodexMessageJob implements ShouldQueue
                 $this->task->markAsCompleted();
                 Log::debug('Task marked as completed (Codex turn completed)', ['task_id' => $this->task->id]);
 
+                // Best-effort: if the agent opened a PR, store it so we can poll CI/reviews later.
+                try {
+                    app(TaskPullRequestDetectionService::class)->detectAndStore($this->task);
+                } catch (\Throwable $e) {
+                    Log::debug('PR detection failed (ignored)', [
+                        'task_id' => $this->task->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+
                 $this->sendPushNotification(
                     'Task Completed',
                     $this->getNotificationBody($assistantMessage),
@@ -176,6 +187,16 @@ class RunCodexMessageJob implements ShouldQueue
             ]);
 
             $this->task->markAsFailed();
+
+            // Best-effort PR detection on failures as well (agent may have created a PR before erroring).
+            try {
+                app(TaskPullRequestDetectionService::class)->detectAndStore($this->task);
+            } catch (\Throwable $e) {
+                Log::debug('PR detection failed (ignored)', [
+                    'task_id' => $this->task->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
 
             $this->sendPushNotification(
                 'Task Failed',
