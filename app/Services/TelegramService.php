@@ -3,13 +3,15 @@
 namespace App\Services;
 
 use App\Enums\ProposalStatus;
+use App\Models\Message;
 use App\Models\Proposal;
 use App\Models\Task;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Telegram\Bot\Api;
 use Telegram\Bot\Exceptions\TelegramSDKException;
 use Telegram\Bot\Keyboard\Keyboard;
-use Telegram\Bot\Objects\Message;
+use Telegram\Bot\Objects\Message as TelegramMessage;
 
 class TelegramService
 {
@@ -23,7 +25,7 @@ class TelegramService
         $this->adminChatId = config('telegram.admin_chat_id');
     }
 
-    public function sendProposalNotification(Proposal $proposal): ?Message
+    public function sendProposalNotification(Proposal $proposal): ?TelegramMessage
     {
         try {
             $keyboard = $this->buildProposalKeyboard($proposal);
@@ -49,7 +51,7 @@ class TelegramService
         }
     }
 
-    public function sendErrorAlert(string $project, string $message, array $context = []): ?Message
+    public function sendErrorAlert(string $project, string $message, array $context = []): ?TelegramMessage
     {
         try {
             $contextText = ! empty($context) ? "\n\n*Context:*\n```\n".json_encode($context, JSON_PRETTY_PRINT)."\n```" : '';
@@ -80,7 +82,7 @@ TEXT;
         }
     }
 
-    public function sendCompletionNotification(Task $task): ?Message
+    public function sendCompletionNotification(Task $task): ?TelegramMessage
     {
         try {
             $status = $task->status->label();
@@ -115,7 +117,7 @@ TEXT;
         }
     }
 
-    public function sendMessage(string $text, ?array $keyboard = null): ?Message
+    public function sendMessage(string $text, ?array $keyboard = null, bool $isReplyKeyboard = false): ?TelegramMessage
     {
         try {
             $params = [
@@ -125,9 +127,19 @@ TEXT;
             ];
 
             if ($keyboard) {
-                $params['reply_markup'] = Keyboard::make([
-                    'inline_keyboard' => $keyboard,
-                ]);
+                if ($isReplyKeyboard) {
+                    // Reply keyboard (persistent at bottom)
+                    $params['reply_markup'] = Keyboard::make([
+                        'keyboard' => $keyboard,
+                        'resize_keyboard' => true,
+                        'one_time_keyboard' => false,
+                    ]);
+                } else {
+                    // Inline keyboard (attached to message)
+                    $params['reply_markup'] = Keyboard::make([
+                        'inline_keyboard' => $keyboard,
+                    ]);
+                }
             }
 
             return $this->telegram->sendMessage($params);
@@ -140,7 +152,7 @@ TEXT;
         }
     }
 
-    public function editMessage(int $messageId, string $text, ?array $keyboard = null): ?Message
+    public function editMessage(int $messageId, string $text, ?array $keyboard = null): ?TelegramMessage
     {
         try {
             $params = [
@@ -242,7 +254,7 @@ TEXT;
         return $chatId === $this->adminChatId;
     }
 
-    public function updateProposalMessage(Proposal $proposal): ?Message
+    public function updateProposalMessage(Proposal $proposal): ?TelegramMessage
     {
         if (! $proposal->telegram_message_id) {
             return null;
@@ -293,5 +305,171 @@ TEXT;
                 ],
             ],
         ]);
+    }
+
+    /**
+     * Send a task message to Telegram as a channel-like message.
+     * Uses reply_to_message_id to group messages by task.
+     */
+    public function sendTaskMessage(Message $message): ?TelegramMessage
+    {
+        try {
+            $task = $message->task;
+            if (! $task) {
+                return null;
+            }
+
+            // Build the message text with role indicator
+            $roleEmoji = $message->isFromUser() ? '👤' : '🤖';
+            $roleLabel = $message->role->label();
+
+            // Get task info
+            $project = $task->repository?->name ?? $task->site?->name ?? 'General';
+            $taskInfo = "*{$project}* | Task: `{$task->uuid}`";
+
+            // Format content (truncate if too long)
+            $content = $message->content ?? '';
+            if (strlen($content) > 3800) {
+                $content = substr($content, 0, 3800)."\n\n...(truncated)";
+            }
+
+            // Escape markdown characters in content
+            $content = $this->escapeMarkdown($content);
+
+            $text = "{$roleEmoji} *{$roleLabel}*\n";
+            $text .= "_{$taskInfo}_\n\n";
+            $text .= $content;
+
+            // Build keyboard with reply action
+            $keyboard = [
+                [
+                    ['text' => 'Reply', 'callback_data' => "reply:{$task->id}"],
+                    ['text' => 'View Task', 'callback_data' => "task:view:{$task->id}"],
+                ],
+            ];
+
+            // Check if this task already has messages in Telegram to thread them
+            $replyToMessageId = $this->getTaskThreadMessageId($task->id);
+
+            $params = [
+                'chat_id' => $this->adminChatId,
+                'text' => $text,
+                'parse_mode' => 'Markdown',
+                'reply_markup' => Keyboard::make([
+                    'inline_keyboard' => $keyboard,
+                ]),
+            ];
+
+            // If we have a thread starter, reply to it to group messages
+            if ($replyToMessageId) {
+                $params['reply_to_message_id'] = $replyToMessageId;
+            }
+
+            $response = $this->telegram->sendMessage($params);
+
+            // Store the first message ID of each task as the thread starter
+            if (! $replyToMessageId) {
+                Cache::put("telegram:task_thread:{$task->id}", $response->messageId, now()->addDays(7));
+            }
+
+            return $response;
+        } catch (TelegramSDKException $e) {
+            Log::error('Failed to send task message to Telegram', [
+                'message_id' => $message->id,
+                'task_id' => $message->task_id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
+     * Update a task message in Telegram (for streaming updates).
+     */
+    public function updateTaskMessage(Message $message): ?TelegramMessage
+    {
+        try {
+            if (! $message->telegram_message_id) {
+                return null;
+            }
+
+            $task = $message->task;
+            if (! $task) {
+                return null;
+            }
+
+            // Build the message text with role indicator
+            $roleEmoji = $message->isFromUser() ? '👤' : '🤖';
+            $roleLabel = $message->role->label();
+
+            // Get task info
+            $project = $task->repository?->name ?? $task->site?->name ?? 'General';
+            $taskInfo = "*{$project}* | Task: `{$task->uuid}`";
+
+            // Format content (truncate if too long)
+            $content = $message->content ?? '';
+            if (strlen($content) > 3800) {
+                $content = substr($content, 0, 3800)."\n\n...(truncated)";
+            }
+
+            // Escape markdown characters in content
+            $content = $this->escapeMarkdown($content);
+
+            $text = "{$roleEmoji} *{$roleLabel}*\n";
+            $text .= "_{$taskInfo}_\n\n";
+            $text .= $content;
+
+            // Add typing indicator if task is still running
+            if ($task->isRunning() && $message->isFromAssistant()) {
+                $text .= "\n\n_🔄 Thinking..._";
+            }
+
+            // Build keyboard with reply action
+            $keyboard = [
+                [
+                    ['text' => 'Reply', 'callback_data' => "reply:{$task->id}"],
+                    ['text' => 'View Task', 'callback_data' => "task:view:{$task->id}"],
+                ],
+            ];
+
+            return $this->editMessage(
+                (int) $message->telegram_message_id,
+                $text,
+                $keyboard
+            );
+        } catch (TelegramSDKException $e) {
+            Log::error('Failed to update task message in Telegram', [
+                'message_id' => $message->id,
+                'telegram_message_id' => $message->telegram_message_id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
+     * Get the thread starter message ID for a task.
+     */
+    private function getTaskThreadMessageId(int $taskId): ?int
+    {
+        $cachedId = Cache::get("telegram:task_thread:{$taskId}");
+
+        return $cachedId ? (int) $cachedId : null;
+    }
+
+    /**
+     * Escape markdown special characters in text.
+     */
+    private function escapeMarkdown(string $text): string
+    {
+        // Escape special markdown characters: _ * [ ] ( ) ~ ` > # + - = | { } . !
+        $chars = ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!'];
+        foreach ($chars as $char) {
+            $text = str_replace($char, '\\'.$char, $text);
+        }
+
+        return $text;
     }
 }
