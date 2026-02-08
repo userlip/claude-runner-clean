@@ -22,6 +22,21 @@ class TaskPullRequestPollingService
 
         foreach ($tasks as $task) {
             $monitor = $task->session_metadata['pr_monitor'] ?? null;
+
+            // Backfill for older tasks (or tasks where the PR URL arrived after completion):
+            // if a task is completed/failed and doesn't have a monitor yet, try to detect a PR URL
+            // from recent messages and store it, then continue polling as normal.
+            if (! is_array($monitor) && in_array($task->status, [TaskStatus::Completed, TaskStatus::Failed], true)) {
+                try {
+                    app(TaskPullRequestDetectionService::class)->detectAndStore($task);
+                } catch (\Throwable $e) {
+                    // Best-effort only.
+                }
+
+                $task->refresh();
+                $monitor = $task->session_metadata['pr_monitor'] ?? null;
+            }
+
             if (! is_array($monitor) || ! ($monitor['active'] ?? false)) {
                 continue;
             }

@@ -6,6 +6,7 @@ use App\Enums\MessageRole;
 use App\Enums\MessageStatus;
 use App\Jobs\RunClaudeMessageJob;
 use App\Models\GitHubConnection;
+use App\Models\Message;
 use App\Models\Repository;
 use App\Models\Task;
 use App\Models\User;
@@ -97,5 +98,66 @@ class GitHubPollTaskPullRequestsCommandTest extends TestCase
         $task->refresh();
         $monitor = $task->session_metadata['pr_monitor'] ?? [];
         $this->assertSame('abc', $monitor['last_notified_sha'] ?? null);
+    }
+
+    public function test_backfills_pr_monitor_from_messages_for_completed_tasks(): void
+    {
+        Queue::fake();
+
+        $user = User::factory()->create();
+        GitHubConnection::factory()->create(['user_id' => $user->id, 'access_token' => 'token']);
+
+        $repo = Repository::factory()->create([
+            'user_id' => $user->id,
+            'full_name' => 'org/repo',
+        ]);
+
+        $task = Task::factory()->completed()->create([
+            'user_id' => $user->id,
+            'repository_id' => $repo->id,
+            'session_metadata' => [], // no pr_monitor yet
+        ]);
+
+        Message::create([
+            'task_id' => $task->id,
+            'role' => MessageRole::Assistant,
+            'status' => MessageStatus::Sent,
+            'content' => 'Created PR: https://github.com/org/repo/pull/123',
+        ]);
+
+        Http::fake([
+            'https://api.github.com/repos/org/repo/pulls/123' => Http::response([
+                'state' => 'open',
+                'merged' => false,
+                'head' => ['sha' => 'abc'],
+            ]),
+            'https://api.github.com/repos/org/repo/commits/abc/status' => Http::response([
+                'state' => 'failure',
+                'statuses' => [],
+            ]),
+            'https://api.github.com/repos/org/repo/commits/abc/check-runs' => Http::response([
+                'total_count' => 1,
+                'check_runs' => [
+                    ['name' => 'CI', 'status' => 'completed', 'conclusion' => 'failure'],
+                ],
+            ]),
+            'https://api.github.com/repos/org/repo/pulls/123/reviews' => Http::response([]),
+            'https://api.github.com/repos/org/repo/issues/123/comments*' => Http::response([]),
+        ]);
+
+        Artisan::call('github:poll-task-prs');
+
+        $task->refresh();
+        $monitor = $task->session_metadata['pr_monitor'] ?? null;
+        $this->assertIsArray($monitor);
+        $this->assertTrue($monitor['active'] ?? false);
+        $this->assertSame('org/repo', $monitor['repository_full_name'] ?? null);
+        $this->assertSame(123, $monitor['pr_number'] ?? null);
+
+        $latest = $task->messages()->latest()->firstOrFail();
+        $this->assertSame(MessageRole::User, $latest->role);
+        $this->assertStringContainsString('checks in github ci have finished', strtolower($latest->content ?? ''));
+
+        Queue::assertPushed(RunClaudeMessageJob::class);
     }
 }
