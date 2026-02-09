@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Grid;
@@ -45,8 +46,21 @@ class PWASettingsPage extends BasePWASettingsPage
                                 ->label(trans('filament-pwa::messages.form.pwa_background_color'))
                                 ->columnSpan(2)
                                 ->hint(config('filament-settings-hub.show_hint') ? 'setting("pwa_background_color")' : null),
-                            ColorPicker::make('pwa_status_bar')
-                                ->default('#000000')
+                            Select::make('pwa_status_bar')
+                                ->options([
+                                    'default' => 'Default',
+                                    'black' => 'Black',
+                                    'black-translucent' => 'Black (Translucent)',
+                                ])
+                                ->default('default')
+                                ->afterStateHydrated(function (Select $component, mixed $state): void {
+                                    if (! in_array($state, ['default', 'black', 'black-translucent'], true)) {
+                                        $component->state('default');
+                                    }
+                                })
+                                ->dehydrateStateUsing(fn (mixed $state): string => in_array($state, ['default', 'black', 'black-translucent'], true)
+                                    ? $state
+                                    : 'default')
                                 ->label(trans('filament-pwa::messages.form.pwa_status_bar'))
                                 ->columnSpan(2)
                                 ->hint(config('filament-settings-hub.show_hint') ? 'setting("pwa_status_bar")' : null),
