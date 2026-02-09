@@ -1,0 +1,10 @@
+/* Filament custom styles.
+ *
+ * Keep this as a separate Vite entry so:
+ * - It is cacheable by the browser + service worker.
+ * - We avoid inlining large CSS into the HTML head.
+ */
+
+@import "./chat.css";
+@import "./ide.css";
+
