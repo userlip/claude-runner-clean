@@ -109,3 +109,20 @@ test('appends snippet to existing prompt with newlines', function () {
         ->dispatch('insert-snippet', content: 'Inserted snippet')
         ->assertSet('prompt', "Existing text\n\nInserted snippet");
 });
+
+test('defers rendering existing messages until loadMessages is called', function () {
+    $repository = Repository::factory()->create(['user_id' => $this->user->id]);
+    $task = Task::factory()->create(['repository_id' => $repository->id]);
+
+    Message::factory()->create([
+        'task_id' => $task->id,
+        'role' => \App\Enums\MessageRole::User,
+        'status' => \App\Enums\MessageStatus::Sent,
+        'content' => 'hello from history',
+    ]);
+
+    Livewire::test(TaskChat::class, ['task' => $task])
+        ->assertDontSee('hello from history')
+        ->call('loadMessages')
+        ->assertSee('hello from history');
+});

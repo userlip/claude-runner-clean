@@ -1,5 +1,6 @@
 <div class="chat-container" x-data="{
     mobileMenuOpen: false,
+    taskUuid: '{{ $task->uuid }}',
     init() {
         // Make all links in chat bubbles open in new tab
         const makeLinksExternal = () => {
@@ -42,7 +43,11 @@
 }">
     {{-- Mobile Header (shown only on mobile in immersive mode) --}}
     <div class="chat-mobile-header">
-        <a href="{{ route('filament.admin.resources.tasks.index') }}" class="chat-mobile-back">
+        <a
+            href="{{ route('filament.admin.resources.tasks.index') }}"
+            class="chat-mobile-back"
+            wire:navigate
+        >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 1.5rem; height: 1.5rem;">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
             </svg>
@@ -440,6 +445,80 @@
             polling: @entangle('waitingForResponse').live,
             isNearBottom: true,
             scrollThreshold: 150,
+            pendingScroll: null,
+            cacheKey() {
+                return `cr:chat-cache:${'{{ $task->uuid }}'}`;
+            },
+            scrollKey() {
+                return `cr:chat-scroll:${'{{ $task->uuid }}'}`;
+            },
+            loadCachedMessages() {
+                try {
+                    const raw = localStorage.getItem(this.cacheKey());
+                    if (!raw) return [];
+                    const data = JSON.parse(raw);
+                    return Array.isArray(data) ? data : [];
+                } catch {
+                    return [];
+                }
+            },
+            renderCachedMessages() {
+                const container = this.$refs.cachedHistory;
+                if (!container) return;
+
+                const cached = this.loadCachedMessages();
+                if (!cached.length) return;
+
+                // Minimal HTML renderer: fast preview while Livewire loads the real messages.
+                // NOTE: This code lives inside an x-data HTML attribute (double-quoted).
+                // We use the browser to escape HTML instead of manual entity replacement,
+                // because entity literals like &#39; get decoded by the HTML parser before
+                // Alpine evaluates the JS, breaking the expression.
+                const _esc = document.createElement('span');
+                const escapeHtml = (s) => {
+                    _esc.textContent = s || '';
+                    return _esc.innerHTML;
+                };
+
+                container.innerHTML = cached.map((m) => {
+                    const isUser = m.role === 'user';
+                    const outerClass = isUser ? 'chat-message chat-message-user' : 'chat-message chat-message-assistant';
+                    const bubbleClass = isUser ? 'chat-bubble chat-bubble-user' : 'chat-bubble chat-bubble-assistant';
+                    return `
+                        <div class='${outerClass}'>
+                            <div class='${bubbleClass}'>
+                                <div class='chat-bubble-content'>${escapeHtml(m.text || '')}</div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            },
+            clearCachedRender() {
+                const container = this.$refs.cachedHistory;
+                if (!container) return;
+                container.innerHTML = '';
+            },
+            extractMessagesForCache() {
+                const nodes = Array.from(this.$refs.messages?.querySelectorAll('.chat-message') || []);
+                const messages = [];
+                for (const node of nodes) {
+                    if (node.closest('.chat-cached-history')) continue;
+                    const isUser = node.classList.contains('chat-message-user');
+                    const contentEl = node.querySelector('.chat-bubble-content');
+                    const text = (contentEl?.innerText || '').trim();
+                    if (!text) continue;
+                    messages.push({ role: isUser ? 'user' : 'assistant', text });
+                }
+                // Keep last 30 for size + speed.
+                return messages.slice(-30);
+            },
+            saveMessagesToCache() {
+                try {
+                    const messages = this.extractMessagesForCache();
+                    if (!messages.length) return;
+                    localStorage.setItem(this.cacheKey(), JSON.stringify(messages));
+                } catch {}
+            },
             checkIfNearBottom() {
                 const el = this.$refs.messages;
                 this.isNearBottom = (el.scrollHeight - el.scrollTop - el.clientHeight) < this.scrollThreshold;
@@ -448,7 +527,32 @@
                 this.$refs.messages.scrollTop = this.$refs.messages.scrollHeight;
             },
             init() {
-                this.scrollToBottom();
+                // Restore scroll position when navigating away and back in SPA mode.
+                // Important: defer applying scrollTop until messages are actually rendered, otherwise
+                // the browser clamps it to 0 and you end up stuck at the top.
+                const readSavedScroll = () => {
+                    try {
+                        const raw = sessionStorage.getItem(this.scrollKey());
+                        if (!raw) return false;
+                        const data = JSON.parse(raw);
+                        if (typeof data?.scrollTop !== 'number') return false;
+                        this.pendingScroll = {
+                            scrollTop: data.scrollTop,
+                            isNearBottom: !!data?.isNearBottom,
+                        };
+                        return true;
+                    } catch {
+                        return false;
+                    }
+                };
+
+                // Fast preview from local cache while Livewire fetches & renders.
+                this.renderCachedMessages();
+
+                if (!readSavedScroll()) {
+                    this.scrollToBottom();
+                }
+
                 this.$refs.messages.addEventListener('scroll', () => this.checkIfNearBottom());
                 const observer = new MutationObserver(() => {
                     this.$nextTick(() => {
@@ -458,13 +562,55 @@
                     });
                 });
                 observer.observe(this.$refs.messages, { childList: true, subtree: true });
+
+                document.addEventListener('livewire:navigating', () => {
+                    try {
+                        sessionStorage.setItem(this.scrollKey(), JSON.stringify({
+                            scrollTop: this.$refs.messages.scrollTop,
+                            isNearBottom: this.isNearBottom,
+                        }));
+                    } catch {}
+                    this.saveMessagesToCache();
+                });
+
+                document.addEventListener('messages-loaded', () => {
+                    // Clear cached preview once real messages are in.
+                    this.clearCachedRender();
+
+                    // Apply pending scroll restore.
+                    if (this.pendingScroll) {
+                        const { scrollTop, isNearBottom } = this.pendingScroll;
+                        this.pendingScroll = null;
+                        this.isNearBottom = !!isNearBottom;
+                        this.$nextTick(() => {
+                            if (this.isNearBottom) {
+                                this.scrollToBottom();
+                                return;
+                            }
+                            this.$refs.messages.scrollTop = scrollTop;
+                        });
+                    } else {
+                        // Default chat behavior: stay pinned to bottom when opening.
+                        this.$nextTick(() => this.scrollToBottom());
+                    }
+
+                    // Refresh cache from the real DOM.
+                    this.$nextTick(() => this.saveMessagesToCache());
+                });
             }
         }"
     >
         {{-- Messages --}}
-        <div class="chat-messages" x-ref="messages" @if($this->shouldPoll) wire:poll.2s.visible="checkPolling" @endif>
+        <div
+            class="chat-messages"
+            x-ref="messages"
+            wire:init="loadMessages"
+            @if($this->shouldPoll) wire:poll.2s.visible="checkPolling" @endif
+        >
+            <div class="chat-cached-history" wire:ignore x-ref="cachedHistory"></div>
+
             {{-- Load earlier messages button --}}
-            @if($this->hasMoreMessages)
+            @if($this->messagesLoaded && $this->hasMoreMessages)
                 <div class="chat-load-more">
                     <button
                         type="button"
@@ -938,9 +1084,15 @@
                     @endif
                 @endif
             @empty
-                <div class="chat-empty">
-                    <p>Start a conversation with {{ $this->providerLabel }}</p>
-                </div>
+                @if(! $this->messagesLoaded && $this->lastMessageCount > 0)
+                    <div class="chat-empty">
+                        <p>Loading messages…</p>
+                    </div>
+                @else
+                    <div class="chat-empty">
+                        <p>Start a conversation with {{ $this->providerLabel }}</p>
+                    </div>
+                @endif
             @endforelse
 
             @if($this->isRunning || $this->waitingForResponse)
@@ -1037,11 +1189,17 @@
                 isTranscribing: false,
                 recordingSeconds: 0,
                 voiceError: '',
+                recordingMode: null, // 'media' | 'wav'
                 recorder: null,
                 recordStream: null,
                 recordTimeoutId: null,
                 recordIntervalId: null,
                 maxRecordMs: 5 * 60 * 1000,
+                // WAV recorder state (used when MediaRecorder can't produce a provider-supported format)
+                wavContext: null,
+                wavSource: null,
+                wavProcessor: null,
+                wavBuffers: [],
                 get canSend() {
                     if (this.isRecording || this.isTranscribing) return false;
                     return this.prompt.trim().length > 0 || this.images.length > 0;
@@ -1051,7 +1209,32 @@
                     const s = (this.recordingSeconds % 60).toString().padStart(2, '0');
                     return `${m}:${s}`;
                 },
+                draftKey() {
+                    return `cr:chat-draft:${this.taskUuid}`;
+                },
+                saveDraft() {
+                    try {
+                        sessionStorage.setItem(this.draftKey(), JSON.stringify({
+                            prompt: this.prompt || '',
+                        }));
+                    } catch {}
+                },
+                restoreDraft() {
+                    try {
+                        const raw = sessionStorage.getItem(this.draftKey());
+                        if (!raw) return;
+                        const data = JSON.parse(raw);
+                        if (typeof data?.prompt === 'string' && data.prompt.trim().length > 0 && this.prompt.trim().length === 0) {
+                            this.prompt = data.prompt;
+                        }
+                    } catch {}
+                },
+                clearDraft() {
+                    try { sessionStorage.removeItem(this.draftKey()); } catch {}
+                },
                 init() {
+                    this.restoreDraft();
+
                     // Listen for snippet insertions from Livewire
                     Livewire.on('insert-snippet', (data) => {
                         if (this.prompt.length > 0) {
@@ -1060,7 +1243,13 @@
                         this.prompt += data.content;
                         // Focus the textarea
                         this.$refs.promptInput?.focus();
+                        this.saveDraft();
                     });
+
+                    // Persist prompt draft when navigating between pages in SPA mode.
+                    const save = () => this.saveDraft();
+                    document.addEventListener('livewire:navigating', save);
+                    window.addEventListener('beforeunload', save);
                 },
                 submit() {
                     if (!this.canSend) return;
@@ -1068,6 +1257,7 @@
                     $wire.prompt = this.prompt;
                     $wire.sendMessage().then(() => {
                         this.prompt = '';
+                        this.clearDraft();
                     });
                 },
                 handlePaste(e) {
@@ -1128,6 +1318,24 @@
                     }
                     return '';
                 },
+                suggestedVoiceFilename(mimeType) {
+                    const mime = (mimeType || '').toLowerCase();
+                    if (mime.includes('mp4') || mime.includes('m4a')) return 'voice-message.m4a';
+                    if (mime.includes('mpeg') || mime.includes('mp3')) return 'voice-message.mp3';
+                    if (mime.includes('wav')) return 'voice-message.wav';
+                    if (mime.includes('ogg')) return 'voice-message.ogg';
+                    if (mime.includes('webm')) return 'voice-message.webm';
+                    return 'voice-message.webm';
+                },
+                shouldUseWavRecorder(mimeType) {
+                    // OpenRouter's OpenAI audio-chat models accept `input_audio.format` values like `wav` (and `mp3`).
+                    // Browsers commonly output mp4/webm/ogg via MediaRecorder; without server-side transcoding, those
+                    // will fail. Use the WAV recorder by default for portability.
+                    const mime = (mimeType || '').toLowerCase();
+                    if (!mime) return true;
+                    if (mime.includes('wav') || mime.includes('mpeg') || mime.includes('mp3')) return false;
+                    return true;
+                },
                 async toggleRecording() {
                     if (this.isTranscribing) return;
                     if (this.isRecording) {
@@ -1138,7 +1346,7 @@
                 },
                 async startRecording() {
                     this.voiceError = '';
-                    if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
+                    if (!navigator.mediaDevices?.getUserMedia) {
                         this.voiceError = 'Voice recording is not supported on this device.';
                         // Fallback: let user select an audio file (may open mic on mobile).
                         this.openAudioPicker();
@@ -1154,7 +1362,13 @@
                     }
 
                     this.recordStream = stream;
-                    const mimeType = this.pickAudioMimeType();
+                    const hasMediaRecorder = !!window.MediaRecorder;
+                    const mimeType = hasMediaRecorder ? this.pickAudioMimeType() : '';
+                    if (!hasMediaRecorder || this.shouldUseWavRecorder(mimeType)) {
+                        await this.startWavRecording(stream);
+                        return;
+                    }
+
                     const chunks = [];
 
                     try {
@@ -1168,6 +1382,7 @@
 
                     this.recordingSeconds = 0;
                     this.isRecording = true;
+                    this.recordingMode = 'media';
 
                     this.recorder.addEventListener('dataavailable', (event) => {
                         if (event.data && event.data.size > 0) chunks.push(event.data);
@@ -1190,13 +1405,122 @@
                     }, this.maxRecordMs);
                 },
                 async stopRecording() {
+                    if (this.recordingMode === 'wav') {
+                        await this.stopWavRecording();
+                        return;
+                    }
                     if (!this.recorder) return;
-                    try {
-                        this.recorder.stop();
-                    } catch {}
+                    try { this.recorder.stop(); } catch {}
+                },
+                async startWavRecording(stream) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    if (!AudioContext) {
+                        this.voiceError = 'Voice recording is not supported on this device.';
+                        stream.getTracks().forEach((t) => t.stop());
+                        this.recordStream = null;
+                        return;
+                    }
+
+                    this.recordingSeconds = 0;
+                    this.isRecording = true;
+                    this.recordingMode = 'wav';
+                    this.wavBuffers = [];
+
+                    // Use a lower sample rate to keep WAV size reasonable; browsers may ignore the hint.
+                    const ctx = new AudioContext({ sampleRate: 16000 });
+                    const source = ctx.createMediaStreamSource(stream);
+                    const processor = ctx.createScriptProcessor(4096, 1, 1);
+
+                    processor.onaudioprocess = (e) => {
+                        const input = e.inputBuffer.getChannelData(0);
+                        this.wavBuffers.push(new Float32Array(input));
+                        // Prevent feedback/echo.
+                        const out = e.outputBuffer.getChannelData(0);
+                        out.fill(0);
+                    };
+
+                    source.connect(processor);
+                    processor.connect(ctx.destination);
+
+                    this.wavContext = ctx;
+                    this.wavSource = source;
+                    this.wavProcessor = processor;
+                    try { await ctx.resume(); } catch {}
+
+                    this.recordIntervalId = setInterval(() => {
+                        this.recordingSeconds += 1;
+                    }, 1000);
+
+                    this.recordTimeoutId = setTimeout(() => {
+                        this.stopRecording();
+                    }, this.maxRecordMs);
+                },
+                encodeWavBlob(float32Chunks, sampleRate) {
+                    let length = 0;
+                    for (const c of float32Chunks) length += c.length;
+
+                    const buffer = new ArrayBuffer(44 + length * 2);
+                    const view = new DataView(buffer);
+
+                    const writeStr = (offset, str) => {
+                        for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+                    };
+
+                    // RIFF header
+                    writeStr(0, 'RIFF');
+                    view.setUint32(4, 36 + length * 2, true);
+                    writeStr(8, 'WAVE');
+
+                    // fmt chunk
+                    writeStr(12, 'fmt ');
+                    view.setUint32(16, 16, true); // PCM
+                    view.setUint16(20, 1, true); // format
+                    view.setUint16(22, 1, true); // channels
+                    view.setUint32(24, sampleRate, true);
+                    view.setUint32(28, sampleRate * 2, true); // byte rate
+                    view.setUint16(32, 2, true); // block align
+                    view.setUint16(34, 16, true); // bits
+
+                    // data chunk
+                    writeStr(36, 'data');
+                    view.setUint32(40, length * 2, true);
+
+                    let offset = 44;
+                    for (const chunk of float32Chunks) {
+                        for (let i = 0; i < chunk.length; i++) {
+                            const s = Math.max(-1, Math.min(1, chunk[i]));
+                            view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+                            offset += 2;
+                        }
+                    }
+
+                    return new Blob([buffer], { type: 'audio/wav' });
+                },
+                async stopWavRecording() {
+                    const ctx = this.wavContext;
+                    const processor = this.wavProcessor;
+                    const source = this.wavSource;
+
+                    // Snapshot buffers before cleanup.
+                    const buffers = this.wavBuffers || [];
+                    const sampleRate = ctx?.sampleRate || 16000;
+
+                    try { processor?.disconnect(); } catch {}
+                    try { source?.disconnect(); } catch {}
+                    if (processor) processor.onaudioprocess = null;
+                    try { await ctx?.close(); } catch {}
+
+                    this.wavContext = null;
+                    this.wavSource = null;
+                    this.wavProcessor = null;
+
+                    const blob = this.encodeWavBlob(buffers, sampleRate);
+                    this.cleanupRecording();
+                    await this.transcribeAndSend(blob);
                 },
                 cleanupRecording() {
                     this.isRecording = false;
+                    this.recordingMode = null;
 
                     if (this.recordTimeoutId) clearTimeout(this.recordTimeoutId);
                     if (this.recordIntervalId) clearInterval(this.recordIntervalId);
@@ -1217,7 +1541,7 @@
                     await this.transcribeAndSend(file);
                 },
                 getCsrfToken() {
-                    return document.querySelector('meta[name=\"csrf-token\"]')?.content || '';
+                    return document.querySelector('meta[name=csrf-token]')?.content || '';
                 },
                 async transcribeAndSend(audioBlobOrFile) {
                     this.isTranscribing = true;
@@ -1225,7 +1549,11 @@
 
                     try {
                         const form = new FormData();
-                        form.append('audio', audioBlobOrFile, audioBlobOrFile.name || 'voice-message.webm');
+                        // Important: make the filename extension match the blob's mimetype.
+                        // iOS often records `audio/mp4`, and a misleading `.webm` extension can
+                        // cause the backend/provider to mis-detect the format.
+                        const filename = audioBlobOrFile.name || this.suggestedVoiceFilename(audioBlobOrFile.type);
+                        form.append('audio', audioBlobOrFile, filename);
 
                         const res = await fetch(`/api/tasks/${this.taskUuid}/voice-transcribe`, {
                             method: 'POST',
@@ -1234,18 +1562,48 @@
                                 'X-Requested-With': 'XMLHttpRequest',
                                 'Accept': 'application/json',
                             },
+                            credentials: 'same-origin',
                             body: form,
                         });
 
-                        const json = await res.json().catch(() => ({}));
+                        const requestIdHeader = res.headers.get('x-voice-request-id') || '';
+                        const cfRay = res.headers.get('cf-ray') || '';
+                        const serverHeader = res.headers.get('server') || '';
+                        const contentType = (res.headers.get('content-type') || '').toLowerCase();
+                        const resClone = res.clone();
+                        const json = await resClone.json().catch(() => null);
+                        const rawText = json === null ? await res.text().catch(() => '') : '';
+
                         if (!res.ok) {
-                            this.voiceError = json?.message || 'Transcription failed.';
+                            const providerMsg =
+                                json?.error?.error?.message ||
+                                json?.error?.message ||
+                                json?.message ||
+                                '';
+
+                            const reqId = requestIdHeader || json?.request_id || '';
+                            const reqIdSuffix = reqId ? ` (request ${reqId})` : '';
+
+                            // Avoid dumping HTML error pages into the UI; surface headers instead.
+                            const isHtml = contentType.includes('text/html') || rawText.trim().toLowerCase().startsWith('<!doctype html');
+                            const infraSuffixParts = [];
+                            if (serverHeader) infraSuffixParts.push(serverHeader);
+                            if (cfRay) infraSuffixParts.push(`cf-ray ${cfRay}`);
+                            const infraSuffix = infraSuffixParts.length ? ` (${infraSuffixParts.join(', ')})` : '';
+
+                            if (isHtml) {
+                                this.voiceError = `Transcription failed (HTTP ${res.status})${reqIdSuffix}${infraSuffix}.`;
+                                return;
+                            }
+
+                            this.voiceError = (providerMsg ? `${providerMsg}${reqIdSuffix}` : `Transcription failed (HTTP ${res.status})${reqIdSuffix}${infraSuffix}.`);
                             return;
                         }
 
                         const transcript = (json?.transcript || '').trim();
                         if (!transcript) {
-                            this.voiceError = 'Transcription returned empty text.';
+                            const reqId = requestIdHeader || json?.request_id || '';
+                            this.voiceError = reqId ? `Transcription returned empty text (request ${reqId}).` : 'Transcription returned empty text.';
                             return;
                         }
 

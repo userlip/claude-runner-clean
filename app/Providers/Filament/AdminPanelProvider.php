@@ -34,6 +34,9 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->id('admin')
             ->path('admin')
+            // Enable Livewire SPA navigation for a more native PWA feel (fast transitions, back/forward).
+            // Keep it disabled for guests so auth pages behave traditionally.
+            ->spa(condition: fn (): bool => auth()->check(), hasPrefetching: true)
             ->favicon(asset('favicon.ico'))
             ->login()
             ->registration()

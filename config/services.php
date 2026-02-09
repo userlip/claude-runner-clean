@@ -48,7 +48,7 @@ return [
 
     'openrouter' => [
         'api_key' => env('OPENROUTER_API_KEY'),
-        'transcription_model' => env('OPENROUTER_TRANSCRIPTION_MODEL', 'google/gemini-2.5-flash-lite'),
+        'transcription_model' => env('OPENROUTER_TRANSCRIPTION_MODEL', 'openai/gpt-audio-mini'),
     ],
 
     'ploi' => [

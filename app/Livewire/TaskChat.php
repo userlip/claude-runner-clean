@@ -22,7 +22,7 @@ class TaskChat extends Component
     /**
      * Number of messages to load per page for pagination.
      */
-    public const MESSAGES_PER_PAGE = 50;
+    public const MESSAGES_PER_PAGE = 30;
 
     public Task $task;
 
@@ -39,6 +39,12 @@ class TaskChat extends Component
      * Number of message pages currently loaded.
      */
     public int $loadedPages = 1;
+
+    /**
+     * To improve perceived performance (especially in SPA navigation), defer
+     * loading the message list until the browser has painted the shell.
+     */
+    public bool $messagesLoaded = false;
 
     public bool $showDeployModal = false;
 
@@ -66,6 +72,12 @@ class TaskChat extends Component
         $task->markAsViewed();
     }
 
+    public function loadMessages(): void
+    {
+        $this->messagesLoaded = true;
+        $this->dispatch('messages-loaded');
+    }
+
     #[On('insert-snippet')]
     public function insertSnippet(string $content): void
     {
@@ -81,6 +93,10 @@ class TaskChat extends Component
     #[Computed]
     public function chatMessages(): Collection
     {
+        if (! $this->messagesLoaded) {
+            return new Collection;
+        }
+
         $totalMessages = $this->task->messages()
             ->where('status', MessageStatus::Sent)
             ->count();
@@ -102,6 +118,10 @@ class TaskChat extends Component
     #[Computed]
     public function totalMessageCount(): int
     {
+        if (! $this->messagesLoaded) {
+            return 0;
+        }
+
         return $this->task->messages()
             ->where('status', MessageStatus::Sent)
             ->count();
@@ -113,6 +133,10 @@ class TaskChat extends Component
     #[Computed]
     public function hiddenMessageCount(): int
     {
+        if (! $this->messagesLoaded) {
+            return 0;
+        }
+
         $loaded = self::MESSAGES_PER_PAGE * $this->loadedPages;
 
         return max(0, $this->totalMessageCount - $loaded);
