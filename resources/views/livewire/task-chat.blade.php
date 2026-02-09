@@ -1032,8 +1032,24 @@
             x-data="{
                 prompt: '',
                 images: @entangle('images'),
+                taskUuid: '{{ $this->task->uuid }}',
+                isRecording: false,
+                isTranscribing: false,
+                recordingSeconds: 0,
+                voiceError: '',
+                recorder: null,
+                recordStream: null,
+                recordTimeoutId: null,
+                recordIntervalId: null,
+                maxRecordMs: 5 * 60 * 1000,
                 get canSend() {
+                    if (this.isRecording || this.isTranscribing) return false;
                     return this.prompt.trim().length > 0 || this.images.length > 0;
+                },
+                get recordingLabel() {
+                    const m = Math.floor(this.recordingSeconds / 60).toString();
+                    const s = (this.recordingSeconds % 60).toString().padStart(2, '0');
+                    return `${m}:${s}`;
                 },
                 init() {
                     // Listen for snippet insertions from Livewire
@@ -1095,6 +1111,153 @@
                 },
                 openFilePicker() {
                     this.$refs.fileInput.click();
+                },
+                openAudioPicker() {
+                    this.$refs.audioInput?.click();
+                },
+                pickAudioMimeType() {
+                    const candidates = [
+                        'audio/mp4', // iOS-friendly (AAC in MP4 container)
+                        'audio/webm;codecs=opus',
+                        'audio/webm',
+                        'audio/ogg;codecs=opus',
+                        'audio/ogg',
+                    ];
+                    for (const mime of candidates) {
+                        if (window.MediaRecorder && MediaRecorder.isTypeSupported?.(mime)) return mime;
+                    }
+                    return '';
+                },
+                async toggleRecording() {
+                    if (this.isTranscribing) return;
+                    if (this.isRecording) {
+                        await this.stopRecording();
+                        return;
+                    }
+                    await this.startRecording();
+                },
+                async startRecording() {
+                    this.voiceError = '';
+                    if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
+                        this.voiceError = 'Voice recording is not supported on this device.';
+                        // Fallback: let user select an audio file (may open mic on mobile).
+                        this.openAudioPicker();
+                        return;
+                    }
+
+                    let stream;
+                    try {
+                        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    } catch (e) {
+                        this.voiceError = 'Microphone permission denied.';
+                        return;
+                    }
+
+                    this.recordStream = stream;
+                    const mimeType = this.pickAudioMimeType();
+                    const chunks = [];
+
+                    try {
+                        this.recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+                    } catch (e) {
+                        this.voiceError = 'Unable to start recording on this device.';
+                        stream.getTracks().forEach((t) => t.stop());
+                        this.recordStream = null;
+                        return;
+                    }
+
+                    this.recordingSeconds = 0;
+                    this.isRecording = true;
+
+                    this.recorder.addEventListener('dataavailable', (event) => {
+                        if (event.data && event.data.size > 0) chunks.push(event.data);
+                    });
+
+                    this.recorder.addEventListener('stop', async () => {
+                        const blob = new Blob(chunks, { type: this.recorder?.mimeType || 'audio/webm' });
+                        this.cleanupRecording();
+                        await this.transcribeAndSend(blob);
+                    }, { once: true });
+
+                    this.recorder.start();
+
+                    this.recordIntervalId = setInterval(() => {
+                        this.recordingSeconds += 1;
+                    }, 1000);
+
+                    this.recordTimeoutId = setTimeout(() => {
+                        this.stopRecording();
+                    }, this.maxRecordMs);
+                },
+                async stopRecording() {
+                    if (!this.recorder) return;
+                    try {
+                        this.recorder.stop();
+                    } catch {}
+                },
+                cleanupRecording() {
+                    this.isRecording = false;
+
+                    if (this.recordTimeoutId) clearTimeout(this.recordTimeoutId);
+                    if (this.recordIntervalId) clearInterval(this.recordIntervalId);
+                    this.recordTimeoutId = null;
+                    this.recordIntervalId = null;
+
+                    if (this.recordStream) {
+                        this.recordStream.getTracks().forEach((t) => t.stop());
+                    }
+                    this.recordStream = null;
+                    this.recorder = null;
+                },
+                async handleAudioSelect(e) {
+                    const file = e.target.files?.[0];
+                    e.target.value = '';
+                    if (!file) return;
+                    this.voiceError = '';
+                    await this.transcribeAndSend(file);
+                },
+                getCsrfToken() {
+                    return document.querySelector('meta[name=\"csrf-token\"]')?.content || '';
+                },
+                async transcribeAndSend(audioBlobOrFile) {
+                    this.isTranscribing = true;
+                    this.voiceError = '';
+
+                    try {
+                        const form = new FormData();
+                        form.append('audio', audioBlobOrFile, audioBlobOrFile.name || 'voice-message.webm');
+
+                        const res = await fetch(`/api/tasks/${this.taskUuid}/voice-transcribe`, {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': this.getCsrfToken(),
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'Accept': 'application/json',
+                            },
+                            body: form,
+                        });
+
+                        const json = await res.json().catch(() => ({}));
+                        if (!res.ok) {
+                            this.voiceError = json?.message || 'Transcription failed.';
+                            return;
+                        }
+
+                        const transcript = (json?.transcript || '').trim();
+                        if (!transcript) {
+                            this.voiceError = 'Transcription returned empty text.';
+                            return;
+                        }
+
+                        // Auto-send: insert and submit.
+                        this.prompt = transcript;
+                        await this.$nextTick();
+                        this.submit();
+                    } catch (e) {
+                        this.voiceError = 'Transcription failed due to a network error.';
+                    } finally {
+                        this.isTranscribing = false;
+                    }
                 }
             }"
         >
@@ -1105,6 +1268,15 @@
                 @change="handleFileSelect($event)"
                 accept="image/*"
                 multiple
+                class="chat-file-input"
+            >
+
+            {{-- Hidden file input fallback for audio selection --}}
+            <input
+                type="file"
+                x-ref="audioInput"
+                @change="handleAudioSelect($event)"
+                accept="audio/*"
                 class="chat-file-input"
             >
 
@@ -1122,7 +1294,43 @@
                     </svg>
                 </button>
 
+                {{-- Voice message (tap to record / tap to stop) --}}
+                <button
+                    type="button"
+                    @click="toggleRecording()"
+                    class="chat-voice-btn"
+                    :class="{ 'is-recording': isRecording, 'is-busy': isTranscribing }"
+                    :disabled="isTranscribing"
+                    :title="isRecording ? 'Stop recording' : 'Record voice message'"
+                >
+                    <template x-if="!isRecording && !isTranscribing">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M8.25 12a3.75 3.75 0 1 0 7.5 0V6a3.75 3.75 0 1 0-7.5 0v6Z" />
+                            <path d="M6 10.5a.75.75 0 0 1 .75.75V12a5.25 5.25 0 0 0 10.5 0v-.75a.75.75 0 0 1 1.5 0V12a6.75 6.75 0 0 1-6 6.708V21a.75.75 0 0 1-1.5 0v-2.292A6.75 6.75 0 0 1 5.25 12v-.75A.75.75 0 0 1 6 10.5Z" />
+                        </svg>
+                    </template>
+                    <template x-if="isRecording">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                            <path fill-rule="evenodd" d="M4.5 7.5A3 3 0 0 1 7.5 4.5h9a3 3 0 0 1 3 3v9a3 3 0 0 1-3 3h-9a3 3 0 0 1-3-3v-9Z" clip-rule="evenodd" />
+                        </svg>
+                    </template>
+                    <template x-if="isTranscribing">
+                        <span class="chat-voice-spinner" aria-hidden="true"></span>
+                    </template>
+                </button>
+
                 <div class="chat-input-wrapper">
+                    <template x-if="voiceError">
+                        <div class="chat-voice-error" x-text="voiceError"></div>
+                    </template>
+
+                    <template x-if="isRecording">
+                        <div class="chat-voice-recording">
+                            <span class="chat-voice-dot" aria-hidden="true"></span>
+                            Recording <span x-text="recordingLabel"></span>
+                        </div>
+                    </template>
+
                     {{-- Image previews --}}
                     <template x-if="images.length > 0">
                         <div class="chat-image-preview">
