@@ -46,6 +46,11 @@ return [
         'path' => env('CODEX_PATH', '/home/ploi/.npm-global/bin/codex'),
     ],
 
+    'openrouter' => [
+        'api_key' => env('OPENROUTER_API_KEY'),
+        'transcription_model' => env('OPENROUTER_TRANSCRIPTION_MODEL', 'google/gemini-2.5-flash-lite'),
+    ],
+
     'ploi' => [
         'server_id' => env('PLOI_SERVER_ID'),
         'server_name' => env('PLOI_SERVER_NAME'),
