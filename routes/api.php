@@ -3,11 +3,15 @@
 use App\Http\Controllers\Api\PushSubscriptionController;
 use App\Http\Controllers\Api\TaskMessagesController;
 use App\Http\Controllers\Api\TelegramWebhookController;
+use App\Http\Controllers\Api\VoiceTranscriptionController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['web', 'auth'])->group(function () {
     Route::get('/tasks/{task}/messages', [TaskMessagesController::class, 'index'])
         ->name('api.tasks.messages');
+
+    Route::post('/tasks/{task}/voice-transcribe', [VoiceTranscriptionController::class, 'store'])
+        ->name('api.tasks.voice-transcribe');
 
     // Push notification subscriptions
     Route::post('/push/subscribe', [PushSubscriptionController::class, 'store'])
