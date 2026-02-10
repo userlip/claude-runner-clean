@@ -1095,7 +1095,7 @@
                 @endif
             @endforelse
 
-            @if($this->isRunning || $this->waitingForResponse)
+            @if($this->isRunning || $this->waitingForResponse || $this->hasActiveSubagents)
             @php
                 $latestAssistantMessage = $this->chatMessages
                     ->where('role', \App\Enums\MessageRole::Assistant)
@@ -1107,7 +1107,13 @@
                 <div class="chat-thinking-bubble">
                     <div class="chat-thinking-content">
                         <div class="chat-thinking-dot"></div>
-                        <span class="chat-thinking-text">{{ $this->providerLabel }} is thinking...</span>
+                        <span class="chat-thinking-text">
+                            @if($this->hasActiveSubagents && !$this->isRunning)
+                                Subagents working...
+                            @else
+                                {{ $this->providerLabel }} is thinking...
+                            @endif
+                        </span>
                     </div>
                     @if($showActivity)
                         <div x-data="{ showActivity: false }" class="chat-activity">

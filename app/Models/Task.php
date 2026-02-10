@@ -37,6 +37,7 @@ class Task extends Model
         'ran_npm_build',
         'is_compacting',
         'needs_compact',
+        'has_active_subagents',
         'compaction_count',
         'max_turns',
         'question_responses',
@@ -62,6 +63,7 @@ class Task extends Model
             'ran_npm_build' => 'boolean',
             'is_compacting' => 'boolean',
             'needs_compact' => 'boolean',
+            'has_active_subagents' => 'boolean',
             'compaction_count' => 'integer',
             'max_turns' => 'integer',
             'question_responses' => 'array',
@@ -201,6 +203,7 @@ class Task extends Model
         $this->update([
             'status' => TaskStatus::Completed,
             'completed_at' => now(),
+            'has_active_subagents' => false,
         ]);
 
         $this->handleScheduleCompletion();

@@ -204,19 +204,25 @@ class TaskChat extends Component
         // Refresh task status
         $this->task->refresh();
 
-        // Only stop waiting when task is no longer running
+        // Only stop waiting when task is no longer running AND no active subagents
         // (message count check is unreliable since empty assistant message is created immediately)
         // Also stop if waiting for input (AskUserQuestion detected)
-        if ($this->waitingForResponse && ! $this->task->isRunning()) {
+        if ($this->waitingForResponse && ! $this->task->isRunning() && ! $this->task->has_active_subagents) {
             $this->waitingForResponse = false;
             $this->lastMessageCount = $this->task->messages()->count();
         }
     }
 
     #[Computed]
+    public function hasActiveSubagents(): bool
+    {
+        return $this->task->has_active_subagents ?? false;
+    }
+
+    #[Computed]
     public function shouldPoll(): bool
     {
-        return $this->isRunning || $this->waitingForResponse;
+        return $this->isRunning || $this->waitingForResponse || $this->hasActiveSubagents;
     }
 
     #[Computed]
@@ -776,7 +782,7 @@ class TaskChat extends Component
      */
     public function stopRunning(): void
     {
-        if (! $this->task->isRunning()) {
+        if (! $this->task->isRunning() && ! $this->task->has_active_subagents) {
             return;
         }
 
@@ -798,7 +804,8 @@ class TaskChat extends Component
             exec("pkill -f '{$pattern}.*{$workingDir}' 2>/dev/null");
         }
 
-        // Mark the task as completed
+        // Clear subagent flag and mark the task as completed
+        $this->task->update(['has_active_subagents' => false]);
         $this->task->markAsCompleted();
 
         // Clear waiting state
