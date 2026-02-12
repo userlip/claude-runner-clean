@@ -39,7 +39,6 @@ class AdminPanelProvider extends PanelProvider
             ->spa(condition: fn (): bool => auth()->check(), hasPrefetching: true)
             ->favicon(asset('favicon.ico'))
             ->login()
-            ->registration()
             ->passwordReset()
             ->profile()
             ->sidebarCollapsibleOnDesktop()

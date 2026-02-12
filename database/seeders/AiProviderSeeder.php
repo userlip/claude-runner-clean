@@ -41,7 +41,7 @@ class AiProviderSeeder extends Seeder
             [
                 'display_name' => 'GLM (z.ai)',
                 'base_url' => 'https://api.z.ai/api/anthropic',
-                'model' => 'GLM-4.7',
+                'model' => 'GLM-5',
                 'is_active' => false,
                 'is_default' => false,
                 'quota_limit' => 50000000,
@@ -55,7 +55,7 @@ class AiProviderSeeder extends Seeder
             [
                 'display_name' => 'Minimax',
                 'base_url' => 'https://api.minimax.io/anthropic',
-                'model' => 'MiniMax-M2.1',
+                'model' => 'MiniMax-M2.5',
                 'is_active' => false,
                 'is_default' => false,
                 'quota_limit' => 50000000,

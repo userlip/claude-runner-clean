@@ -132,7 +132,7 @@ test('it uses task provider env vars', function () {
     $env = $job->getProviderEnvironment();
 
     expect($env)->toHaveKey('ANTHROPIC_BASE_URL')
-        ->and($env['ANTHROPIC_MODEL'])->toBe('GLM-4.6');
+        ->and($env['ANTHROPIC_MODEL'])->toBe('GLM-5');
 });
 
 test('parseLine detects rate limit error with error field', function () {

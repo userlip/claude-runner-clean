@@ -23,6 +23,8 @@ class Message extends Model
 
     protected $fillable = [
         'task_id',
+        'telegram_message_id',
+        'from_telegram',
         'role',
         'status',
         'content',
@@ -46,6 +48,7 @@ class Message extends Model
             'tokens_in' => 'integer',
             'tokens_out' => 'integer',
             'cost_usd' => 'decimal:6',
+            'from_telegram' => 'boolean',
         ];
     }
 

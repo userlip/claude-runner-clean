@@ -123,7 +123,7 @@ TEXT;
             $params = [
                 'chat_id' => $this->adminChatId,
                 'text' => $text,
-                'parse_mode' => 'Markdown',
+                'parse_mode' => 'MarkdownV2',
             ];
 
             if ($keyboard) {
@@ -145,6 +145,35 @@ TEXT;
             return $this->telegram->sendMessage($params);
         } catch (TelegramSDKException $e) {
             Log::error('Failed to send Telegram message', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
+     * Send a plain text message without markdown parsing.
+     * Use this when the content might contain characters that break markdown.
+     */
+    public function sendPlainMessage(string $text, ?array $keyboard = null): ?TelegramMessage
+    {
+        try {
+            $params = [
+                'chat_id' => $this->adminChatId,
+                'text' => $text,
+                // No parse_mode - sends as plain text
+            ];
+
+            if ($keyboard) {
+                $params['reply_markup'] = Keyboard::make([
+                    'inline_keyboard' => $keyboard,
+                ]);
+            }
+
+            return $this->telegram->sendMessage($params);
+        } catch (TelegramSDKException $e) {
+            Log::error('Failed to send plain Telegram message', [
                 'error' => $e->getMessage(),
             ]);
 

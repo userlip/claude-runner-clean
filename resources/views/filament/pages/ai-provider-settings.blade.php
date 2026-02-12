@@ -173,7 +173,7 @@
                     </div>
                     <div>
                         <span>GLM (z.ai)</span>
-                        <p style="font-size: 0.75rem; font-weight: normal; color: rgb(107, 114, 128); margin: 0;">GLM-4.6 via z.ai</p>
+                        <p style="font-size: 0.75rem; font-weight: normal; color: rgb(107, 114, 128); margin: 0;">GLM-5 via z.ai</p>
                     </div>
                 </div>
             </x-slot>
@@ -264,7 +264,7 @@
                     </div>
                     <div>
                         <span>Minimax</span>
-                        <p style="font-size: 0.75rem; font-weight: normal; color: rgb(107, 114, 128); margin: 0;">MiniMax-M2.1</p>
+                        <p style="font-size: 0.75rem; font-weight: normal; color: rgb(107, 114, 128); margin: 0;">MiniMax-M2.5</p>
                     </div>
                 </div>
             </x-slot>
