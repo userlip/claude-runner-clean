@@ -84,11 +84,36 @@ class RunClaudeMessageJob implements ShouldQueue
 
             // For multimodal messages, write the JSON input to stdin
             if ($this->hasImages()) {
-                $jsonInput = $this->buildStreamJsonInput();
-                fwrite($pipes[0], $jsonInput."\n");
+                $jsonInput = $this->buildStreamJsonInput()."\n";
+                $bytesRemaining = strlen($jsonInput);
+                $offset = 0;
+                $chunkSize = 8192;
+
+                while ($bytesRemaining > 0) {
+                    $chunk = substr($jsonInput, $offset, $chunkSize);
+                    $written = @fwrite($pipes[0], $chunk);
+
+                    if ($written === false || $written === 0) {
+                        $status = proc_get_status($process);
+                        Log::error('Failed to write stream-json input to Claude stdin', [
+                            'task_id' => $this->task->id,
+                            'bytes_written' => $offset,
+                            'bytes_total' => strlen($jsonInput),
+                            'process_running' => $status['running'] ?? false,
+                            'exit_code' => $status['exitcode'] ?? null,
+                        ]);
+
+                        break;
+                    }
+
+                    $offset += $written;
+                    $bytesRemaining -= $written;
+                }
+
                 Log::debug('Sent stream-json input with images', [
                     'task_id' => $this->task->id,
                     'image_count' => count($this->userMessage->images ?? []),
+                    'bytes_sent' => $offset,
                 ]);
             }
 
