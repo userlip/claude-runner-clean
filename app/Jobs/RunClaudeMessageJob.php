@@ -119,6 +119,11 @@ class RunClaudeMessageJob implements ShouldQueue
 
             fclose($pipes[0]);
 
+            // Set a read timeout on stdout so fgets() doesn't block forever
+            // when the upstream API (e.g. Kimi) silently stops responding mid-stream.
+            $streamTimeoutSeconds = 300; // 5 minutes of silence = hung
+            stream_set_timeout($pipes[1], $streamTimeoutSeconds);
+
             $output = '';
             $toolCalls = [];
             $contentBlocks = [];
@@ -131,6 +136,17 @@ class RunClaudeMessageJob implements ShouldQueue
             while (! feof($pipes[1])) {
                 $line = fgets($pipes[1]);
                 if ($line === false) {
+                    // Check if the stream timed out (no data for 5 minutes)
+                    $meta = stream_get_meta_data($pipes[1]);
+                    if ($meta['timed_out']) {
+                        Log::error('Claude stdout stream timed out - API likely hung', [
+                            'task_id' => $this->task->id,
+                            'timeout_seconds' => $streamTimeoutSeconds,
+                        ]);
+
+                        break;
+                    }
+
                     continue;
                 }
 
@@ -425,11 +441,24 @@ class RunClaudeMessageJob implements ShouldQueue
                     $this->processQueuedMessages();
                 }
             } else {
-                // No result received - process may have exited unexpectedly
+                // No result received - process exited unexpectedly or stream timed out
                 Log::warning('Claude process ended without result event', [
                     'task_id' => $this->task->id,
+                    'had_tool_calls' => ! empty($toolCalls),
+                    'had_content' => ! empty($assistantMessage->content),
+                    'output_length' => strlen($output),
                 ]);
+
+                // Clear compacting state if it was set
+                $this->task->update(['is_compacting' => false]);
+
                 $this->task->markAsCompleted();
+
+                $this->sendPushNotification(
+                    'Task Interrupted',
+                    'Claude stopped responding (possible API timeout). You can send a follow-up message to continue.',
+                    false
+                );
             }
 
         } catch (RateLimitException $e) {

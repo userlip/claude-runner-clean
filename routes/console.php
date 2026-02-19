@@ -43,6 +43,11 @@ Schedule::command('github:poll-task-prs')
     ->withoutOverlapping()
     ->runInBackground();
 
+Schedule::command('tasks:cleanup-stale')
+    ->everyFiveMinutes()
+    ->withoutOverlapping()
+    ->runInBackground();
+
 // API Health Checks - Run every 2 hours to monitor Scrappa API endpoints
 // Schedule::command('scrappa:health-check')
 //     ->everyTwoHours()
