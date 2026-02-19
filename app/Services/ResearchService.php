@@ -151,13 +151,13 @@ class ResearchService
     {
         $prompt = $this->getPromptForModule($module);
 
-        // Use GLM provider for research tasks (z.ai subscription)
-        $glmProvider = AiProvider::where('name', 'glm')->where('is_active', true)->first();
+        // Use Kimi provider for research tasks
+        $kimiProvider = AiProvider::where('name', 'kimi')->where('is_active', true)->first();
 
         $task = Task::create([
             'title' => "Research: {$module->label()}",
             'status' => \App\Enums\TaskStatus::Pending,
-            'ai_provider_id' => $glmProvider?->id,
+            'ai_provider_id' => $kimiProvider?->id,
         ]);
 
         $task->messages()->create([

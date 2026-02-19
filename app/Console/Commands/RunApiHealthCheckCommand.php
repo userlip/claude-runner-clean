@@ -16,7 +16,7 @@ class RunApiHealthCheckCommand extends Command
 {
     protected $signature = 'scrappa:health-check {--api= : Specific API ID to test}';
 
-    protected $description = 'Run random API health check with GLM';
+    protected $description = 'Run random API health check with Kimi';
 
     public function handle(): int
     {
@@ -34,10 +34,10 @@ class RunApiHealthCheckCommand extends Command
 
         $repository = Repository::where('name', 'scrappa')->first();
 
-        $glmProvider = AiProvider::where('name', 'glm')->first();
+        $kimiProvider = AiProvider::where('name', 'kimi')->first();
 
-        if (! $repository || ! $glmProvider) {
-            $this->error('Scrappa repository or GLM provider not found');
+        if (! $repository || ! $kimiProvider) {
+            $this->error('Scrappa repository or Kimi provider not found');
 
             return self::FAILURE;
         }
@@ -47,7 +47,7 @@ class RunApiHealthCheckCommand extends Command
         $task = Task::create([
             'user_id' => 1,
             'repository_id' => $repository->id,
-            'ai_provider_id' => $glmProvider->id,
+            'ai_provider_id' => $kimiProvider->id,
             'scrapp_api_id' => $api->id,
             'title' => "Auto: {$skill} for {$api->name}",
             'workspace_path' => $workspacePath,

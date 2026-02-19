@@ -26,8 +26,8 @@ test('it encrypts api key', function () {
     ]);
 });
 
-test('it returns env array for glm', function () {
-    $provider = AiProvider::factory()->glm()->create();
+test('it returns env array for kimi', function () {
+    $provider = AiProvider::factory()->kimi()->create();
 
     $env = $provider->getEnvironmentVariables();
 
@@ -46,7 +46,7 @@ test('it returns empty env array for claude', function () {
 
 test('default scope returns first active', function () {
     AiProvider::factory()->claude()->create();
-    AiProvider::factory()->glm()->create();
+    AiProvider::factory()->kimi()->create();
 
     $default = AiProvider::getDefault();
 

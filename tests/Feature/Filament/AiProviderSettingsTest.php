@@ -14,7 +14,7 @@ beforeEach(function () {
 test('it renders settings page', function () {
     $user = User::factory()->create();
     AiProvider::factory()->claude()->create();
-    AiProvider::factory()->glm()->create();
+    AiProvider::factory()->kimi()->create();
 
     Livewire::actingAs($user)
         ->test(AiProviderSettings::class)
@@ -24,32 +24,32 @@ test('it renders settings page', function () {
 test('it shows both providers', function () {
     $user = User::factory()->create();
     AiProvider::factory()->claude()->create();
-    AiProvider::factory()->glm()->create();
+    AiProvider::factory()->kimi()->create();
 
     Livewire::actingAs($user)
         ->test(AiProviderSettings::class)
         ->assertSee('Claude')
-        ->assertSee('GLM (z.ai)');
+        ->assertSee('Kimi');
 });
 
-test('it can update glm api key', function () {
+test('it can update kimi api key', function () {
     $user = User::factory()->create();
     AiProvider::factory()->claude()->create();
-    $glm = AiProvider::factory()->glm()->create();
+    $kimi = AiProvider::factory()->kimi()->create();
 
     Livewire::actingAs($user)
         ->test(AiProviderSettings::class)
-        ->set('glmApiKey', 'new-secret-key')
-        ->call('saveGlmSettings')
+        ->set('kimiApiKey', 'new-secret-key')
+        ->call('saveKimiSettings')
         ->assertNotified();
 
-    expect($glm->fresh()->api_key)->toBe('new-secret-key');
+    expect($kimi->fresh()->api_key)->toBe('new-secret-key');
 });
 
 test('it can update quota limits', function () {
     $user = User::factory()->create();
     $claude = AiProvider::factory()->claude()->create();
-    AiProvider::factory()->glm()->create();
+    AiProvider::factory()->kimi()->create();
 
     Livewire::actingAs($user)
         ->test(AiProviderSettings::class)
@@ -63,7 +63,7 @@ test('it can update quota limits', function () {
 test('it can reset quota', function () {
     $user = User::factory()->create();
     $claude = AiProvider::factory()->claude()->create(['quota_used' => 5000000]);
-    AiProvider::factory()->glm()->create();
+    AiProvider::factory()->kimi()->create();
 
     Livewire::actingAs($user)
         ->test(AiProviderSettings::class)

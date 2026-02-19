@@ -27,7 +27,7 @@ class RunRalphJobTest extends TestCase
 
     public function test_rotates_context_when_threshold_reached(): void
     {
-        $provider = AiProvider::factory()->glm()->create(['context_window' => 100000]);
+        $provider = AiProvider::factory()->kimi()->create(['context_window' => 100000]);
         $task = Task::factory()->ralph()->create([
             'ai_provider_id' => $provider->id,
             'ralph_rotation_threshold' => 0.7,
@@ -91,7 +91,7 @@ class RunRalphJobTest extends TestCase
     public function test_rotates_to_next_provider(): void
     {
         $provider1 = AiProvider::factory()->claude()->create();
-        $provider2 = AiProvider::factory()->glm()->create();
+        $provider2 = AiProvider::factory()->kimi()->create();
 
         $task = Task::factory()->ralph()->create([
             'ai_provider_id' => $provider1->id,

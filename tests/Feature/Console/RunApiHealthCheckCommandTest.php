@@ -15,7 +15,7 @@ beforeEach(function () {
 
 test('command returns failure when no active APIs exist', function () {
     Repository::factory()->create(['name' => 'scrappa']);
-    AiProvider::factory()->glm()->create();
+    AiProvider::factory()->kimi()->create();
 
     $this->artisan('scrappa:health-check')
         ->expectsOutput('No active APIs found')
@@ -24,19 +24,19 @@ test('command returns failure when no active APIs exist', function () {
 
 test('command returns failure when repository not found', function () {
     ScrappApi::factory()->create();
-    AiProvider::factory()->glm()->create();
+    AiProvider::factory()->kimi()->create();
 
     $this->artisan('scrappa:health-check')
-        ->expectsOutput('Scrappa repository or GLM provider not found')
+        ->expectsOutput('Scrappa repository or Kimi provider not found')
         ->assertExitCode(1);
 });
 
-test('command returns failure when GLM provider not found', function () {
+test('command returns failure when Kimi provider not found', function () {
     ScrappApi::factory()->create();
     Repository::factory()->create(['name' => 'scrappa']);
 
     $this->artisan('scrappa:health-check')
-        ->expectsOutput('Scrappa repository or GLM provider not found')
+        ->expectsOutput('Scrappa repository or Kimi provider not found')
         ->assertExitCode(1);
 });
 
@@ -45,7 +45,7 @@ test('command creates a Task with correct attributes', function () {
 
     $api = ScrappApi::factory()->create(['name' => 'Twitter API']);
     $repository = Repository::factory()->create(['name' => 'scrappa']);
-    $glmProvider = AiProvider::factory()->glm()->create();
+    $kimiProvider = AiProvider::factory()->kimi()->create();
 
     $this->artisan('scrappa:health-check')
         ->assertExitCode(0);
@@ -55,7 +55,7 @@ test('command creates a Task with correct attributes', function () {
     expect($task)->not->toBeNull();
     expect($task->user_id)->toBe(1);
     expect($task->repository_id)->toBe($repository->id);
-    expect($task->ai_provider_id)->toBe($glmProvider->id);
+    expect($task->ai_provider_id)->toBe($kimiProvider->id);
     expect($task->scrapp_api_id)->toBe($api->id);
     expect($task->title)->toContain('Auto:');
     expect($task->title)->toContain('Twitter API');
@@ -67,7 +67,7 @@ test('command chains CloneRepositoryJob and RunApiHealthCheckJob', function () {
 
     $api = ScrappApi::factory()->create(['name' => 'Instagram API']);
     Repository::factory()->create(['name' => 'scrappa']);
-    AiProvider::factory()->glm()->create();
+    AiProvider::factory()->kimi()->create();
 
     $this->artisan('scrappa:health-check')
         ->assertExitCode(0);
@@ -84,7 +84,7 @@ test('command uses specific API when --api option provided', function () {
     $inactiveApi = ScrappApi::factory()->inactive()->create(['name' => 'Inactive API']);
     $specificApi = ScrappApi::factory()->inactive()->create(['name' => 'Specific API']);
     Repository::factory()->create(['name' => 'scrappa']);
-    AiProvider::factory()->glm()->create();
+    AiProvider::factory()->kimi()->create();
 
     $this->artisan('scrappa:health-check', ['--api' => $specificApi->id])
         ->assertExitCode(0);
@@ -100,7 +100,7 @@ test('command picks random API when no --api option', function () {
     $api1 = ScrappApi::factory()->create(['name' => 'API One']);
     $api2 = ScrappApi::factory()->create(['name' => 'API Two']);
     Repository::factory()->create(['name' => 'scrappa']);
-    AiProvider::factory()->glm()->create();
+    AiProvider::factory()->kimi()->create();
 
     $this->artisan('scrappa:health-check')
         ->assertExitCode(0);
@@ -114,7 +114,7 @@ test('command picks random skill from available skills', function () {
 
     ScrappApi::factory()->create();
     Repository::factory()->create(['name' => 'scrappa']);
-    AiProvider::factory()->glm()->create();
+    AiProvider::factory()->kimi()->create();
 
     $this->artisan('scrappa:health-check')
         ->assertExitCode(0);
@@ -128,7 +128,7 @@ test('command outputs success message with API name and skill', function () {
 
     $api = ScrappApi::factory()->create(['name' => 'YouTube API']);
     Repository::factory()->create(['name' => 'scrappa']);
-    AiProvider::factory()->glm()->create();
+    AiProvider::factory()->kimi()->create();
 
     $this->artisan('scrappa:health-check')
         ->expectsOutputToContain('Started health check for YouTube API')
@@ -137,7 +137,7 @@ test('command outputs success message with API name and skill', function () {
 
 test('command throws ModelNotFoundException for invalid --api option', function () {
     Repository::factory()->create(['name' => 'scrappa']);
-    AiProvider::factory()->glm()->create();
+    AiProvider::factory()->kimi()->create();
 
     $this->artisan('scrappa:health-check', ['--api' => 999]);
 })->throws(\Illuminate\Database\Eloquent\ModelNotFoundException::class);
@@ -148,7 +148,7 @@ test('command ignores inactive APIs when picking random', function () {
     ScrappApi::factory()->inactive()->create(['name' => 'Inactive API']);
     $activeApi = ScrappApi::factory()->create(['name' => 'Active API']);
     Repository::factory()->create(['name' => 'scrappa']);
-    AiProvider::factory()->glm()->create();
+    AiProvider::factory()->kimi()->create();
 
     $this->artisan('scrappa:health-check')
         ->assertExitCode(0);

@@ -119,7 +119,7 @@ test('job has backoff intervals for rate limit retries', function () {
 });
 
 test('it uses task provider env vars', function () {
-    $provider = AiProvider::factory()->glm()->create();
+    $provider = AiProvider::factory()->kimi()->create();
     $site = Site::factory()->active()->create();
     $task = Task::factory()->create([
         'site_id' => $site->id,
@@ -132,7 +132,7 @@ test('it uses task provider env vars', function () {
     $env = $job->getProviderEnvironment();
 
     expect($env)->toHaveKey('ANTHROPIC_BASE_URL')
-        ->and($env['ANTHROPIC_MODEL'])->toBe('GLM-5');
+        ->and($env['ANTHROPIC_MODEL'])->toBe('kimi-k2.5');
 });
 
 test('parseLine detects rate limit error with error field', function () {

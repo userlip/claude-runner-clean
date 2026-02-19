@@ -21,8 +21,8 @@ class ProposalExecutionService
         // Find repository by project key
         $repository = Repository::findByProjectKey($proposal->project);
 
-        // Use GLM provider for autonomous tasks
-        $glmProvider = AiProvider::where('name', 'glm')->where('is_active', true)->first();
+        // Use Kimi provider for autonomous tasks
+        $kimiProvider = AiProvider::where('name', 'kimi')->where('is_active', true)->first();
 
         // Create workspace path if repository exists
         $workspacePath = null;
@@ -34,7 +34,7 @@ class ProposalExecutionService
         $task = Task::create([
             'title' => $proposal->title,
             'status' => \App\Enums\TaskStatus::Pending,
-            'ai_provider_id' => $glmProvider?->id ?? AiProvider::getDefault()?->id,
+            'ai_provider_id' => $kimiProvider?->id ?? AiProvider::getDefault()?->id,
             'repository_id' => $repository?->id,
             'workspace_path' => $workspacePath,
         ]);

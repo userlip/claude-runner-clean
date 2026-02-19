@@ -37,34 +37,6 @@ class AiProviderSeeder extends Seeder
         );
 
         AiProvider::firstOrCreate(
-            ['name' => 'glm'],
-            [
-                'display_name' => 'GLM (z.ai)',
-                'base_url' => 'https://api.z.ai/api/anthropic',
-                'model' => 'GLM-5',
-                'is_active' => false,
-                'is_default' => false,
-                'quota_limit' => 50000000,
-                'quota_period' => '5-hour',
-                'quota_resets_at' => now()->addHours(5),
-            ]
-        );
-
-        AiProvider::firstOrCreate(
-            ['name' => 'minimax'],
-            [
-                'display_name' => 'Minimax',
-                'base_url' => 'https://api.minimax.io/anthropic',
-                'model' => 'MiniMax-M2.5',
-                'is_active' => false,
-                'is_default' => false,
-                'quota_limit' => 50000000,
-                'quota_period' => 'monthly',
-                'quota_resets_at' => now()->startOfMonth()->addMonth(),
-            ]
-        );
-
-        AiProvider::firstOrCreate(
             ['name' => 'kimi'],
             [
                 'display_name' => 'Kimi',

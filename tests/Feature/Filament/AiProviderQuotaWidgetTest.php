@@ -35,10 +35,10 @@ test('it shows provider usage', function () {
 test('it shows multiple providers', function () {
     $user = User::factory()->create();
     AiProvider::factory()->claude()->create();
-    AiProvider::factory()->glm()->create(['is_active' => true]);
+    AiProvider::factory()->kimi()->create(['is_active' => true]);
 
     Livewire::actingAs($user)
         ->test(AiProviderQuotaWidget::class)
         ->assertSee('Claude')
-        ->assertSee('GLM');
+        ->assertSee('Kimi');
 });

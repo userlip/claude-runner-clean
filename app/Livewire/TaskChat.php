@@ -679,19 +679,19 @@ class TaskChat extends Component
         $prompt = "Generate a 3-5 word title for a chat that starts with this message. Reply with ONLY the title, nothing else. No quotes, no explanation, no punctuation at the end.\n\nMessage: {$messageContent}\n\nTitle:";
 
         try {
-            // Use Claude Code CLI with GLM provider for title generation
+            // Use Claude Code CLI with Kimi provider for title generation
             $claudePath = config('services.claude.path', '/usr/bin/claude');
             $escapedPrompt = escapeshellarg($prompt);
 
-            // Build command with GLM environment variables
-            $glmProvider = \App\Models\AiProvider::where('name', 'glm')->first();
+            // Build command with Kimi environment variables
+            $kimiProvider = \App\Models\AiProvider::where('name', 'kimi')->first();
             $envVars = [
                 'HOME' => getenv('HOME') ?: '/home/ploi',
                 'PATH' => '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
             ];
 
-            if ($glmProvider) {
-                foreach ($glmProvider->getEnvironmentVariables() as $key => $value) {
+            if ($kimiProvider) {
+                foreach ($kimiProvider->getEnvironmentVariables() as $key => $value) {
                     $envVars[$key] = $value;
                 }
             }

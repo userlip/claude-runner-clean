@@ -22,19 +22,11 @@ class AiProviderSettings extends Page
 
     protected string $view = 'filament.pages.ai-provider-settings';
 
-    public string $glmApiKey = '';
-
-    public string $minimaxApiKey = '';
-
     public string $kimiApiKey = '';
 
     public ?string $codexModel = null;
 
     public ?string $kimiModel = null;
-
-    public ?int $glmQuotaLimit = null;
-
-    public ?int $minimaxQuotaLimit = null;
 
     public ?int $kimiQuotaLimit = null;
 
@@ -46,29 +38,17 @@ class AiProviderSettings extends Page
 
     public ?int $codexContextWindow = null;
 
-    public ?int $glmContextWindow = null;
-
-    public ?int $minimaxContextWindow = null;
-
     public ?int $kimiContextWindow = null;
 
     public function mount(): void
     {
         $codex = $this->getCodexProvider();
-        $glm = $this->getGlmProvider();
-        $minimax = $this->getMinimaxProvider();
         $kimi = $this->getKimiProvider();
         $claude = $this->getClaudeProvider();
 
         $this->codexModel = $codex?->model;
         $this->codexQuotaLimit = $codex?->quota_limit;
         $this->codexContextWindow = $codex?->context_window;
-        $this->glmApiKey = $glm?->api_key ?? '';
-        $this->glmQuotaLimit = $glm?->quota_limit;
-        $this->glmContextWindow = $glm?->context_window;
-        $this->minimaxApiKey = $minimax?->api_key ?? '';
-        $this->minimaxQuotaLimit = $minimax?->quota_limit;
-        $this->minimaxContextWindow = $minimax?->context_window;
         $this->kimiApiKey = $kimi?->api_key ?? '';
         $this->kimiModel = $kimi?->model;
         $this->kimiQuotaLimit = $kimi?->quota_limit;
@@ -85,16 +65,6 @@ class AiProviderSettings extends Page
     public function getCodexProvider(): ?AiProvider
     {
         return AiProvider::where('name', 'codex')->first();
-    }
-
-    public function getGlmProvider(): ?AiProvider
-    {
-        return AiProvider::where('name', 'glm')->first();
-    }
-
-    public function getMinimaxProvider(): ?AiProvider
-    {
-        return AiProvider::where('name', 'minimax')->first();
     }
 
     public function getKimiProvider(): ?AiProvider
@@ -134,44 +104,6 @@ class AiProviderSettings extends Page
 
         Notification::make()
             ->title('Codex settings saved')
-            ->success()
-            ->send();
-    }
-
-    public function saveGlmSettings(): void
-    {
-        $glm = $this->getGlmProvider();
-
-        if ($glm) {
-            $glm->update([
-                'api_key' => $this->glmApiKey ?: null,
-                'quota_limit' => $this->glmQuotaLimit,
-                'context_window' => $this->glmContextWindow,
-                'is_active' => ! empty($this->glmApiKey),
-            ]);
-        }
-
-        Notification::make()
-            ->title('GLM settings saved')
-            ->success()
-            ->send();
-    }
-
-    public function saveMinimaxSettings(): void
-    {
-        $minimax = $this->getMinimaxProvider();
-
-        if ($minimax) {
-            $minimax->update([
-                'api_key' => $this->minimaxApiKey ?: null,
-                'quota_limit' => $this->minimaxQuotaLimit,
-                'context_window' => $this->minimaxContextWindow,
-                'is_active' => ! empty($this->minimaxApiKey),
-            ]);
-        }
-
-        Notification::make()
-            ->title('Minimax settings saved')
             ->success()
             ->send();
     }

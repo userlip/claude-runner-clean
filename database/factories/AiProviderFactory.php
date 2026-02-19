@@ -45,21 +45,6 @@ class AiProviderFactory extends Factory
         ]);
     }
 
-    public function glm(): static
-    {
-        return $this->state([
-            'name' => 'glm',
-            'display_name' => 'GLM (z.ai)',
-            'base_url' => 'https://api.z.ai/api/anthropic',
-            'api_key' => 'test-api-key',
-            'model' => 'GLM-5',
-            'is_default' => false,
-            'quota_period' => QuotaPeriod::FiveHour,
-            'quota_limit' => 50000000,
-            'quota_resets_at' => now()->addHours(5),
-        ]);
-    }
-
     public function codex(): static
     {
         return $this->state([
@@ -71,21 +56,6 @@ class AiProviderFactory extends Factory
             'is_default' => false,
             'quota_period' => QuotaPeriod::Monthly,
             'quota_limit' => 10000000,
-            'quota_resets_at' => now()->startOfMonth()->addMonth(),
-        ]);
-    }
-
-    public function minimax(): static
-    {
-        return $this->state([
-            'name' => 'minimax',
-            'display_name' => 'Minimax',
-            'base_url' => 'https://api.minimax.io/anthropic',
-            'api_key' => 'test-api-key',
-            'model' => 'MiniMax-M2.5',
-            'is_default' => false,
-            'quota_period' => QuotaPeriod::Monthly,
-            'quota_limit' => 50000000,
             'quota_resets_at' => now()->startOfMonth()->addMonth(),
         ]);
     }
