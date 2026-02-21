@@ -378,68 +378,34 @@ class RunClaudeMessageJob implements ShouldQueue
             }
 
             if ($resultReceived) {
-                // Check if subagent tools were used - if so, don't mark as completed yet
-                $subagentToolNames = ['Task', 'TeamCreate'];
-                $hasSubagentTools = collect($toolCalls)->contains(
-                    fn ($tc) => in_array($tc['name'] ?? '', $subagentToolNames)
+                $this->task->markAsCompleted();
+                Log::debug('Task marked as completed (result received)', ['task_id' => $this->task->id]);
+
+                // Best-effort: if the agent opened a PR, store it so we can poll CI/reviews later.
+                try {
+                    app(TaskPullRequestDetectionService::class)->detectAndStore($this->task);
+                } catch (\Throwable $e) {
+                    Log::debug('PR detection failed (ignored)', [
+                        'task_id' => $this->task->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+
+                $this->sendPushNotification(
+                    'Task Completed',
+                    $this->getNotificationBody($assistantMessage),
+                    true
                 );
 
-                if ($hasSubagentTools) {
-                    // Subagents were spawned - they're still running in the session
-                    // Don't mark as completed, schedule a follow-up check instead
-                    Log::info('Subagent tools detected - deferring completion', [
-                        'task_id' => $this->task->id,
-                        'subagent_tools' => collect($toolCalls)
-                            ->filter(fn ($tc) => in_array($tc['name'] ?? '', $subagentToolNames))
-                            ->pluck('name')
-                            ->toArray(),
-                    ]);
-
-                    $this->task->update(['has_active_subagents' => true]);
-
-                    $this->sendPushNotification(
-                        'Subagents Working',
-                        'Claude launched subagents — waiting for them to finish.',
-                        true
-                    );
-
-                    // Schedule a status check after 30 seconds
-                    CheckSubagentStatusJob::dispatch($this->task)
-                        ->delay(now()->addSeconds(30));
-
-                    // Process any queued messages (they'll be sent when the status check runs)
-                    $this->processQueuedMessages();
-                } else {
-                    // Normal completion - no subagents
-                    $this->task->markAsCompleted();
-                    Log::debug('Task marked as completed (result received)', ['task_id' => $this->task->id]);
-
-                    // Best-effort: if the agent opened a PR, store it so we can poll CI/reviews later.
-                    try {
-                        app(TaskPullRequestDetectionService::class)->detectAndStore($this->task);
-                    } catch (\Throwable $e) {
-                        Log::debug('PR detection failed (ignored)', [
-                            'task_id' => $this->task->id,
-                            'error' => $e->getMessage(),
-                        ]);
-                    }
-
-                    $this->sendPushNotification(
-                        'Task Completed',
-                        $this->getNotificationBody($assistantMessage),
-                        true
-                    );
-
-                    // Auto-compact if context is low
-                    $this->task->refresh();
-                    if ($this->task->needs_compact) {
-                        Log::info('Auto-dispatching compact for low context', ['task_id' => $this->task->id]);
-                        $this->dispatchCompact();
-                    }
-
-                    // Process any queued messages
-                    $this->processQueuedMessages();
+                // Auto-compact if context is low
+                $this->task->refresh();
+                if ($this->task->needs_compact) {
+                    Log::info('Auto-dispatching compact for low context', ['task_id' => $this->task->id]);
+                    $this->dispatchCompact();
                 }
+
+                // Process any queued messages
+                $this->processQueuedMessages();
             } else {
                 // No result received - process exited unexpectedly or stream timed out
                 Log::warning('Claude process ended without result event', [

@@ -204,10 +204,10 @@ class TaskChat extends Component
         // Refresh task status
         $this->task->refresh();
 
-        // Only stop waiting when task is no longer running AND no active subagents
+        // Only stop waiting when task is no longer running
         // (message count check is unreliable since empty assistant message is created immediately)
         // Also stop if waiting for input (AskUserQuestion detected)
-        if ($this->waitingForResponse && ! $this->task->isRunning() && ! $this->task->has_active_subagents) {
+        if ($this->waitingForResponse && ! $this->task->isRunning()) {
             $this->waitingForResponse = false;
             $this->lastMessageCount = $this->task->messages()->count();
         }
