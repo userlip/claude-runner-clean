@@ -4,15 +4,18 @@ namespace App\Livewire;
 
 use App\Enums\MessageRole;
 use App\Enums\MessageStatus;
+use App\Jobs\RunRalphJob;
 use App\Models\AiProvider;
 use App\Models\Message;
 use App\Models\RepositoryEnvConfig;
 use App\Models\Task;
+use App\Services\RalphWorkspaceService;
 use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Process;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -578,6 +581,196 @@ class TaskChat extends Component
     {
         $this->prompt = $this->buildPrdToIssuesPrompt('/prd-to-issues');
         $this->sendMessage();
+    }
+
+    /**
+     * Start the Ralph loop by importing PRD slice issues from GitHub and dispatching RunRalphJob.
+     * Scans recent messages to find the parent PRD issue number automatically.
+     */
+    public function startRalphLoop(): void
+    {
+        if (! $this->task->repository) {
+            Notification::make()
+                ->title('Task must be linked to a repository')
+                ->danger()
+                ->send();
+
+            return;
+        }
+
+        if ($this->task->ralph_enabled) {
+            Notification::make()
+                ->title('Ralph loop is already running')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        // Find PRD parent issue number from recent messages
+        $prdIssueNumber = $this->detectPrdIssueNumber();
+
+        if (! $prdIssueNumber) {
+            Notification::make()
+                ->title('Could not detect PRD issue number')
+                ->body('Use PRD → Issues first to create slice issues, then start Ralph.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        $repo = $this->task->repository;
+        $repoFullName = $repo->full_name;
+
+        // Fetch child issues with prd-slice label
+        $issuesResult = Process::run(
+            "gh issue list --repo {$repoFullName} --label prd-slice --state open --json number,title,body --limit 100"
+        );
+
+        if (! $issuesResult->successful()) {
+            Notification::make()
+                ->title('Failed to fetch issues from GitHub')
+                ->body($issuesResult->errorOutput())
+                ->danger()
+                ->send();
+
+            return;
+        }
+
+        $issues = json_decode($issuesResult->output(), true) ?? [];
+
+        // Filter to only issues that reference the parent PRD
+        $parentRef = "#{$prdIssueNumber}";
+        $childIssues = collect($issues)->filter(function ($issue) use ($parentRef) {
+            return str_contains($issue['body'] ?? '', $parentRef);
+        })->values();
+
+        if ($childIssues->isEmpty()) {
+            Notification::make()
+                ->title('No PRD slice issues found')
+                ->body("No open issues with label 'prd-slice' reference #{$prdIssueNumber}")
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        // Build user stories from issues
+        $userStories = $childIssues->map(function ($issue, $index) {
+            $criteria = [];
+            if (preg_match_all('/- \[ \] (.+)/m', $issue['body'] ?? '', $matches)) {
+                $criteria = $matches[1];
+            }
+
+            $blockedBy = [];
+            $blockedBySection = $this->extractIssueSection($issue['body'] ?? '', 'Blocked by');
+            if (preg_match_all('/#(\d+)/', $blockedBySection, $matches)) {
+                $blockedBy = $matches[1];
+            }
+
+            return [
+                'id' => 'STORY-'.($index + 1),
+                'title' => $issue['title'],
+                'githubIssue' => $issue['number'],
+                'priority' => $index + 1,
+                'passes' => false,
+                'acceptanceCriteria' => $criteria,
+                'blockedBy' => $blockedBy,
+            ];
+        })->toArray();
+
+        // Initialize Ralph workspace
+        $branchName = "ralph/{$this->task->uuid}";
+        $verificationCommand = 'php artisan test';
+
+        $ralph = app(RalphWorkspaceService::class);
+        $ralph->initialize($this->task, [
+            'branch_name' => $branchName,
+            'verification_command' => $verificationCommand,
+            'stories' => $userStories,
+        ]);
+
+        // Write full prd.json with GitHub metadata
+        $ralph->updatePrd($this->task, [
+            'branchName' => $branchName,
+            'verificationCommand' => $verificationCommand,
+            'parentIssue' => $prdIssueNumber,
+            'userStories' => $userStories,
+        ]);
+
+        // Enable Ralph on the task
+        $this->task->update([
+            'ralph_enabled' => true,
+            'ralph_max_iterations' => 25,
+            'ralph_branch_name' => $branchName,
+            'ralph_iteration' => 1,
+            'ralph_gutter_count' => 0,
+        ]);
+
+        // Dispatch the first iteration
+        RunRalphJob::dispatch($this->task);
+
+        Notification::make()
+            ->title("Ralph loop started with {$childIssues->count()} stories from PRD #{$prdIssueNumber}")
+            ->success()
+            ->send();
+    }
+
+    /**
+     * Detect the PRD parent issue number from recent chat messages.
+     * Looks for patterns like "PRD #572" or "PRD issue #572" in assistant messages.
+     */
+    protected function detectPrdIssueNumber(): ?int
+    {
+        $recentMessages = $this->task->messages()
+            ->where('role', MessageRole::Assistant)
+            ->latest()
+            ->take(10)
+            ->pluck('content');
+
+        foreach ($recentMessages as $content) {
+            if (! $content) {
+                continue;
+            }
+
+            // Match "PRD #123" or "PRD issue #123" or "Parent PRD\n#123"
+            if (preg_match('/PRD\s*(?:issue\s*)?#(\d+)/i', $content, $matches)) {
+                return (int) $matches[1];
+            }
+        }
+
+        // Also check user messages for /prd-to-issues <number>
+        $userMessages = $this->task->messages()
+            ->where('role', MessageRole::User)
+            ->latest()
+            ->take(10)
+            ->pluck('content');
+
+        foreach ($userMessages as $content) {
+            if (! $content) {
+                continue;
+            }
+
+            if (preg_match('/prd-to-issues\s+(\d+)/i', $content, $matches)) {
+                return (int) $matches[1];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Extract a section from a GitHub issue body by heading.
+     */
+    protected function extractIssueSection(string $body, string $heading): string
+    {
+        $pattern = '/## '.preg_quote($heading, '/').'\s*\n(.*?)(?=\n## |\z)/s';
+        if (preg_match($pattern, $body, $matches)) {
+            return trim($matches[1]);
+        }
+
+        return '';
     }
 
     /**

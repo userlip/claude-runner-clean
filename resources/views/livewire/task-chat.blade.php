@@ -251,6 +251,22 @@
                                 <span wire:loading.remove wire:target="triggerPrdToIssues">🎯 PRD → Issues</span>
                                 <span wire:loading wire:target="triggerPrdToIssues">🎯 ...</span>
                             </button>
+                            @if(!$task->ralph_enabled)
+                                <button
+                                    wire:click="startRalphLoop"
+                                    wire:loading.attr="disabled"
+                                    wire:target="startRalphLoop"
+                                    title="Import PRD slices and start Ralph autonomous loop"
+                                    class="chat-rename-btn"
+                                >
+                                    <span wire:loading.remove wire:target="startRalphLoop">🔁 Start Ralph</span>
+                                    <span wire:loading wire:target="startRalphLoop">🔁 ...</span>
+                                </button>
+                            @else
+                                <span class="chat-rename-btn" style="opacity: 0.7; cursor: default;" title="Ralph loop is active">
+                                    🔁 Ralph Active
+                                </span>
+                            @endif
                         @endif
                     @endif
                 </div>
