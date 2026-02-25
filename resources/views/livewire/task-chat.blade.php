@@ -240,6 +240,18 @@
                             <span wire:loading.remove wire:target="generateTitle">✨ Rename</span>
                             <span wire:loading wire:target="generateTitle">✨ ...</span>
                         </button>
+                        @if($task->repository)
+                            <button
+                                wire:click="triggerPrdToIssues"
+                                wire:loading.attr="disabled"
+                                wire:target="triggerPrdToIssues"
+                                title="Break PRD into GitHub Issues"
+                                class="chat-rename-btn"
+                            >
+                                <span wire:loading.remove wire:target="triggerPrdToIssues">🎯 PRD → Issues</span>
+                                <span wire:loading wire:target="triggerPrdToIssues">🎯 ...</span>
+                            </button>
+                        @endif
                     @endif
                 </div>
                 <div class="chat-header-meta">

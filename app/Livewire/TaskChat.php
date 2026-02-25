@@ -459,6 +459,13 @@ class TaskChat extends Component
             return false; // Let it pass through to Claude
         }
 
+        // /prd-to-issues <number> - prepend skill prompt and send to Claude
+        if (str_starts_with($command, '/prd-to-issues')) {
+            $this->prompt = $this->buildPrdToIssuesPrompt($prompt);
+
+            return false; // Let it pass through to Claude with the modified prompt
+        }
+
         return false;
     }
 
@@ -515,6 +522,7 @@ class TaskChat extends Component
         $content .= "| `/usage` | Show token usage and cost for this session |\n";
         $content .= "| `/context` | Show context window usage |\n";
         $content .= "| `/compact` | Compact conversation to reduce context usage |\n";
+        $content .= "| `/prd-to-issues <number>` | Break a PRD issue into vertical slice GitHub issues |\n";
         $content .= "| `/clear` | Clear all messages in this conversation |\n";
         $content .= "| `/help`, `/skills` | Show this help message |\n";
 
@@ -560,6 +568,65 @@ class TaskChat extends Component
             'role' => MessageRole::Assistant,
             'content' => $content,
         ]);
+    }
+
+    /**
+     * Trigger the PRD-to-Issues workflow by sending the skill prompt to Claude.
+     * Called from the header button.
+     */
+    public function triggerPrdToIssues(): void
+    {
+        $this->prompt = $this->buildPrdToIssuesPrompt('/prd-to-issues');
+        $this->sendMessage();
+    }
+
+    /**
+     * Build the prompt for the PRD-to-Issues skill, prepending the skill instructions.
+     */
+    protected function buildPrdToIssuesPrompt(string $userInput): string
+    {
+        // Extract issue number if provided (e.g., "/prd-to-issues 572")
+        $parts = preg_split('/\s+/', trim($userInput), 2);
+        $issueNumber = $parts[1] ?? '';
+
+        $skillPrompt = <<<'SKILL'
+You are running the PRD-to-Issues skill. Break the PRD into independently-grabbable GitHub issues using vertical slices (tracer bullets).
+
+## Process
+1. Fetch the PRD issue with `gh issue view <number>` (with comments)
+2. Explore the codebase to understand the current state
+3. Break the PRD into thin vertical slices that cut through ALL layers end-to-end (schema, API, UI, tests)
+4. Classify each slice as HITL (needs human) or AFK (autonomous). Prefer AFK.
+5. Present the breakdown and quiz the user on granularity, dependencies, and HITL/AFK classification
+6. Once approved, create GitHub issues in dependency order using `gh issue create`
+7. Label all issues with `ralph` and `prd-slice` labels
+8. After creating issues, generate a prd.json file in the workspace's .ralph/ directory
+
+Each issue should use this template:
+## Parent PRD
+#<prd-issue-number>
+
+## What to build
+End-to-end behavior description, not layer-by-layer.
+
+## Acceptance criteria
+- [ ] Criterion 1
+- [ ] Criterion 2
+
+## Blocked by
+- Blocked by #<issue> (or "None - can start immediately")
+
+## User stories addressed
+- User story N from the parent PRD
+
+IMPORTANT: Do NOT close or modify the parent PRD issue.
+SKILL;
+
+        if ($issueNumber) {
+            return $skillPrompt."\n\n---\n\nBreak down PRD issue #{$issueNumber} into vertical slice issues.";
+        }
+
+        return $skillPrompt."\n\n---\n\nAsk me for the PRD issue number to break down.";
     }
 
     public function getModePlaceholder(): string
