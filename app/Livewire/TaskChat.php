@@ -339,6 +339,8 @@ class TaskChat extends Component
     #[Computed]
     public function ralphStatus(): ?array
     {
+        $this->task->refresh();
+
         if (! $this->task->ralph_enabled) {
             return null;
         }
@@ -352,18 +354,27 @@ class TaskChat extends Component
                 ->count();
             $total = count($state->prd['userStories'] ?? []);
 
+            // Determine Ralph-specific status from actual state, not task status
+            if ($total > 0 && $passed >= $total) {
+                $ralphStatus = 'completed';
+            } elseif ($this->task->ralph_stopped_reason) {
+                $ralphStatus = 'failed';
+            } else {
+                $ralphStatus = 'running';
+            }
+
             return [
                 'iteration' => $this->task->ralph_iteration,
                 'stories_passed' => $passed,
                 'stories_total' => $total,
-                'status' => $this->task->status->value,
+                'status' => $ralphStatus,
             ];
         } catch (\Exception) {
             return [
                 'iteration' => $this->task->ralph_iteration,
                 'stories_passed' => 0,
                 'stories_total' => 0,
-                'status' => 'error',
+                'status' => 'running',
             ];
         }
     }
@@ -626,6 +637,9 @@ class TaskChat extends Component
      */
     public function startRalphLoop(): void
     {
+        // Refresh from DB to prevent duplicate starts from rapid clicks
+        $this->task->refresh();
+
         if (! $this->task->repository) {
             Notification::make()
                 ->title('Task must be linked to a repository')

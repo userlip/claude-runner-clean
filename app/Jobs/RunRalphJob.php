@@ -380,6 +380,7 @@ class RunRalphJob implements ShouldQueue
     {
         $this->task->update([
             'status' => TaskStatus::Failed,
+            'ralph_stopped_reason' => $reason,
         ]);
 
         $reasonLabels = [
