@@ -331,6 +331,43 @@ class TaskChat extends Component
         return 'bg-green-500';
     }
 
+    /**
+     * Get the current Ralph loop status for display in the chat header.
+     *
+     * @return array{iteration: int, stories_passed: int, stories_total: int, status: string}|null
+     */
+    #[Computed]
+    public function ralphStatus(): ?array
+    {
+        if (! $this->task->ralph_enabled) {
+            return null;
+        }
+
+        try {
+            $ralph = app(RalphWorkspaceService::class);
+            $state = $ralph->readState($this->task);
+
+            $passed = collect($state->prd['userStories'] ?? [])
+                ->filter(fn ($s) => $s['passes'] ?? false)
+                ->count();
+            $total = count($state->prd['userStories'] ?? []);
+
+            return [
+                'iteration' => $this->task->ralph_iteration,
+                'stories_passed' => $passed,
+                'stories_total' => $total,
+                'status' => $this->task->status->value,
+            ];
+        } catch (\Exception) {
+            return [
+                'iteration' => $this->task->ralph_iteration,
+                'stories_passed' => 0,
+                'stories_total' => 0,
+                'status' => 'error',
+            ];
+        }
+    }
+
     public function setProvider(int $providerId): void
     {
         $provider = AiProvider::where('is_active', true)->find($providerId);

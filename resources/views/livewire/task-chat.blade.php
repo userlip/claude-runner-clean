@@ -263,8 +263,23 @@
                                     <span wire:loading wire:target="startRalphLoop">🔁 ...</span>
                                 </button>
                             @else
-                                <span class="chat-rename-btn" style="opacity: 0.7; cursor: default;" title="Ralph loop is active">
-                                    🔁 Ralph Active
+                                @php $ralph = $this->ralphStatus; @endphp
+                                <span
+                                    class="chat-rename-btn chat-ralph-status"
+                                    wire:poll.10s
+                                    title="Ralph loop: Iteration {{ $ralph['iteration'] ?? '?' }} | {{ $ralph['stories_passed'] ?? 0 }}/{{ $ralph['stories_total'] ?? 0 }} stories passed"
+                                >
+                                    @if(($ralph['status'] ?? '') === 'completed')
+                                        ✅ Ralph Done ({{ $ralph['stories_passed'] ?? 0 }}/{{ $ralph['stories_total'] ?? 0 }})
+                                    @elseif(($ralph['status'] ?? '') === 'failed')
+                                        ❌ Ralph Failed ({{ $ralph['stories_passed'] ?? 0 }}/{{ $ralph['stories_total'] ?? 0 }})
+                                    @else
+                                        <svg class="animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" style="width: 0.75rem; height: 0.75rem; display: inline;">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        Ralph #{{ $ralph['iteration'] ?? '?' }} ({{ $ralph['stories_passed'] ?? 0 }}/{{ $ralph['stories_total'] ?? 0 }})
+                                    @endif
                                 </span>
                             @endif
                         @endif

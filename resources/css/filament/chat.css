@@ -1512,6 +1512,25 @@
     background: linear-gradient(135deg, rgb(129 140 248), rgb(192 132 252));
 }
 
+.chat-ralph-status {
+    cursor: default;
+    background: linear-gradient(135deg, rgb(16 185 129), rgb(5 150 105));
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.chat-ralph-status:hover {
+    background: linear-gradient(135deg, rgb(16 185 129), rgb(5 150 105));
+    transform: none;
+    box-shadow: none;
+}
+
+.dark .chat-ralph-status,
+.dark .chat-ralph-status:hover {
+    background: linear-gradient(135deg, rgb(16 185 129), rgb(5 150 105));
+}
+
 .chat-provider-selector {
     display: flex;
     gap: 0.5rem;
