@@ -6,6 +6,37 @@
                 Progress persists via files instead of chat history.
             </p>
 
+            <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-3">
+                <h4 class="font-medium text-gray-900 dark:text-white">Import from GitHub</h4>
+                <p class="text-sm text-gray-600 dark:text-gray-400">
+                    Import child issues labeled <code class="text-xs bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">prd-slice</code> from a parent PRD issue.
+                </p>
+                <div class="flex gap-3 items-end">
+                    <div class="grow">
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">PRD Issue Number</label>
+                        <x-filament::input.wrapper>
+                            <x-filament::input
+                                wire:model="importIssueNumber"
+                                type="number"
+                                placeholder="123"
+                            />
+                        </x-filament::input.wrapper>
+                    </div>
+                    <x-filament::button wire:click="importFromGitHub" color="gray">
+                        Import from GitHub
+                    </x-filament::button>
+                </div>
+            </div>
+
+            <div class="relative">
+                <div class="absolute inset-0 flex items-center" aria-hidden="true">
+                    <div class="w-full border-t border-gray-200 dark:border-gray-700"></div>
+                </div>
+                <div class="relative flex justify-center">
+                    <span class="bg-white dark:bg-gray-900 px-3 text-sm text-gray-500 dark:text-gray-400">or configure manually</span>
+                </div>
+            </div>
+
             <form wire:submit="enableRalph" class="space-y-4">
                 <div class="grid grid-cols-2 gap-4">
                     <div>

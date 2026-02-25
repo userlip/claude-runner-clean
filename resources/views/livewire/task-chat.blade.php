@@ -1707,10 +1707,27 @@
                         </div>
                     </template>
 
+                    {{-- Mode selector - only visible on first message --}}
+                    @if($this->totalMessageCount === 0)
+                    <div class="chat-mode-selector">
+                        <select
+                            wire:model="chatMode"
+                            class="chat-mode-select"
+                        >
+                            <option value="prd">Write PRD</option>
+                            <option value="brainstorm">Brainstorm</option>
+                            <option value="debug">Debug</option>
+                            <option value="code-review">Code Review</option>
+                            <option value="refactor">Refactor</option>
+                            <option value="normal">Normal Chat</option>
+                        </select>
+                    </div>
+                    @endif
+
                     <textarea
                         x-ref="promptInput"
                         x-model="prompt"
-                        placeholder="Type a message..."
+                        placeholder="{{ $this->totalMessageCount === 0 ? $this->getModePlaceholder() : 'Type a message...' }}"
                         rows="1"
                         class="chat-textarea"
                         @paste="handlePaste($event)"

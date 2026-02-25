@@ -151,36 +151,127 @@ class RunRalphJob implements ShouldQueue
     /**
      * Execute the Claude AI to implement a user story.
      *
-     * NOTE: This is currently a simplified stub implementation. The production version
-     * should integrate with actual Claude CLI execution from RunClaudeMessageJob
-     * with fresh context handling for each story implementation.
-     *
      * @param  \App\DataObjects\RalphState  $state  The current Ralph state
      * @param  array<string, mixed>  $story  The user story to implement
      * @return array{success: bool, learnings?: string, tokens_in?: int, tokens_out?: int, duration?: int, error?: string}
-     *
-     * @todo Integrate with actual Claude CLI execution from RunClaudeMessageJob
      */
     protected function executeClaude(RalphState $state, array $story): array
     {
-        // This is a simplified version - in production, use the actual Claude execution
-        // from RunClaudeMessageJob with fresh context
-        //
-        // TODO: Implement actual Claude CLI execution with:
-        // - Fresh context for each story
-        // - Token tracking (tokens_in, tokens_out)
-        // - Duration measurement
-        // - Error handling
-        // - Learning extraction
-
         $prompt = $this->buildPrompt($state, $story);
+        $command = $this->buildRalphCommand($prompt);
+        $startTime = microtime(true);
 
-        // For now, return mock result
-        // TODO: Integrate with actual Claude CLI execution
+        $process = Process::path($this->task->workspace_path)
+            ->timeout(3600)
+            ->run($command);
+
+        $duration = (int) (microtime(true) - $startTime);
+        $output = $process->output();
+
+        // Parse stream-json output for token usage
+        $tokensIn = 0;
+        $tokensOut = 0;
+        $learnings = '';
+
+        foreach (explode("\n", $output) as $line) {
+            $line = trim($line);
+            if (empty($line)) {
+                continue;
+            }
+
+            $json = json_decode($line, true);
+            if (! $json) {
+                continue;
+            }
+
+            // Result message contains final stats
+            if (($json['type'] ?? '') === 'result') {
+                $tokensIn = $json['usage']['input_tokens'] ?? $tokensIn;
+                $tokensOut = $json['usage']['output_tokens'] ?? $tokensOut;
+            }
+
+            // Extract text content for learnings
+            if (($json['type'] ?? '') === 'assistant' && isset($json['message']['content'])) {
+                foreach ($json['message']['content'] as $block) {
+                    if (($block['type'] ?? '') === 'text') {
+                        $learnings .= $block['text']."\n";
+                    }
+                }
+            }
+        }
+
+        if (! $process->successful()) {
+            Log::error('Ralph Claude execution failed', [
+                'task_id' => $this->task->id,
+                'iteration' => $this->iteration,
+                'exit_code' => $process->exitCode(),
+                'error' => $process->errorOutput(),
+            ]);
+
+            return [
+                'success' => false,
+                'error' => $process->errorOutput() ?: 'Claude process failed with exit code '.$process->exitCode(),
+                'tokens_in' => $tokensIn,
+                'tokens_out' => $tokensOut,
+                'duration' => $duration,
+            ];
+        }
+
         return [
             'success' => true,
-            'learnings' => "## {$story['id']}\n- Implemented story\n- Files modified\n",
+            'learnings' => $learnings,
+            'tokens_in' => $tokensIn,
+            'tokens_out' => $tokensOut,
+            'duration' => $duration,
         ];
+    }
+
+    /**
+     * Build the CLI command to invoke Claude for a Ralph iteration.
+     *
+     * @param  string  $prompt  The prompt to send to Claude
+     * @return string The full shell command
+     */
+    protected function buildRalphCommand(string $prompt): string
+    {
+        $sessionId = escapeshellarg((string) str()->uuid());
+        $escapedPrompt = escapeshellarg($prompt);
+
+        $claudeCmd = "/usr/bin/claude -p {$escapedPrompt} --output-format stream-json --verbose --dangerously-skip-permissions --session-id {$sessionId} --max-turns 50";
+
+        // Add MCP servers (Playwright for browser automation)
+        $mcpServers = [
+            'playwright' => [
+                'command' => 'npx',
+                'args' => ['@playwright/mcp@latest'],
+            ],
+        ];
+        $mcpConfig = json_encode(['mcpServers' => $mcpServers]);
+        $claudeCmd .= ' --mcp-config '.escapeshellarg($mcpConfig);
+
+        // Build isolated environment
+        $envVars = [
+            'HOME' => getenv('HOME') ?: '/home/ploi',
+            'PATH' => '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
+            'USER' => 'ploi',
+            'SHELL' => '/bin/bash',
+            'TERM' => 'xterm-256color',
+        ];
+
+        // Add provider API keys
+        $provider = $this->task->aiProvider;
+        if ($provider) {
+            foreach ($provider->getEnvironmentVariables() as $key => $value) {
+                $envVars[$key] = $value;
+            }
+        }
+
+        $envCmd = 'env -i';
+        foreach ($envVars as $key => $value) {
+            $envCmd .= ' '.escapeshellarg("{$key}={$value}");
+        }
+
+        return "{$envCmd} {$claudeCmd}";
     }
 
     /**
