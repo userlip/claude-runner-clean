@@ -104,9 +104,6 @@ class SessionInfoSidebar extends Component
     #[Computed]
     public function metadata(): array
     {
-        // Refresh task to get latest metadata on each render
-        $this->task->refresh();
-
         return $this->task->session_metadata ?? [];
     }
 

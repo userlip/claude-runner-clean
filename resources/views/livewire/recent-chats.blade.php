@@ -1,4 +1,4 @@
-<div wire:poll.5s class="recent-chats-sidebar">
+<div wire:poll.15s.visible class="recent-chats-sidebar">
     <div class="recent-chats-header">
         <span>Recent Chats</span>
         <button

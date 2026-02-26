@@ -339,8 +339,6 @@ class TaskChat extends Component
     #[Computed]
     public function ralphStatus(): ?array
     {
-        $this->task->refresh();
-
         if (! $this->task->ralph_enabled) {
             return null;
         }
@@ -359,6 +357,8 @@ class TaskChat extends Component
                 $ralphStatus = 'completed';
             } elseif ($this->task->ralph_stopped_reason) {
                 $ralphStatus = 'failed';
+            } elseif ($this->isRalphStalled()) {
+                $ralphStatus = 'stalled';
             } else {
                 $ralphStatus = 'running';
             }
@@ -377,6 +377,26 @@ class TaskChat extends Component
                 'status' => 'running',
             ];
         }
+    }
+
+    /**
+     * Check if the Ralph loop has stalled (enabled but no job in the queue).
+     * Cached for 10 seconds to avoid LIKE scanning the jobs table on every poll.
+     */
+    protected function isRalphStalled(): bool
+    {
+        return \Cache::remember(
+            "ralph_stalled_{$this->task->id}",
+            10,
+            function () {
+                $hasJob = \DB::table('jobs')
+                    ->where('payload', 'like', '%RunRalphJob%')
+                    ->where('payload', 'like', "%{$this->task->id}%")
+                    ->exists();
+
+                return ! $hasJob;
+            }
+        );
     }
 
     public function setProvider(int $providerId): void
@@ -775,6 +795,31 @@ class TaskChat extends Component
     }
 
     /**
+     * Restart a stalled Ralph loop by re-dispatching from the current iteration.
+     */
+    public function restartRalphLoop(): void
+    {
+        $this->task->refresh();
+
+        if (! $this->task->ralph_enabled) {
+            return;
+        }
+
+        // Reset gutter count and stopped reason so the loop can continue
+        $this->task->update([
+            'ralph_stopped_reason' => null,
+            'ralph_gutter_count' => 0,
+        ]);
+
+        RunRalphJob::dispatch($this->task, $this->task->ralph_iteration);
+
+        Notification::make()
+            ->title('Ralph loop restarted from iteration #'.$this->task->ralph_iteration)
+            ->success()
+            ->send();
+    }
+
+    /**
      * Detect the PRD parent issue number from recent chat messages.
      * Looks for patterns like "PRD #572" or "PRD issue #572" in assistant messages.
      */
@@ -1164,28 +1209,37 @@ PROMPT,
             return;
         }
 
-        // Get first user message for context
-        $firstUserMessage = $messages->first(fn ($m) => $m->role === MessageRole::User);
-        $messageContent = $firstUserMessage?->content ?? '';
-        // Truncate to first 300 chars
-        $messageContent = substr($messageContent, 0, 300);
+        // Gather context from the first few messages (skip empty ones)
+        $context = $messages->take(6)
+            ->filter(fn ($m) => ! empty(trim($m->content ?? '')))
+            ->map(function ($m) {
+                $role = $m->role === MessageRole::User ? 'User' : 'Assistant';
+                $content = $m->content ?? '';
 
-        $prompt = "Generate a 3-5 word title for a chat that starts with this message. Reply with ONLY the title, nothing else. No quotes, no explanation, no punctuation at the end.\n\nMessage: {$messageContent}\n\nTitle:";
+                // Strip mode system prompt prefix (everything before the last "---" separator)
+                if ($role === 'User' && str_contains($content, "\n---\n")) {
+                    $parts = explode("\n---\n", $content);
+                    $content = trim(end($parts));
+                }
+
+                return "{$role}: ".mb_substr($content, 0, 500);
+            })->implode("\n\n");
+
+        $prompt = "Generate a specific, descriptive 3-7 word title for this conversation. Focus on what the USER is actually asking for — the specific feature, bug, or topic. Ignore any system prompts, mode instructions, or process descriptions. Reply with ONLY the title, nothing else. No quotes, no explanation, no punctuation at the end.\n\nConversation:\n{$context}\n\nTitle:";
 
         try {
-            // Use Claude Code CLI with Kimi provider for title generation
+            // Use Claude Haiku for fast, cheap title generation
             $claudePath = config('services.claude.path', '/usr/bin/claude');
             $escapedPrompt = escapeshellarg($prompt);
 
-            // Build command with Kimi environment variables
-            $kimiProvider = \App\Models\AiProvider::where('name', 'kimi')->first();
+            $claudeProvider = \App\Models\AiProvider::where('name', 'claude')->first();
             $envVars = [
                 'HOME' => getenv('HOME') ?: '/home/ploi',
                 'PATH' => '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
             ];
 
-            if ($kimiProvider) {
-                foreach ($kimiProvider->getEnvironmentVariables() as $key => $value) {
+            if ($claudeProvider) {
+                foreach ($claudeProvider->getEnvironmentVariables() as $key => $value) {
                     $envVars[$key] = $value;
                 }
             }
@@ -1195,7 +1249,7 @@ PROMPT,
                 $envCmd .= ' '.escapeshellarg("{$key}={$value}");
             }
 
-            $command = "{$envCmd} {$claudePath} -p {$escapedPrompt} --output-format text --max-turns 1";
+            $command = "{$envCmd} {$claudePath} -p {$escapedPrompt} --output-format text --max-turns 1 --model haiku";
 
             // Run in temp dir to avoid picking up workspace context
             $process = proc_open(
