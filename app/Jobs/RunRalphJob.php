@@ -76,10 +76,10 @@ class RunRalphJob implements ShouldQueue
             return;
         }
 
-        // Post "starting" message to chat
+        // Post "starting" message to chat (the live stream message is separate)
         $this->postChatMessage($this->buildStartMessage($state, $story));
 
-        // 5. Build and execute Claude prompt
+        // 5. Build and execute Claude prompt (streams output into a live chat message)
         $result = $this->executeClaude($state, $story);
 
         if (! $result['success']) {
@@ -161,7 +161,7 @@ class RunRalphJob implements ShouldQueue
     }
 
     /**
-     * Execute the Claude AI to implement a user story.
+     * Execute the Claude AI to implement a user story, streaming output into a live chat message.
      *
      * @param  \App\DataObjects\RalphState  $state  The current Ralph state
      * @param  array<string, mixed>  $story  The user story to implement
@@ -173,19 +173,61 @@ class RunRalphJob implements ShouldQueue
         $command = $this->buildRalphCommand($prompt);
         $startTime = microtime(true);
 
-        $process = Process::path($this->task->workspace_path)
-            ->timeout(3600)
-            ->run($command);
+        // Create a live message that will be updated as Claude streams output
+        $liveMessage = Message::create([
+            'task_id' => $this->task->id,
+            'role' => MessageRole::Assistant,
+            'status' => MessageStatus::Sent,
+            'content' => '',
+        ]);
+        $this->task->update(['last_message_at' => now()]);
 
-        $duration = (int) (microtime(true) - $startTime);
-        $output = $process->output();
+        $descriptors = [
+            0 => ['pipe', 'r'],
+            1 => ['pipe', 'w'],
+            2 => ['pipe', 'w'],
+        ];
 
-        // Parse stream-json output for token usage
+        $process = proc_open($command, $descriptors, $pipes, $this->task->workspace_path);
+
+        if (! is_resource($process)) {
+            $liveMessage->update(['content' => '*Failed to start Claude process*']);
+
+            return [
+                'success' => false,
+                'error' => 'Failed to start Claude process',
+                'duration' => 0,
+            ];
+        }
+
+        fclose($pipes[0]); // Close stdin
+
+        // Set stream timeout (5 min of silence = hung)
+        stream_set_timeout($pipes[1], 300);
+
         $tokensIn = 0;
         $tokensOut = 0;
         $learnings = '';
+        $textContent = '';
+        $toolSummaries = [];
+        $lastUpdateAt = 0;
 
-        foreach (explode("\n", $output) as $line) {
+        while (! feof($pipes[1])) {
+            $line = fgets($pipes[1]);
+
+            if ($line === false) {
+                $meta = stream_get_meta_data($pipes[1]);
+                if ($meta['timed_out']) {
+                    Log::warning('Ralph Claude stream timed out', [
+                        'task_id' => $this->task->id,
+                        'iteration' => $this->iteration,
+                    ]);
+                    break;
+                }
+
+                continue;
+            }
+
             $line = trim($line);
             if (empty($line)) {
                 continue;
@@ -196,33 +238,70 @@ class RunRalphJob implements ShouldQueue
                 continue;
             }
 
+            $type = $json['type'] ?? '';
+
             // Result message contains final stats
-            if (($json['type'] ?? '') === 'result') {
+            if ($type === 'result') {
                 $tokensIn = $json['usage']['input_tokens'] ?? $tokensIn;
                 $tokensOut = $json['usage']['output_tokens'] ?? $tokensOut;
             }
 
-            // Extract text content for learnings
-            if (($json['type'] ?? '') === 'assistant' && isset($json['message']['content'])) {
+            // Extract text content from assistant messages
+            if ($type === 'assistant' && isset($json['message']['content'])) {
                 foreach ($json['message']['content'] as $block) {
                     if (($block['type'] ?? '') === 'text') {
-                        $learnings .= $block['text']."\n";
+                        $text = $block['text'] ?? '';
+                        $learnings .= $text."\n";
+                        $textContent .= $text."\n";
+                    }
+
+                    if (($block['type'] ?? '') === 'tool_use') {
+                        $toolName = $block['name'] ?? 'unknown';
+                        $toolSummaries[] = $toolName;
+                    }
+
+                    if (($block['type'] ?? '') === 'tool_result') {
+                        // Tool completed - don't need the full result in the stream
                     }
                 }
             }
+
+            // Update live message every 3 seconds (avoid hammering DB)
+            $now = microtime(true);
+            if ($now - $lastUpdateAt >= 3) {
+                $liveMessage->update([
+                    'content' => $this->buildLiveContent($textContent, $toolSummaries, $startTime),
+                ]);
+                $lastUpdateAt = $now;
+            }
         }
 
-        if (! $process->successful()) {
+        // Read stderr
+        $stderr = stream_get_contents($pipes[2]);
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+        $exitCode = proc_close($process);
+
+        $duration = (int) (microtime(true) - $startTime);
+
+        // Final update to live message
+        $liveMessage->update([
+            'content' => $this->buildLiveContent($textContent, $toolSummaries, $startTime, true),
+            'tokens_in' => $tokensIn,
+            'tokens_out' => $tokensOut,
+        ]);
+
+        if ($exitCode !== 0) {
             Log::error('Ralph Claude execution failed', [
                 'task_id' => $this->task->id,
                 'iteration' => $this->iteration,
-                'exit_code' => $process->exitCode(),
-                'error' => $process->errorOutput(),
+                'exit_code' => $exitCode,
+                'error' => $stderr,
             ]);
 
             return [
                 'success' => false,
-                'error' => $process->errorOutput() ?: 'Claude process failed with exit code '.$process->exitCode(),
+                'error' => $stderr ?: "Claude process failed with exit code {$exitCode}",
                 'tokens_in' => $tokensIn,
                 'tokens_out' => $tokensOut,
                 'duration' => $duration,
@@ -236,6 +315,38 @@ class RunRalphJob implements ShouldQueue
             'tokens_out' => $tokensOut,
             'duration' => $duration,
         ];
+    }
+
+    /**
+     * Build the live streaming content for the Ralph iteration message.
+     * Shows text output and a summary of tool calls.
+     */
+    protected function buildLiveContent(string $textContent, array $toolSummaries, float $startTime, bool $finished = false): string
+    {
+        $elapsed = $this->formatDuration((int) (microtime(true) - $startTime));
+        $status = $finished ? 'Finished' : 'Running';
+
+        $content = "**Ralph [{$status}]** ({$elapsed})\n\n";
+
+        if (! empty($toolSummaries)) {
+            $toolCounts = array_count_values($toolSummaries);
+            $toolParts = [];
+            foreach ($toolCounts as $tool => $count) {
+                $toolParts[] = $count > 1 ? "{$tool} x{$count}" : $tool;
+            }
+            $content .= '`'.implode(' · ', $toolParts)."`\n\n";
+        }
+
+        if (! empty(trim($textContent))) {
+            // Truncate to last ~2000 chars to keep message size manageable
+            $text = trim($textContent);
+            if (mb_strlen($text) > 2000) {
+                $text = '...'.mb_substr($text, -2000);
+            }
+            $content .= $text;
+        }
+
+        return $content;
     }
 
     /**
