@@ -658,10 +658,14 @@ class TaskChat extends Component
             return;
         }
 
+        // Lock immediately to prevent duplicate starts from rapid clicks
+        $this->task->update(['ralph_enabled' => true]);
+
         // Find PRD parent issue number from recent messages
         $prdIssueNumber = $this->detectPrdIssueNumber();
 
         if (! $prdIssueNumber) {
+            $this->task->update(['ralph_enabled' => false]);
             Notification::make()
                 ->title('Could not detect PRD issue number')
                 ->body('Use PRD → Issues first to create slice issues, then start Ralph.')
@@ -680,6 +684,7 @@ class TaskChat extends Component
         );
 
         if (! $issuesResult->successful()) {
+            $this->task->update(['ralph_enabled' => false]);
             Notification::make()
                 ->title('Failed to fetch issues from GitHub')
                 ->body($issuesResult->errorOutput())
@@ -698,6 +703,7 @@ class TaskChat extends Component
         })->values();
 
         if ($childIssues->isEmpty()) {
+            $this->task->update(['ralph_enabled' => false]);
             Notification::make()
                 ->title('No PRD slice issues found')
                 ->body("No open issues with label 'prd-slice' reference #{$prdIssueNumber}")

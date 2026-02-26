@@ -12,7 +12,7 @@ use App\Services\RalphWorkspaceService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable as FoundationQueueable;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Process;
+use Illuminate\Support\Facades\Process;
 
 class RunRalphJob implements ShouldQueue
 {
