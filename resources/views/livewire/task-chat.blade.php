@@ -55,7 +55,7 @@
         <div class="chat-mobile-title-area">
             <h1 class="chat-mobile-title">{{ $task->title ?? ($task->repository?->name ?? 'Chat') }}</h1>
             @if($task->taskSchedule)
-                <span class="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                <span class="chat-mobile-schedule-badge">
                     Scheduled: {{ $task->taskSchedule->name }}
                 </span>
             @endif
@@ -86,8 +86,8 @@
         {{-- Context indicator --}}
         <div class="chat-mobile-context" title="{{ $task->is_compacting ? 'Compacting conversation...' : number_format($this->contextUsed) . ' / ' . number_format($this->contextLimit) . ' tokens' }}">
             @if($task->is_compacting)
-                <div class="flex items-center gap-1 px-1.5 py-0.5 bg-amber-100 dark:bg-amber-900/30 rounded">
-                    <svg class="w-3 h-3 text-amber-600 dark:text-amber-400 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <div class="chat-mobile-compacting">
+                    <svg class="chat-mobile-compacting-icon animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
@@ -99,7 +99,7 @@
                 <span class="chat-mobile-context-text">{{ number_format($this->contextPercentage, 0) }}%</span>
             @endif
             @if($task->compaction_count > 0)
-                <span class="inline-flex items-center justify-center w-5 h-5 text-xs font-medium rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+                <span class="chat-mobile-compaction-count">
                     {{ $task->compaction_count }}
                 </span>
             @endif
@@ -188,7 +188,7 @@
                     @click="mobileMenuOpen = false"
                     class="chat-mobile-dropdown-item"
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 1.25rem; height: 1.25rem; color: rgb(22 163 74);">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 1.25rem; height: 1.25rem;" class="chat-mobile-action-icon-primary">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
                     </svg>
                     <span>Deploy to Site</span>
@@ -497,7 +497,7 @@
                                         class="chat-header-dropdown-item"
                                     >
                                         @if($config->is_default)
-                                            <x-heroicon-o-star class="chat-header-dropdown-icon text-yellow-500" />
+                                            <x-heroicon-o-star class="chat-header-dropdown-icon chat-header-dropdown-star" />
                                         @endif
                                         {{ $config->name }}
                                     </button>
@@ -559,6 +559,7 @@
             isNearBottom: true,
             scrollThreshold: 150,
             pendingScroll: null,
+            lastStableScrollTop: 0,
             cacheKey() {
                 return `cr:chat-cache:${'{{ $task->uuid }}'}`;
             },
@@ -635,9 +636,11 @@
             checkIfNearBottom() {
                 const el = this.$refs.messages;
                 this.isNearBottom = (el.scrollHeight - el.scrollTop - el.clientHeight) < this.scrollThreshold;
+                this.lastStableScrollTop = el.scrollTop;
             },
             scrollToBottom() {
                 this.$refs.messages.scrollTop = this.$refs.messages.scrollHeight;
+                this.lastStableScrollTop = this.$refs.messages.scrollTop;
             },
             init() {
                 // Restore scroll position when navigating away and back in SPA mode.
@@ -665,13 +668,19 @@
                 if (!readSavedScroll()) {
                     this.scrollToBottom();
                 }
+                this.lastStableScrollTop = this.$refs.messages.scrollTop;
 
                 this.$refs.messages.addEventListener('scroll', () => this.checkIfNearBottom());
                 const observer = new MutationObserver(() => {
+                    const previousScrollTop = this.$refs.messages.scrollTop;
                     this.$nextTick(() => {
+                        if (!this.$refs.messages) return;
                         if (this.isNearBottom) {
                             this.scrollToBottom();
+                            return;
                         }
+                        this.$refs.messages.scrollTop = previousScrollTop;
+                        this.lastStableScrollTop = this.$refs.messages.scrollTop;
                     });
                 });
                 observer.observe(this.$refs.messages, { childList: true, subtree: true });
@@ -684,6 +693,7 @@
                         }));
                     } catch {}
                     this.saveMessagesToCache();
+                    observer.disconnect();
                 });
 
                 document.addEventListener('messages-loaded', () => {
@@ -909,13 +919,12 @@
                     {{-- Show truncation notice if blocks were limited (with expand option) --}}
                     @if($truncated)
                         <div wire:key="message-{{ $message->id }}-truncated" class="chat-message chat-message-assistant">
-                            <div class="chat-bubble chat-bubble-tool" style="background: rgb(254 243 199); border-color: rgb(253 230 138);">
-                                <span style="color: rgb(146 64 14); font-size: 0.75rem;">
+                            <div class="chat-bubble chat-bubble-tool">
+                                <span class="chat-tool-block-notice chat-tool-block-notice-warning">
                                     ⚠️ Showing last {{ count($groupedBlocks) }} of {{ $totalBlockCount }} blocks ({{ $totalBlockCount - count($groupedBlocks) }} hidden for performance)
                                     <button
                                         wire:click="toggleExpandMessage({{ $message->id }})"
-                                        class="ml-2 underline hover:no-underline cursor-pointer"
-                                        style="color: rgb(146 64 14);"
+                                        class="chat-tool-block-link"
                                     >
                                         Show all blocks
                                     </button>
@@ -925,13 +934,12 @@
                     @elseif($isExpanded && $totalBlockCount > \App\Models\Message::MAX_RENDERED_BLOCKS)
                         {{-- Show collapse option when expanded --}}
                         <div wire:key="message-{{ $message->id }}-expanded" class="chat-message chat-message-assistant">
-                            <div class="chat-bubble chat-bubble-tool" style="background: rgb(220 252 231); border-color: rgb(187 247 208);">
-                                <span style="color: rgb(22 101 52); font-size: 0.75rem;">
+                            <div class="chat-bubble chat-bubble-tool">
+                                <span class="chat-tool-block-notice chat-tool-block-notice-success">
                                     Showing all {{ $totalBlockCount }} blocks
                                     <button
                                         wire:click="toggleExpandMessage({{ $message->id }})"
-                                        class="ml-2 underline hover:no-underline cursor-pointer"
-                                        style="color: rgb(22 101 52);"
+                                        class="chat-tool-block-link"
                                     >
                                         Collapse
                                     </button>
@@ -1843,7 +1851,7 @@
                         x-model="prompt"
                         placeholder="{{ $this->totalMessageCount === 0 ? $this->getModePlaceholder() : 'Type a message...' }}"
                         rows="1"
-                        class="chat-textarea"
+                        class="chat-textarea chat-textarea-resizable"
                         @paste="handlePaste($event)"
                         @keydown.enter.prevent="if (!$event.shiftKey) submit()"
                     ></textarea>
@@ -1894,11 +1902,11 @@
                             style="border-radius: 0.5rem 0 0 0.5rem; flex: 1;"
                             placeholder="my-feature"
                         >
-                        <span style="border-radius: 0 0.5rem 0.5rem 0; border: 1px solid rgb(209 213 219); border-left: 0; background-color: rgb(243 244 246); padding: 0.5rem 0.75rem; font-size: 0.875rem;">.marin.sh</span>
+                        <span class="chat-deploy-domain-suffix">.marin.sh</span>
                     </div>
                 </div>
 
-                <div style="font-size: 0.875rem; color: rgb(107 114 128); margin-bottom: 1rem;">
+                <div class="chat-deploy-preview">
                     <p style="margin: 0 0 0.5rem 0;">Preview:</p>
                     <ul style="margin: 0; padding-left: 1.5rem;">
                         <li>Branch: {{ $deploySubdomain ?: 'subdomain' }}</li>
@@ -1910,13 +1918,13 @@
                 <button
                     type="button"
                     wire:click="$toggle('showAdvancedOptions')"
-                    style="font-size: 0.875rem; color: rgb(37 99 235); background: none; border: none; cursor: pointer; padding: 0;"
+                    class="chat-deploy-advanced-toggle"
                 >
                     {{ $showAdvancedOptions ? '▼' : '▶' }} Advanced Options
                 </button>
 
                 @if($showAdvancedOptions)
-                    <div style="border-top: 1px solid rgb(229 231 235); padding-top: 0.75rem; margin-top: 0.75rem;">
+                    <div class="chat-deploy-advanced">
                         <div style="margin-bottom: 0.75rem;">
                             <label style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.25rem;">PHP Version</label>
                             <select wire:model="deployPhpVersion" class="chat-textarea" style="width: 100%;">
@@ -1937,16 +1945,16 @@
                 @endif
             </div>
 
-            <div style="display: flex; justify-content: flex-end; gap: 0.5rem; padding: 1rem 1.5rem; border-top: 1px solid rgb(229 231 235);">
+            <div class="chat-deploy-footer">
                 <button
                     wire:click="closeDeployModal"
-                    style="border-radius: 0.5rem; border: 1px solid rgb(209 213 219); padding: 0.5rem 1rem; background: white; cursor: pointer;"
+                    class="chat-deploy-cancel-btn"
                 >
                     Cancel
                 </button>
                 <button
                     wire:click="deployToSite"
-                    style="border-radius: 0.5rem; background-color: rgb(22 163 74); padding: 0.5rem 1rem; color: white; border: none; cursor: pointer;"
+                    class="chat-deploy-confirm-btn"
                 >
                     Deploy
                 </button>

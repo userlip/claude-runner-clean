@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Http\Middleware\DisableAdminCache;
 use App\Livewire\PushNotificationSettings;
 use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
 use Filament\Http\Middleware\Authenticate;
@@ -79,6 +80,7 @@ class AdminPanelProvider extends PanelProvider
                 ShareErrorsFromSession::class,
                 VerifyCsrfToken::class,
                 SubstituteBindings::class,
+                DisableAdminCache::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
             ])

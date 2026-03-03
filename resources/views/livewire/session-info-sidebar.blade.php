@@ -6,7 +6,7 @@
         @endif
     </div>
 
-    <div class="file-browser-list" style="gap: 0;">
+    <div class="file-browser-list file-browser-list-compact">
         {{-- Session Stats --}}
         @if($this->durationMs || $this->numTurns)
         <div class="session-info-section">
@@ -33,8 +33,8 @@
             wire:click="toggleSection('model_usage')"
             class="session-info-header"
         >
-            <div style="display: flex; align-items: center; gap: 0.5rem;">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 1rem; height: 1rem; transition: transform 0.2s; {{ $expandedSection === 'model_usage' ? 'transform: rotate(90deg);' : '' }}">
+            <div class="session-info-header-main">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="session-info-chevron {{ $expandedSection === 'model_usage' ? 'session-info-chevron-open' : '' }}">
                     <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
                 </svg>
                 <span>Model Usage</span>
@@ -68,8 +68,8 @@
             wire:click="toggleSection('mcp_servers')"
             class="session-info-header"
         >
-            <div style="display: flex; align-items: center; gap: 0.5rem;">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 1rem; height: 1rem; transition: transform 0.2s; {{ $expandedSection === 'mcp_servers' ? 'transform: rotate(90deg);' : '' }}">
+            <div class="session-info-header-main">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="session-info-chevron {{ $expandedSection === 'mcp_servers' ? 'session-info-chevron-open' : '' }}">
                     <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
                 </svg>
                 <span>MCP Servers</span>
@@ -110,8 +110,8 @@
             wire:click="toggleSection('skills')"
             class="session-info-header"
         >
-            <div style="display: flex; align-items: center; gap: 0.5rem;">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 1rem; height: 1rem; transition: transform 0.2s; {{ $expandedSection === 'skills' ? 'transform: rotate(90deg);' : '' }}">
+            <div class="session-info-header-main">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="session-info-chevron {{ $expandedSection === 'skills' ? 'session-info-chevron-open' : '' }}">
                     <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
                 </svg>
                 <span>Skills</span>
@@ -119,7 +119,7 @@
             <span class="session-info-badge">{{ count($this->skills) }}</span>
         </button>
         @if($expandedSection === 'skills')
-        <div class="session-info-content" style="max-height: 300px; overflow-y: auto;">
+        <div class="session-info-content session-info-content-scroll">
             @foreach($this->skills as $index => $skill)
                 <div
                     wire:key="skill-{{ $index }}"
@@ -162,8 +162,8 @@
             wire:click="toggleSection('tools')"
             class="session-info-header"
         >
-            <div style="display: flex; align-items: center; gap: 0.5rem;">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 1rem; height: 1rem; transition: transform 0.2s; {{ $expandedSection === 'tools' ? 'transform: rotate(90deg);' : '' }}">
+            <div class="session-info-header-main">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="session-info-chevron {{ $expandedSection === 'tools' ? 'session-info-chevron-open' : '' }}">
                     <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
                 </svg>
                 <span>Tools</span>
@@ -171,10 +171,10 @@
             <span class="session-info-badge">{{ count($this->tools) }}</span>
         </button>
         @if($expandedSection === 'tools')
-        <div class="session-info-content" style="max-height: 300px; overflow-y: auto;">
+        <div class="session-info-content session-info-content-scroll">
             @foreach($this->tools as $tool)
                 <div class="session-info-item">
-                    <span class="session-info-item-name" style="font-size: 0.75rem;">{{ $tool }}</span>
+                    <span class="session-info-item-name session-info-item-name-tool">{{ $tool }}</span>
                 </div>
             @endforeach
         </div>
@@ -183,9 +183,9 @@
 
         {{-- Empty state --}}
         @if(empty($this->metadata))
-        <div style="padding: 1rem; text-align: center; color: rgb(107 114 128); font-size: 0.875rem;">
+        <div class="session-info-empty">
             <p>No session data yet</p>
-            <p style="font-size: 0.75rem; margin-top: 0.5rem;">Send a message to start the session</p>
+            <p class="session-info-empty-subtitle">Send a message to start the session</p>
         </div>
         @endif
 
@@ -200,7 +200,7 @@
     {{-- Skill Content Modal --}}
     @if($viewingSkill)
     <div class="file-preview-overlay" wire:click.self="closeSkillModal">
-        <div class="file-preview-modal" style="max-width: 48rem;">
+        <div class="file-preview-modal session-info-skill-modal">
             <div class="file-preview-header">
                 <h4 class="file-preview-title">{{ $viewingSkill }}</h4>
                 <button wire:click="closeSkillModal" class="file-preview-close">
@@ -210,7 +210,7 @@
                 </button>
             </div>
             <div class="file-preview-content">
-                <pre class="file-preview-code" style="white-space: pre-wrap; word-wrap: break-word;">{{ $skillContent }}</pre>
+                <pre class="file-preview-code session-info-skill-code">{{ $skillContent }}</pre>
             </div>
         </div>
     </div>

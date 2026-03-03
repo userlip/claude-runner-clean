@@ -24,6 +24,14 @@ test('can render task chat component', function () {
         ->assertSee('Start a conversation');
 });
 
+test('chat prompt input is manually resizable', function () {
+    $repository = Repository::factory()->create(['user_id' => $this->user->id]);
+    $task = Task::factory()->create(['repository_id' => $repository->id]);
+
+    Livewire::test(TaskChat::class, ['task' => $task])
+        ->assertSeeHtml('chat-textarea-resizable');
+});
+
 test('can send a message', function () {
     Queue::fake();
 

@@ -1,3 +1,4 @@
+<div class="ralph-sidebar-panel">
 <x-filament::section heading="Ralph Mode">
     @if(!$ralphEnabled)
         <div class="space-y-4">
@@ -176,3 +177,4 @@
         </div>
     @endif
 </x-filament::section>
+</div>

@@ -321,14 +321,14 @@ class TaskChat extends Component
         $percentage = $this->contextPercentage;
 
         if ($percentage >= 80) {
-            return 'bg-red-500';
+            return 'chat-context-fill-high';
         }
 
         if ($percentage >= 60) {
-            return 'bg-amber-500';
+            return 'chat-context-fill-medium';
         }
 
-        return 'bg-green-500';
+        return 'chat-context-fill-low';
     }
 
     /**
@@ -1250,51 +1250,38 @@ PROMPT,
         $prompt = "Generate a specific, descriptive 3-7 word title for this conversation. Focus on what the USER is actually asking for — the specific feature, bug, or topic. Ignore any system prompts, mode instructions, or process descriptions. Reply with ONLY the title, nothing else. No quotes, no explanation, no punctuation at the end.\n\nConversation:\n{$context}\n\nTitle:";
 
         try {
-            // Use Claude Haiku for fast, cheap title generation
-            $claudePath = config('services.claude.path', '/usr/bin/claude');
-            $escapedPrompt = escapeshellarg($prompt);
+            // Use Kimi for fast, cheap title generation
+            $kimiProvider = AiProvider::where('name', 'kimi')->where('is_active', true)->first();
 
-            $claudeProvider = \App\Models\AiProvider::where('name', 'claude')->first();
-            $envVars = [
-                'HOME' => getenv('HOME') ?: '/home/ploi',
-                'PATH' => '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
-            ];
+            if (! $kimiProvider) {
+                Notification::make()
+                    ->title('Kimi provider not available')
+                    ->body('Please configure Kimi in AI Provider Settings')
+                    ->danger()
+                    ->send();
 
-            if ($claudeProvider) {
-                foreach ($claudeProvider->getEnvironmentVariables() as $key => $value) {
-                    $envVars[$key] = $value;
-                }
+                return;
             }
 
-            $envCmd = 'env -i';
-            foreach ($envVars as $key => $value) {
-                $envCmd .= ' '.escapeshellarg("{$key}={$value}");
-            }
+            $client = \Illuminate\Support\Facades\Http::withHeaders([
+                'Authorization' => 'Bearer '.$kimiProvider->api_key,
+                'Content-Type' => 'application/json',
+            ])->baseUrl(rtrim($kimiProvider->base_url, '/'));
 
-            $command = "{$envCmd} {$claudePath} -p {$escapedPrompt} --output-format text --max-turns 1 --model haiku";
-
-            // Run in temp dir to avoid picking up workspace context
-            $process = proc_open(
-                $command,
-                [
-                    0 => ['pipe', 'r'],
-                    1 => ['pipe', 'w'],
-                    2 => ['pipe', 'w'],
+            $response = $client->post('/v1/messages', [
+                'model' => $kimiProvider->model ?? 'kimi-k2.5',
+                'max_tokens' => 50,
+                'messages' => [
+                    ['role' => 'user', 'content' => $prompt],
                 ],
-                $pipes,
-                sys_get_temp_dir()
-            );
+            ]);
 
-            if (is_resource($process)) {
-                fclose($pipes[0]);
-                $output = stream_get_contents($pipes[1]);
-                fclose($pipes[1]);
-                fclose($pipes[2]);
-                $exitCode = proc_close($process);
+            if ($response->successful()) {
+                $output = $response->json('content.0.text') ?? '';
 
-                if ($exitCode === 0 && ! empty($output)) {
+                if (! empty($output)) {
                     $title = trim($output, " \n\r\t\v\0\"'");
-                    // Take only the first line in case Claude added extra content
+                    // Take only the first line in case Kimi added extra content
                     $title = strtok($title, "\n");
                     // Remove any trailing punctuation
                     $title = rtrim($title, '.!?:');
@@ -1314,13 +1301,14 @@ PROMPT,
                 } else {
                     Notification::make()
                         ->title('Failed to generate title')
-                        ->body('Claude Code returned an error')
+                        ->body('Kimi returned an empty response')
                         ->danger()
                         ->send();
                 }
             } else {
                 Notification::make()
-                    ->title('Failed to start Claude Code')
+                    ->title('Failed to generate title')
+                    ->body('Kimi API error: '.$response->status())
                     ->danger()
                     ->send();
             }

@@ -18,9 +18,9 @@
                 <span class="file-browser-item-name">{{ $snippet->name }}</span>
             </button>
         @empty
-            <div style="padding: 1rem; text-align: center; color: rgb(107 114 128); font-size: 0.875rem;">
+            <div class="snippet-browser-empty">
                 <p>No snippets yet</p>
-                <a href="{{ route('filament.admin.resources.snippets.index') }}" style="color: rgb(59 130 246); text-decoration: underline;">
+                <a href="{{ route('filament.admin.resources.snippets.index') }}" class="snippet-browser-empty-link">
                     Create one
                 </a>
             </div>
