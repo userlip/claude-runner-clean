@@ -732,24 +732,6 @@
         >
             <div class="chat-cached-history" wire:ignore x-ref="cachedHistory"></div>
 
-            {{-- Load earlier messages button --}}
-            @if($this->messagesLoaded && $this->hasMoreMessages)
-                <div class="chat-load-more">
-                    <button
-                        type="button"
-                        wire:click="loadMoreMessages"
-                        wire:loading.attr="disabled"
-                        wire:target="loadMoreMessages"
-                        class="chat-load-more-btn"
-                    >
-                        <span wire:loading.remove wire:target="loadMoreMessages">
-                            ↑ Load {{ min($this->hiddenMessageCount, \App\Livewire\TaskChat::MESSAGES_PER_PAGE) }} earlier messages
-                            <span class="chat-load-more-count">({{ $this->hiddenMessageCount }} hidden)</span>
-                        </span>
-                        <span wire:loading wire:target="loadMoreMessages">Loading...</span>
-                    </button>
-                </div>
-            @endif
 
             @forelse($this->chatMessages as $index => $message)
                 @php

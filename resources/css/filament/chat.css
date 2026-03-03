@@ -9,15 +9,23 @@
     --chat-danger: rgb(220 38 38);
     --chat-danger-bg: rgb(254 226 226);
     --chat-danger-bg-hover: rgb(254 202 202);
+    --chat-bg-dark: #272822;
+    --chat-fg-dark: #f8f8f2;
+    --chat-muted-dark: #75715e;
+    --chat-keyword: #f92672;
+    --chat-function: #a6e22e;
+    --chat-string: #e6db74;
+    --chat-number: #ae81ff;
+    --chat-operator: #fd971f;
 }
 
 .dark {
-    --chat-accent: var(--gray-600);
-    --chat-accent-strong: var(--gray-500);
-    --chat-accent-soft-bg: var(--gray-800);
-    --chat-accent-soft-bg-hover: var(--gray-700);
-    --chat-accent-soft-text: var(--gray-100);
-    --chat-accent-border: var(--gray-600);
+    --chat-accent: var(--chat-number);
+    --chat-accent-strong: var(--chat-keyword);
+    --chat-accent-soft-bg: color-mix(in srgb, var(--chat-number) 18%, var(--chat-bg-dark));
+    --chat-accent-soft-bg-hover: color-mix(in srgb, var(--chat-number) 26%, var(--chat-bg-dark));
+    --chat-accent-soft-text: var(--chat-fg-dark);
+    --chat-accent-border: var(--chat-muted-dark);
     --chat-danger: rgb(248 113 113);
     --chat-danger-bg: rgb(127 29 29 / 0.35);
     --chat-danger-bg-hover: rgb(127 29 29 / 0.55);
@@ -1631,9 +1639,9 @@
 }
 
 .dark .chat-provider-btn-active {
-    background: var(--gray-600);
-    border-color: var(--gray-500);
-    color: white;
+    background: var(--chat-function);
+    border-color: var(--chat-function);
+    color: #272822;
 }
 
 .chat-context-fill-low {
@@ -4505,10 +4513,10 @@ a,
 }
 
 .dark .sidebar-tab-btn-active {
-    color: var(--gray-100);
+    color: #272822;
     border-bottom: none;
-    border: 1px solid var(--gray-600);
-    background: var(--gray-700);
+    border: 1px solid var(--chat-number);
+    background: var(--chat-number);
     box-shadow: none;
 }
 
@@ -4678,7 +4686,7 @@ a,
 }
 
 .dark .chat-area {
-    background: var(--gray-700);
+    background: var(--chat-bg-dark);
 }
 
 .chat-messages {
@@ -4686,7 +4694,7 @@ a,
 }
 
 .dark .chat-messages {
-    background: var(--gray-700);
+    background: var(--chat-bg-dark);
 }
 
 .chat-message {
@@ -4706,9 +4714,9 @@ a,
 }
 
 .dark .chat-bubble-user {
-    background-color: var(--gray-600);
-    border-color: var(--gray-600);
-    color: var(--gray-100);
+    background-color: var(--chat-number);
+    border-color: var(--chat-number);
+    color: #272822;
 }
 
 .chat-bubble-assistant {
@@ -4722,9 +4730,9 @@ a,
 }
 
 .dark .chat-bubble-assistant {
-    background-color: var(--gray-800);
-    border-color: var(--gray-700);
-    color: var(--gray-200);
+    background-color: color-mix(in srgb, var(--chat-bg-dark) 88%, black);
+    border-color: var(--chat-muted-dark);
+    color: var(--chat-fg-dark);
 }
 
 .chat-input-area {
@@ -4734,8 +4742,8 @@ a,
 }
 
 .dark .chat-input-area {
-    background-color: var(--gray-800);
-    border-top-color: var(--gray-700);
+    background-color: var(--chat-bg-dark);
+    border-top-color: var(--chat-muted-dark);
 }
 
 .chat-form {
@@ -4752,8 +4760,9 @@ a,
 }
 
 .dark .chat-textarea {
-    background-color: var(--gray-800);
-    border-color: var(--gray-700);
+    background-color: var(--chat-bg-dark);
+    border-color: var(--chat-muted-dark);
+    color: var(--chat-fg-dark);
     box-shadow: none;
 }
 
@@ -4762,7 +4771,8 @@ a,
 }
 
 .dark .chat-textarea:focus {
-    box-shadow: 0 0 0 2px var(--gray-500);
+    border-color: var(--chat-number);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--chat-number) 35%, transparent);
 }
 
 .chat-submit {
@@ -4780,13 +4790,25 @@ a,
 }
 
 .dark .chat-submit {
-    background-color: var(--gray-600);
-    border-color: var(--gray-500);
+    background-color: var(--chat-operator);
+    border-color: var(--chat-operator);
+    color: #272822;
 }
 
 .dark .chat-submit:hover {
-    background-color: var(--gray-500);
-    border-color: var(--gray-400);
+    background-color: var(--chat-keyword);
+    border-color: var(--chat-keyword);
+    color: var(--chat-fg-dark);
+}
+
+.dark .chat-page-main {
+    background: var(--chat-bg-dark);
+    border: 1px solid var(--chat-muted-dark);
+}
+
+.dark .chat-container {
+    border-color: var(--chat-muted-dark);
+    background: var(--chat-bg-dark);
 }
 
 @media (min-width: 768px) {
@@ -4827,8 +4849,8 @@ a,
 }
 
 .dark .chat-header {
-    background-color: var(--gray-800);
-    border-bottom-color: var(--gray-700);
+    background-color: var(--chat-bg-dark);
+    border-bottom-color: var(--chat-muted-dark);
 }
 
 @media (max-width: 767px) {
@@ -4859,14 +4881,14 @@ a,
 .dark .file-browser,
 .dark .file-browser-header,
 .dark .chat-input-area {
-    background: #2b2f36 !important;
-    background-color: #2b2f36 !important;
+    background: var(--chat-bg-dark) !important;
+    background-color: var(--chat-bg-dark) !important;
 }
 
 .dark .task-todo-items,
 .dark .file-browser-list {
-    background: #2f333b !important;
-    background-color: #2f333b !important;
+    background: color-mix(in srgb, var(--chat-bg-dark) 90%, black) !important;
+    background-color: color-mix(in srgb, var(--chat-bg-dark) 90%, black) !important;
 }
 
 .dark .sidebar-tab-content,
@@ -4880,29 +4902,32 @@ a,
 .dark .chat-input-area,
 .dark .chat-textarea,
 .dark .file-browser-header {
-    border-color: #4a5160 !important;
+    border-color: var(--chat-muted-dark) !important;
 }
 
 .dark .chat-textarea {
-    background-color: #2f333b !important;
-    border-color: #4a5160 !important;
-    color: #e5e7eb !important;
+    background-color: var(--chat-bg-dark) !important;
+    border-color: var(--chat-muted-dark) !important;
+    color: var(--chat-fg-dark) !important;
 }
 
 .dark .chat-textarea:focus {
-    border-color: #6b7280 !important;
-    box-shadow: 0 0 0 2px rgba(156, 163, 175, 0.35) !important;
+    border-color: var(--chat-number) !important;
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--chat-number) 35%, transparent) !important;
 }
 
 .dark .task-todo-add-btn,
 .dark .task-todo-mobile-add,
 .dark .task-todo-mobile-modal-submit {
-    background-color: #4b5563 !important;
-    color: #f3f4f6 !important;
+    background-color: var(--chat-operator) !important;
+    border-color: var(--chat-operator) !important;
+    color: #272822 !important;
 }
 
 .dark .task-todo-add-btn:hover:not(:disabled),
 .dark .task-todo-mobile-add:hover,
 .dark .task-todo-mobile-modal-submit:hover:not(:disabled) {
-    background-color: #6b7280 !important;
+    background-color: var(--chat-keyword) !important;
+    border-color: var(--chat-keyword) !important;
+    color: var(--chat-fg-dark) !important;
 }

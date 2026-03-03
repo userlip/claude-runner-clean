@@ -25,7 +25,8 @@
       "Bash(git commit:*)",
       "Bash(git push:*)",
       "mcp__project-db__db-query",
-      "Bash(composer show:*)"
+      "Bash(composer show:*)",
+      "Bash(find /home/ploi/claude-runner.marin.sh/vendor/filament -path \"*/Forms/Components/Actions/Action.php\" 2>/dev/null; find /home/ploi/claude-runner.marin.sh/vendor/filament -name \"Action.php\" -path \"*/Forms/*\" 2>/dev/null | head -10)"
     ],
     "deny": [
       "Bash(php artisan migrate:fresh)",
