@@ -206,6 +206,64 @@
                     <span>Delete Workspace</span>
                 </button>
             @endif
+            {{-- Ralph Actions --}}
+            @if($task->repository)
+                <div class="chat-mobile-dropdown-divider"></div>
+                <button
+                    wire:click="triggerPrdToIssues"
+                    @click="mobileMenuOpen = false"
+                    wire:loading.attr="disabled"
+                    wire:target="triggerPrdToIssues"
+                    class="chat-mobile-dropdown-item"
+                >
+                    <span>🎯</span>
+                    <span wire:loading.remove wire:target="triggerPrdToIssues">PRD → Issues</span>
+                    <span wire:loading wire:target="triggerPrdToIssues">Processing...</span>
+                </button>
+                @if(!$task->ralph_enabled)
+                    <button
+                        wire:click="startRalphLoop"
+                        @click="mobileMenuOpen = false"
+                        wire:loading.attr="disabled"
+                        wire:target="startRalphLoop"
+                        class="chat-mobile-dropdown-item"
+                    >
+                        <span>🔁</span>
+                        <span wire:loading.remove wire:target="startRalphLoop">Start Ralph</span>
+                        <span wire:loading wire:target="startRalphLoop">Starting...</span>
+                    </button>
+                @else
+                    <div wire:poll.5s>
+                        @php $ralphMobile = $this->ralphStatus; @endphp
+                        @if(($ralphMobile['status'] ?? '') === 'completed')
+                            <div class="chat-mobile-dropdown-item" style="opacity: 0.7; cursor: default;">
+                                <span>✅</span>
+                                <span>Ralph Done ({{ $ralphMobile['stories_passed'] ?? 0 }}/{{ $ralphMobile['stories_total'] ?? 0 }})</span>
+                            </div>
+                        @elseif(in_array($ralphMobile['status'] ?? '', ['failed', 'stalled']))
+                            <button
+                                wire:click="restartRalphLoop"
+                                @click="mobileMenuOpen = false"
+                                wire:loading.attr="disabled"
+                                wire:target="restartRalphLoop"
+                                class="chat-mobile-dropdown-item"
+                            >
+                                <span>🔁</span>
+                                <span wire:loading.remove wire:target="restartRalphLoop">Restart Ralph ({{ $ralphMobile['stories_passed'] ?? 0 }}/{{ $ralphMobile['stories_total'] ?? 0 }})</span>
+                                <span wire:loading wire:target="restartRalphLoop">Restarting...</span>
+                            </button>
+                        @else
+                            <div class="chat-mobile-dropdown-item" style="opacity: 0.7; cursor: default;">
+                                <svg class="animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" style="width: 1rem; height: 1rem;">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <span>Ralph #{{ $ralphMobile['iteration'] ?? '?' }} ({{ $ralphMobile['stories_passed'] ?? 0 }}/{{ $ralphMobile['stories_total'] ?? 0 }})</span>
+                            </div>
+                        @endif
+                    </div>
+                @endif
+            @endif
             {{-- Delete Chat (always available) --}}
             <div class="chat-mobile-dropdown-divider"></div>
             <button
@@ -263,24 +321,36 @@
                                     <span wire:loading wire:target="startRalphLoop">🔁 ...</span>
                                 </button>
                             @else
-                                @php $ralph = $this->ralphStatus; @endphp
-                                <span
-                                    class="chat-rename-btn chat-ralph-status"
-                                    wire:poll.10s
-                                    title="Ralph loop: Iteration {{ $ralph['iteration'] ?? '?' }} | {{ $ralph['stories_passed'] ?? 0 }}/{{ $ralph['stories_total'] ?? 0 }} stories passed"
-                                >
+                                <div wire:poll.5s style="display: inline;">
+                                    @php $ralph = $this->ralphStatus; @endphp
                                     @if(($ralph['status'] ?? '') === 'completed')
-                                        ✅ Ralph Done ({{ $ralph['stories_passed'] ?? 0 }}/{{ $ralph['stories_total'] ?? 0 }})
-                                    @elseif(($ralph['status'] ?? '') === 'failed')
-                                        ❌ Ralph Failed ({{ $ralph['stories_passed'] ?? 0 }}/{{ $ralph['stories_total'] ?? 0 }})
+                                        <span class="chat-rename-btn chat-ralph-status" title="Ralph completed all stories">
+                                            ✅ Ralph Done ({{ $ralph['stories_passed'] ?? 0 }}/{{ $ralph['stories_total'] ?? 0 }})
+                                        </span>
+                                    @elseif(in_array($ralph['status'] ?? '', ['failed', 'stalled']))
+                                        <button
+                                            wire:click="restartRalphLoop"
+                                            wire:loading.attr="disabled"
+                                            wire:target="restartRalphLoop"
+                                            class="chat-rename-btn"
+                                            title="{{ ($ralph['status'] ?? '') === 'failed' ? 'Ralph failed' : 'Ralph stalled' }} — click to restart"
+                                        >
+                                            <span wire:loading.remove wire:target="restartRalphLoop">🔁 Restart Ralph ({{ $ralph['stories_passed'] ?? 0 }}/{{ $ralph['stories_total'] ?? 0 }})</span>
+                                            <span wire:loading wire:target="restartRalphLoop">🔁 ...</span>
+                                        </button>
                                     @else
-                                        <svg class="animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" style="width: 0.75rem; height: 0.75rem; display: inline;">
-                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                        </svg>
-                                        Ralph #{{ $ralph['iteration'] ?? '?' }} ({{ $ralph['stories_passed'] ?? 0 }}/{{ $ralph['stories_total'] ?? 0 }})
+                                        <span
+                                            class="chat-rename-btn chat-ralph-status"
+                                            title="Ralph loop: Iteration {{ $ralph['iteration'] ?? '?' }} | {{ $ralph['stories_passed'] ?? 0 }}/{{ $ralph['stories_total'] ?? 0 }} stories passed"
+                                        >
+                                            <svg class="animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" style="width: 0.75rem; height: 0.75rem; display: inline;">
+                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                            Ralph #{{ $ralph['iteration'] ?? '?' }} ({{ $ralph['stories_passed'] ?? 0 }}/{{ $ralph['stories_total'] ?? 0 }})
+                                        </span>
                                     @endif
-                                </span>
+                                </div>
                             @endif
                         @endif
                     @endif
@@ -681,6 +751,7 @@
                     $firstBlockIsText = $groupedData['firstBlockIsText'];
                     $hasNoContentBlocks = $groupedData['hasNoContentBlocks'];
                     $shouldRenderFirstBubble = $message->isFromUser() || $firstBlockIsText || $hasNoContentBlocks;
+                    $isRalphMessage = !$message->isFromUser() && $message->content && (str_starts_with($message->content, '## Ralph') || str_starts_with($message->content, '**Ralph'));
                 @endphp
 
                 @if($showDateSeparator)
@@ -699,8 +770,8 @@
                     </div>
                 @endif
                 @if($shouldRenderFirstBubble)
-                <div wire:key="message-{{ $message->id }}" class="chat-message {{ $message->isFromUser() ? 'chat-message-user' : 'chat-message-assistant' }}">
-                    <div class="chat-bubble {{ $message->isFromUser() ? 'chat-bubble-user' : 'chat-bubble-assistant' }}">
+                <div wire:key="message-{{ $message->id }}" class="chat-message {{ $message->isFromUser() ? 'chat-message-user' : 'chat-message-assistant' }} {{ $isRalphMessage ? 'chat-message-ralph' : '' }}">
+                    <div class="chat-bubble {{ $message->isFromUser() ? 'chat-bubble-user' : 'chat-bubble-assistant' }} {{ $isRalphMessage ? 'chat-bubble-ralph' : '' }}">
                         @if($message->isFromUser())
                             @if($message->images && count($message->images) > 0)
                                 <div class="chat-message-images">

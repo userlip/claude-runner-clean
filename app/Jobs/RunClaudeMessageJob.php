@@ -377,6 +377,27 @@ class RunClaudeMessageJob implements ShouldQueue
                 );
             }
 
+            // If we tried to --resume but got 0 turns (empty response), the session is gone.
+            // Retry as a fresh session instead of silently returning nothing.
+            if ($resultReceived && $this->continue && empty(trim($assistantMessage->content ?? ''))) {
+                $numTurns = $this->task->session_metadata['result']['num_turns'] ?? null;
+                if ($numTurns === 0 || $numTurns === null) {
+                    Log::warning('Resume returned empty response (0 turns) - retrying as fresh session', [
+                        'task_id' => $this->task->id,
+                        'old_session_id' => $this->task->session_id,
+                    ]);
+
+                    // Start a fresh session
+                    $this->task->update(['session_id' => (string) Str::uuid()]);
+                    $assistantMessage->delete();
+
+                    // Re-dispatch as a new session (continue: false)
+                    self::dispatch($this->task, $this->userMessage, continue: false);
+
+                    return;
+                }
+            }
+
             if ($resultReceived) {
                 $this->task->markAsCompleted();
                 Log::debug('Task marked as completed (result received)', ['task_id' => $this->task->id]);

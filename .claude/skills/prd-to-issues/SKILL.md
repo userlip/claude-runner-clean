@@ -90,7 +90,9 @@ Reference by number from the parent PRD:
 
 ### 6. Generate prd.json for Ralph
 
-After all issues are created, generate a `prd.json` file that can be used by the Ralph loop. Ask the user where to save it (default: the task's `.ralph/prd.json` directory).
+After all issues are created, generate a `prd.json` file that can be used by the Ralph loop.
+
+**CRITICAL**: Always save to `.ralph/prd.json` — this is the ONLY file Ralph reads. If a previous `prd.json` exists, **overwrite it**. Do NOT create alternative filenames like `prd-92.json` or `prd-<number>.json` — Ralph will not find them and will run the old PRD's stories instead.
 
 The format should be:
 

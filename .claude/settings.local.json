@@ -15,7 +15,17 @@
       "Bash(curl:*)",
       "WebFetch(domain:claude-runner.marin.sh)",
       "Bash(ls:*)",
-      "Bash(/usr/bin/claude:*)"
+      "Bash(/usr/bin/claude:*)",
+      "mcp__plugin_playwright_playwright__browser_navigate",
+      "mcp__plugin_playwright_playwright__browser_wait_for",
+      "mcp__plugin_playwright_playwright__browser_take_screenshot",
+      "mcp__plugin_playwright_playwright__browser_console_messages",
+      "Bash(git status:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "mcp__project-db__db-query",
+      "Bash(composer show:*)"
     ],
     "deny": [
       "Bash(php artisan migrate:fresh)",
@@ -25,7 +35,14 @@
   },
   "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
+    "github",
+    "scrappa",
+    "sentry",
+    "sentry-selfhosted-mcp",
+    "chrome-devtools",
+    "google-ads",
     "laravel-boost",
-    "playwright"
+    "playwright",
+    "project-db"
   ]
 }

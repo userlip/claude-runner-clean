@@ -825,6 +825,28 @@ class TaskChat extends Component
      */
     protected function detectPrdIssueNumber(): ?int
     {
+        // 1. Check existing .ralph/ prd files in the workspace
+        $ralphDir = $this->task->workspace_path.'/.ralph';
+        if (is_dir($ralphDir)) {
+            // Check prd-<number>.json files first (most explicit)
+            $prdFiles = glob($ralphDir.'/prd-*.json');
+            foreach ($prdFiles as $file) {
+                if (preg_match('/prd-(\d+)\.json$/', $file, $matches)) {
+                    return (int) $matches[1];
+                }
+            }
+
+            // Check parentIssue in prd.json
+            $prdJsonPath = $ralphDir.'/prd.json';
+            if (file_exists($prdJsonPath)) {
+                $prd = json_decode(file_get_contents($prdJsonPath), true);
+                if (! empty($prd['parentIssue'])) {
+                    return (int) $prd['parentIssue'];
+                }
+            }
+        }
+
+        // 2. Scan assistant messages for PRD references
         $recentMessages = $this->task->messages()
             ->where('role', MessageRole::Assistant)
             ->latest()
@@ -836,13 +858,13 @@ class TaskChat extends Component
                 continue;
             }
 
-            // Match "PRD #123" or "PRD issue #123" or "Parent PRD\n#123"
-            if (preg_match('/PRD\s*(?:issue\s*)?#(\d+)/i', $content, $matches)) {
+            // Match "PRD #123", "PRD issue #123", "Parent PRD:** #123", "PRD:** [#123](url)"
+            if (preg_match('/PRD[:\s*]*(?:issue\s*)?(?:\[)?#(\d+)/i', $content, $matches)) {
                 return (int) $matches[1];
             }
         }
 
-        // Also check user messages for /prd-to-issues <number>
+        // 3. Check user messages for /prd-to-issues <number>
         $userMessages = $this->task->messages()
             ->where('role', MessageRole::User)
             ->latest()

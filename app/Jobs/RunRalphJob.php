@@ -80,7 +80,22 @@ class RunRalphJob implements ShouldQueue
         $this->postChatMessage($this->buildStartMessage($state, $story));
 
         // 5. Build and execute Claude prompt (streams output into a live chat message)
-        $result = $this->executeClaude($state, $story);
+        try {
+            $result = $this->executeClaude($state, $story);
+        } catch (\Exception $e) {
+            Log::error('Ralph executeClaude crashed', [
+                'task_id' => $this->task->id,
+                'iteration' => $this->iteration,
+                'error' => $e->getMessage(),
+            ]);
+            $this->handleExecutionFailure([
+                'success' => false,
+                'error' => $e->getMessage(),
+                'duration' => 0,
+            ], $story);
+
+            return;
+        }
 
         if (! $result['success']) {
             $this->handleExecutionFailure($result, $story);
@@ -92,15 +107,19 @@ class RunRalphJob implements ShouldQueue
         $verificationPassed = $this->runVerification($ralph, $state, $story);
 
         // 7. Log activity
-        $ralph->logActivity($this->task, [
-            'iteration' => $this->iteration,
-            'timestamp' => now()->toIso8601String(),
-            'story' => $story['id'],
-            'tokens_in' => $result['tokens_in'] ?? 0,
-            'tokens_out' => $result['tokens_out'] ?? 0,
-            'duration_seconds' => $result['duration'] ?? 0,
-            'status' => $verificationPassed ? 'passed' : 'failed',
-        ]);
+        try {
+            $ralph->logActivity($this->task, [
+                'iteration' => $this->iteration,
+                'timestamp' => now()->toIso8601String(),
+                'story' => $story['id'],
+                'tokens_in' => $result['tokens_in'] ?? 0,
+                'tokens_out' => $result['tokens_out'] ?? 0,
+                'duration_seconds' => $result['duration'] ?? 0,
+                'status' => $verificationPassed ? 'passed' : 'failed',
+            ]);
+        } catch (\Exception $e) {
+            Log::warning('Ralph failed to log activity', ['error' => $e->getMessage()]);
+        }
 
         if ($verificationPassed) {
             // 8. Update prd.json
@@ -147,9 +166,8 @@ class RunRalphJob implements ShouldQueue
             'iteration' => $this->iteration,
         ]);
 
-        // Start fresh Claude session
+        // Update iteration counter (don't touch session_id — Ralph uses its own sessions via proc_open)
         $this->task->update([
-            'session_id' => str()->uuid(),
             'ralph_iteration' => $this->iteration,
         ]);
 
@@ -208,7 +226,6 @@ class RunRalphJob implements ShouldQueue
         $tokensIn = 0;
         $tokensOut = 0;
         $learnings = '';
-        $textContent = '';
         $toolSummaries = [];
         $lastUpdateAt = 0;
 
@@ -252,7 +269,11 @@ class RunRalphJob implements ShouldQueue
                     if (($block['type'] ?? '') === 'text') {
                         $text = $block['text'] ?? '';
                         $learnings .= $text."\n";
-                        $textContent .= $text."\n";
+
+                        // Create a separate chat message for each text block
+                        if (! empty(trim($text))) {
+                            $this->postRalphTextMessage($text);
+                        }
                     }
 
                     if (($block['type'] ?? '') === 'tool_use') {
@@ -266,11 +287,11 @@ class RunRalphJob implements ShouldQueue
                 }
             }
 
-            // Update live message every 3 seconds (avoid hammering DB)
+            // Update live status message every 3 seconds (avoid hammering DB)
             $now = microtime(true);
             if ($now - $lastUpdateAt >= 3) {
                 $liveMessage->update([
-                    'content' => $this->buildLiveContent($textContent, $toolSummaries, $startTime),
+                    'content' => $this->buildLiveContent($toolSummaries, $startTime),
                 ]);
                 $lastUpdateAt = $now;
             }
@@ -286,7 +307,7 @@ class RunRalphJob implements ShouldQueue
 
         // Final update to live message
         $liveMessage->update([
-            'content' => $this->buildLiveContent($textContent, $toolSummaries, $startTime, true),
+            'content' => $this->buildLiveContent($toolSummaries, $startTime, true),
             'tokens_in' => $tokensIn,
             'tokens_out' => $tokensOut,
         ]);
@@ -321,7 +342,7 @@ class RunRalphJob implements ShouldQueue
      * Build the live streaming content for the Ralph iteration message.
      * Shows text output and a summary of tool calls.
      */
-    protected function buildLiveContent(string $textContent, array $toolSummaries, float $startTime, bool $finished = false): string
+    protected function buildLiveContent(array $toolSummaries, float $startTime, bool $finished = false): string
     {
         $elapsed = $this->formatDuration((int) (microtime(true) - $startTime));
         $status = $finished ? 'Finished' : 'Running';
@@ -334,16 +355,7 @@ class RunRalphJob implements ShouldQueue
             foreach ($toolCounts as $tool => $count) {
                 $toolParts[] = $count > 1 ? "{$tool} x{$count}" : $tool;
             }
-            $content .= '`'.implode(' · ', $toolParts)."`\n\n";
-        }
-
-        if (! empty(trim($textContent))) {
-            // Truncate to last ~2000 chars to keep message size manageable
-            $text = trim($textContent);
-            if (mb_strlen($text) > 2000) {
-                $text = '...'.mb_substr($text, -2000);
-            }
-            $content .= $text;
+            $content .= '`'.implode(' · ', $toolParts).'`';
         }
 
         return $content;
@@ -429,17 +441,38 @@ class RunRalphJob implements ShouldQueue
         // Get verification command from prd
         $command = $state->prd['verificationCommand'] ?? 'php artisan test';
 
-        // Run in workspace directory
-        $process = Process::path($this->task->workspace_path)
-            ->run($command);
+        try {
+            // Run in workspace directory with generous timeout (10 minutes)
+            $process = Process::path($this->task->workspace_path)
+                ->timeout(1200)
+                ->run($command);
 
-        $passed = $process->successful();
+            $passed = $process->successful();
 
-        if (! $passed) {
-            $ralph->appendProgress($this->task, "## Verification Failed\n\n```\n{$process->errorOutput()}\n```");
+            if (! $passed) {
+                $ralph->appendProgress($this->task, "## Verification Failed\n\n```\n{$process->errorOutput()}\n```");
+            }
+
+            return $passed;
+        } catch (\Illuminate\Process\Exceptions\ProcessTimedOutException $e) {
+            Log::warning('Ralph verification timed out', [
+                'task_id' => $this->task->id,
+                'iteration' => $this->iteration,
+                'command' => $command,
+            ]);
+            $ralph->appendProgress($this->task, "## Verification Timed Out\n\nCommand `{$command}` exceeded 20 minute timeout.");
+
+            return false;
+        } catch (\Exception $e) {
+            Log::error('Ralph verification error', [
+                'task_id' => $this->task->id,
+                'iteration' => $this->iteration,
+                'error' => $e->getMessage(),
+            ]);
+            $ralph->appendProgress($this->task, "## Verification Error\n\n```\n{$e->getMessage()}\n```");
+
+            return false;
         }
-
-        return $passed;
     }
 
     /**
@@ -469,6 +502,7 @@ class RunRalphJob implements ShouldQueue
     {
         $this->task->update([
             'status' => TaskStatus::Completed,
+            'ralph_stopped_reason' => 'completed',
         ]);
 
         $storiesCount = $state ? count($state->prd['userStories'] ?? []) : '?';
@@ -564,6 +598,14 @@ class RunRalphJob implements ShouldQueue
         ]);
 
         $this->task->update(['last_message_at' => now()]);
+    }
+
+    /**
+     * Post a Ralph Claude text output message with a prefix for visual identification.
+     */
+    protected function postRalphTextMessage(string $text): void
+    {
+        $this->postChatMessage("**Ralph:** {$text}");
     }
 
     /**
