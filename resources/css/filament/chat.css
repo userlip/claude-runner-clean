@@ -5048,3 +5048,17 @@ a,
 .dark .sidebar-tab-btn-active {
     color: var(--chat-tokyo-fg-active) !important;
 }
+
+/* Readability tweak: keep conversation text high-contrast in dark mode */
+.dark .chat-message .chat-bubble,
+.dark .chat-message .chat-bubble-content,
+.dark .chat-message .chat-bubble p,
+.dark .chat-message .chat-bubble li,
+.dark .chat-message .chat-bubble td,
+.dark .chat-message .chat-bubble th {
+    color: #ffffff !important;
+}
+
+.dark .chat-message .chat-bubble-content a {
+    color: var(--chat-tokyo-fg-active) !important;
+}
