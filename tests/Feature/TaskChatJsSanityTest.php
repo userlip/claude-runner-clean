@@ -26,45 +26,45 @@ test('task chat keeps scroll stable during live updates when user is not near bo
     expect($css)->toContain('overflow-anchor: none;');
 });
 
-test('chat and sidebar refresh defines monokai-inspired palette tokens', function () {
+test('chat and sidebar refresh defines tokyo night palette tokens', function () {
     $css = file_get_contents(resource_path('css/filament/chat.css'));
 
     expect($css)->not->toContain('radial-gradient(60rem 28rem at 110% -20%');
     expect($css)->not->toContain('backdrop-filter: blur(8px);');
-    expect($css)->toContain('--chat-bg-dark: #272822;');
-    expect($css)->toContain('--chat-fg-dark: #f8f8f2;');
-    expect($css)->toContain('--chat-muted-dark: #75715e;');
-    expect($css)->toContain('--chat-keyword: #f92672;');
-    expect($css)->toContain('--chat-function: #a6e22e;');
-    expect($css)->toContain('--chat-string: #e6db74;');
-    expect($css)->toContain('--chat-number: #ae81ff;');
-    expect($css)->toContain('--chat-operator: #fd971f;');
+    expect($css)->toContain('--chat-tokyo-fg: #959cbd;');
+    expect($css)->toContain('--chat-tokyo-fg-active: #bdc7f0;');
+    expect($css)->toContain('--chat-tokyo-fg-inactive: #787c99;');
+    expect($css)->toContain('--chat-tokyo-fg-dim: #696d87;');
+    expect($css)->toContain('--chat-tokyo-border: #3d59a1;');
+    expect($css)->toContain('--chat-tokyo-bg: #202330;');
+    expect($css)->toContain('--chat-bg-dark: var(--chat-tokyo-bg);');
+    expect($css)->toContain('--chat-fg-dark: var(--chat-tokyo-fg);');
 });
 
-test('chat dark surfaces apply monokai background and foreground consistently', function () {
+test('chat dark surfaces apply tokyo night background and foreground consistently', function () {
     $css = file_get_contents(resource_path('css/filament/chat.css'));
 
-    expect($css)->toContain(".dark .chat-input-area {\n    background-color: var(--chat-bg-dark);");
+    expect($css)->toContain(".dark .chat-input-area {\n    background-color: var(--chat-tokyo-bg-elevated);");
     expect($css)->toContain(".dark .chat-textarea {\n    background-color: var(--chat-bg-dark);");
     expect($css)->toContain('color: var(--chat-fg-dark);');
-    expect($css)->toContain('border-color: var(--chat-muted-dark);');
+    expect($css)->toContain('border-color: var(--chat-accent-border);');
 });
 
-test('chat dark controls use monokai accent colors instead of blue defaults', function () {
+test('chat dark controls use tokyo night accent colors', function () {
     $css = file_get_contents(resource_path('css/filament/chat.css'));
 
-    expect($css)->toContain(".dark .sidebar-tab-btn-active {\n    color: #272822;\n    border-bottom: none;\n    border: 1px solid var(--chat-number);\n    background: var(--chat-number);");
-    expect($css)->toContain(".dark .chat-submit {\n    background-color: var(--chat-operator);\n    border-color: var(--chat-operator);");
-    expect($css)->toContain(".dark .chat-submit:hover {\n    background-color: var(--chat-keyword);");
-    expect($css)->toContain(".dark .chat-provider-btn-active {\n    background: var(--chat-function);\n    border-color: var(--chat-function);");
+    expect($css)->toContain(".dark .sidebar-tab-btn-active {\n    color: var(--chat-tokyo-fg-active);");
+    expect($css)->toContain(".dark .chat-submit {\n    background-color: var(--chat-accent);");
+    expect($css)->toContain(".dark .chat-submit:hover {\n    background-color: color-mix(in srgb, var(--chat-accent) 74%, var(--chat-tokyo-fg-active));");
+    expect($css)->toContain(".dark .chat-provider-btn-active {\n    background-color: var(--chat-accent) !important;");
 });
 
-test('chat dark mode applies monokai base palette to workspace wrappers', function () {
+test('chat dark mode applies tokyo night base palette to workspace wrappers', function () {
     $css = file_get_contents(resource_path('css/filament/chat.css'));
 
-    expect($css)->toContain(".dark .chat-page-main {\n    background: var(--chat-bg-dark);");
-    expect($css)->toContain(".dark .chat-container {\n    border-color: var(--chat-muted-dark);");
-    expect($css)->toContain(".dark .chat-header {\n    background-color: var(--chat-bg-dark);");
+    expect($css)->toContain(".dark .chat-page-main {\n    background: var(--chat-tokyo-bg-soft);");
+    expect($css)->toContain(".dark .chat-container {\n    border-color: var(--chat-accent-border);");
+    expect($css)->toContain(".dark .chat-header {\n    background-color: var(--chat-tokyo-bg-elevated);");
     expect($css)->toContain(".dark .chat-messages {\n    background: var(--chat-bg-dark);");
 });
 
@@ -72,13 +72,13 @@ test('dark chat workspace wrapper avoids black canvas with lifted panel surfaces
     $css = file_get_contents(resource_path('css/filament/chat.css'));
 
     expect($css)->toContain('.dark .chat-page-main {');
-    expect($css)->toContain('background: var(--chat-bg-dark);');
-    expect($css)->toContain('border: 1px solid var(--chat-muted-dark);');
+    expect($css)->toContain('background: var(--chat-tokyo-bg-soft);');
+    expect($css)->toContain('border: 1px solid var(--chat-accent-border);');
 
     expect($css)->toContain('.dark .chat-container {');
-    expect($css)->toContain('border-color: var(--chat-muted-dark);');
+    expect($css)->toContain('border-color: var(--chat-accent-border);');
 
-    expect($css)->toContain(".dark .chat-header {\n    background-color: var(--chat-bg-dark);");
+    expect($css)->toContain(".dark .chat-header {\n    background-color: var(--chat-tokyo-bg-elevated);");
     expect($css)->toContain(".dark .chat-messages {\n    background: var(--chat-bg-dark);");
 });
 
@@ -87,16 +87,16 @@ test('dark input and workspace panels use neutral gray overrides without blue ti
 
     expect($css)->toContain('.dark .chat-textarea {');
     expect($css)->toContain('background-color: var(--chat-bg-dark) !important;');
-    expect($css)->toContain('border-color: var(--chat-muted-dark) !important;');
+    expect($css)->toContain('border-color: var(--chat-accent-border) !important;');
     expect($css)->toContain('.dark .sidebar-tab-content,');
     expect($css)->toContain('.dark .task-todo-list,');
-    expect($css)->toContain('background: var(--chat-bg-dark) !important;');
+    expect($css)->toContain('background: var(--chat-tokyo-bg-elevated) !important;');
 });
 
-test('chat input focus accent in dark mode is non-error and avoids red keyword tone', function () {
+test('chat input focus accent in dark mode follows tokyo night border accent', function () {
     $css = file_get_contents(resource_path('css/filament/chat.css'));
 
-    expect($css)->toContain(".dark .chat-textarea:focus {\n    border-color: var(--chat-number);");
-    expect($css)->toContain('box-shadow: 0 0 0 2px color-mix(in srgb, var(--chat-number) 35%, transparent);');
+    expect($css)->toContain(".dark .chat-textarea:focus {\n    border-color: var(--chat-tokyo-border);");
+    expect($css)->toContain('box-shadow: 0 0 0 2px color-mix(in srgb, var(--chat-tokyo-border) 35%, transparent);');
     expect($css)->not->toContain(".dark .chat-textarea:focus {\n    border-color: var(--chat-keyword);");
 });

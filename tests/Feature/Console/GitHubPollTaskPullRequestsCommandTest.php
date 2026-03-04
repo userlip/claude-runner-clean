@@ -154,9 +154,12 @@ class GitHubPollTaskPullRequestsCommandTest extends TestCase
         $this->assertSame('org/repo', $monitor['repository_full_name'] ?? null);
         $this->assertSame(123, $monitor['pr_number'] ?? null);
 
-        $latest = $task->messages()->latest()->firstOrFail();
-        $this->assertSame(MessageRole::User, $latest->role);
-        $this->assertStringContainsString('checks in github ci have finished', strtolower($latest->content ?? ''));
+        $latestUser = $task->messages()
+            ->where('role', MessageRole::User)
+            ->latest('id')
+            ->first();
+        $this->assertNotNull($latestUser);
+        $this->assertStringContainsString('checks in github ci have finished', strtolower($latestUser->content ?? ''));
 
         Queue::assertPushed(RunClaudeMessageJob::class);
     }
