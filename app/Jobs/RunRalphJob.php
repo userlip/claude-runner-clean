@@ -79,11 +79,11 @@ class RunRalphJob implements ShouldQueue
         // Post "starting" message to chat (the live stream message is separate)
         $this->postChatMessage($this->buildStartMessage($state, $story));
 
-        // 5. Build and execute Claude prompt (streams output into a live chat message)
+        // 5. Build and execute AI prompt (streams output into a live chat message)
         try {
             $result = $this->executeClaude($state, $story);
         } catch (\Exception $e) {
-            Log::error('Ralph executeClaude crashed', [
+            Log::error('Ralph execution crashed', [
                 'task_id' => $this->task->id,
                 'iteration' => $this->iteration,
                 'error' => $e->getMessage(),
@@ -179,7 +179,7 @@ class RunRalphJob implements ShouldQueue
     }
 
     /**
-     * Execute the Claude AI to implement a user story, streaming output into a live chat message.
+     * Execute the selected AI provider to implement a user story, streaming output into a live chat message.
      *
      * @param  \App\DataObjects\RalphState  $state  The current Ralph state
      * @param  array<string, mixed>  $story  The user story to implement
@@ -187,11 +187,13 @@ class RunRalphJob implements ShouldQueue
      */
     protected function executeClaude(RalphState $state, array $story): array
     {
+        $isCodex = $this->task->aiProvider?->isCodex() === true;
+        $providerName = $isCodex ? 'Codex' : 'Claude';
         $prompt = $this->buildPrompt($state, $story);
         $command = $this->buildRalphCommand($prompt);
         $startTime = microtime(true);
 
-        // Create a live message that will be updated as Claude streams output
+        // Create a live message that will be updated as the model streams output
         $liveMessage = Message::create([
             'task_id' => $this->task->id,
             'role' => MessageRole::Assistant,
@@ -209,15 +211,18 @@ class RunRalphJob implements ShouldQueue
         $process = proc_open($command, $descriptors, $pipes, $this->task->workspace_path);
 
         if (! is_resource($process)) {
-            $liveMessage->update(['content' => '*Failed to start Claude process*']);
+            $liveMessage->update(['content' => "*Failed to start {$providerName} process*"]);
 
             return [
                 'success' => false,
-                'error' => 'Failed to start Claude process',
+                'error' => "Failed to start {$providerName} process",
                 'duration' => 0,
             ];
         }
 
+        if ($isCodex) {
+            fwrite($pipes[0], $prompt."\n");
+        }
         fclose($pipes[0]); // Close stdin
 
         // Set stream timeout (5 min of silence = hung)
@@ -257,32 +262,58 @@ class RunRalphJob implements ShouldQueue
 
             $type = $json['type'] ?? '';
 
-            // Result message contains final stats
-            if ($type === 'result') {
-                $tokensIn = $json['usage']['input_tokens'] ?? $tokensIn;
-                $tokensOut = $json['usage']['output_tokens'] ?? $tokensOut;
-            }
+            if ($isCodex) {
+                if ($type === 'item.completed') {
+                    $item = $json['item'] ?? [];
+                    $itemType = $item['type'] ?? '';
 
-            // Extract text content from assistant messages
-            if ($type === 'assistant' && isset($json['message']['content'])) {
-                foreach ($json['message']['content'] as $block) {
-                    if (($block['type'] ?? '') === 'text') {
-                        $text = $block['text'] ?? '';
+                    if (in_array($itemType, ['agent_message', 'assistant_message'], true)) {
+                        $text = $this->stripCitationMarkers($item['text'] ?? '');
                         $learnings .= $text."\n";
 
-                        // Create a separate chat message for each text block
                         if (! empty(trim($text))) {
                             $this->postRalphTextMessage($text);
                         }
                     }
 
-                    if (($block['type'] ?? '') === 'tool_use') {
-                        $toolName = $block['name'] ?? 'unknown';
-                        $toolSummaries[] = $toolName;
+                    if ($itemType === 'command_execution') {
+                        $toolSummaries[] = 'shell_command';
                     }
+                }
 
-                    if (($block['type'] ?? '') === 'tool_result') {
-                        // Tool completed - don't need the full result in the stream
+                if ($type === 'turn.completed') {
+                    $usage = $json['usage'] ?? [];
+                    $tokensIn = ($usage['input_tokens'] ?? 0) + ($usage['cached_input_tokens'] ?? 0);
+                    $tokensOut = $usage['output_tokens'] ?? $tokensOut;
+                }
+            } else {
+                // Result message contains final stats
+                if ($type === 'result') {
+                    $tokensIn = $json['usage']['input_tokens'] ?? $tokensIn;
+                    $tokensOut = $json['usage']['output_tokens'] ?? $tokensOut;
+                }
+
+                // Extract text content from assistant messages
+                if ($type === 'assistant' && isset($json['message']['content'])) {
+                    foreach ($json['message']['content'] as $block) {
+                        if (($block['type'] ?? '') === 'text') {
+                            $text = $block['text'] ?? '';
+                            $learnings .= $text."\n";
+
+                            // Create a separate chat message for each text block
+                            if (! empty(trim($text))) {
+                                $this->postRalphTextMessage($text);
+                            }
+                        }
+
+                        if (($block['type'] ?? '') === 'tool_use') {
+                            $toolName = $block['name'] ?? 'unknown';
+                            $toolSummaries[] = $toolName;
+                        }
+
+                        if (($block['type'] ?? '') === 'tool_result') {
+                            // Tool completed - don't need the full result in the stream
+                        }
                     }
                 }
             }
@@ -313,16 +344,17 @@ class RunRalphJob implements ShouldQueue
         ]);
 
         if ($exitCode !== 0) {
-            Log::error('Ralph Claude execution failed', [
+            Log::error('Ralph execution failed', [
                 'task_id' => $this->task->id,
                 'iteration' => $this->iteration,
+                'provider' => strtolower($providerName),
                 'exit_code' => $exitCode,
                 'error' => $stderr,
             ]);
 
             return [
                 'success' => false,
-                'error' => $stderr ?: "Claude process failed with exit code {$exitCode}",
+                'error' => $stderr ?: "{$providerName} process failed with exit code {$exitCode}",
                 'tokens_in' => $tokensIn,
                 'tokens_out' => $tokensOut,
                 'duration' => $duration,
@@ -369,20 +401,46 @@ class RunRalphJob implements ShouldQueue
      */
     protected function buildRalphCommand(string $prompt): string
     {
-        $sessionId = escapeshellarg((string) str()->uuid());
-        $escapedPrompt = escapeshellarg($prompt);
+        $provider = $this->task->aiProvider;
 
-        $claudeCmd = "/usr/bin/claude -p {$escapedPrompt} --output-format stream-json --verbose --dangerously-skip-permissions --session-id {$sessionId} --max-turns 50";
+        if ($provider?->isCodex()) {
+            $codexPath = config('services.codex.path', '/home/ploi/.npm-global/bin/codex');
+            $workingDir = $this->task->working_directory;
+            $model = $provider->model;
 
-        // Add MCP servers (Playwright for browser automation)
-        $mcpServers = [
-            'playwright' => [
-                'command' => 'npx',
-                'args' => ['@playwright/mcp@latest'],
-            ],
-        ];
-        $mcpConfig = json_encode(['mcpServers' => $mcpServers]);
-        $claudeCmd .= ' --mcp-config '.escapeshellarg($mcpConfig);
+            $baseArgs = [
+                escapeshellcmd($codexPath),
+                'exec',
+                '--json',
+                '--skip-git-repo-check',
+                '--dangerously-bypass-approvals-and-sandbox',
+                '--cd',
+                escapeshellarg($workingDir),
+            ];
+
+            if ($model) {
+                $baseArgs[] = '-m';
+                $baseArgs[] = escapeshellarg($model);
+            }
+
+            $baseArgs[] = '-';
+            $agentCmd = implode(' ', $baseArgs);
+        } else {
+            $sessionId = escapeshellarg((string) str()->uuid());
+            $escapedPrompt = escapeshellarg($prompt);
+
+            $agentCmd = "/usr/bin/claude -p {$escapedPrompt} --output-format stream-json --verbose --dangerously-skip-permissions --session-id {$sessionId} --max-turns 50";
+
+            // Add MCP servers (Playwright for browser automation)
+            $mcpServers = [
+                'playwright' => [
+                    'command' => 'npx',
+                    'args' => ['@playwright/mcp@latest'],
+                ],
+            ];
+            $mcpConfig = json_encode(['mcpServers' => $mcpServers]);
+            $agentCmd .= ' --mcp-config '.escapeshellarg($mcpConfig);
+        }
 
         // Build isolated environment
         $envVars = [
@@ -394,7 +452,6 @@ class RunRalphJob implements ShouldQueue
         ];
 
         // Add provider API keys
-        $provider = $this->task->aiProvider;
         if ($provider) {
             foreach ($provider->getEnvironmentVariables() as $key => $value) {
                 $envVars[$key] = $value;
@@ -406,7 +463,7 @@ class RunRalphJob implements ShouldQueue
             $envCmd .= ' '.escapeshellarg("{$key}={$value}");
         }
 
-        return "{$envCmd} {$claudeCmd}";
+        return "{$envCmd} {$agentCmd}";
     }
 
     /**
@@ -667,5 +724,12 @@ class RunRalphJob implements ShouldQueue
         $remaining = $seconds % 60;
 
         return "{$minutes}m {$remaining}s";
+    }
+
+    protected function stripCitationMarkers(string $content): string
+    {
+        $content = preg_replace('/[\x{E200}-\x{E2FF}]+/u', '', $content);
+
+        return preg_replace('/\s*citeturn\d+\w*\d*/i', '', $content);
     }
 }

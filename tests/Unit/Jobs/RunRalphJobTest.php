@@ -9,6 +9,7 @@ use App\Services\RalphWorkspaceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\File;
 use Queue;
+use ReflectionMethod;
 use Tests\TestCase;
 
 class RunRalphJobTest extends TestCase
@@ -123,5 +124,34 @@ class RunRalphJobTest extends TestCase
         RunRalphJob::dispatch($task, 1);
 
         Queue::assertPushed(RunRalphJob::class);
+    }
+
+    public function test_builds_codex_command_when_provider_is_codex(): void
+    {
+        $provider = AiProvider::factory()->codex()->create(['model' => 'o3']);
+        $task = Task::factory()->ralph()->create([
+            'ai_provider_id' => $provider->id,
+            'workspace_path' => '/tmp/test-workspace',
+        ]);
+
+        $job = new RunRalphJob($task, 1);
+
+        $command = $this->invokeProtected($job, 'buildRalphCommand', ['Test prompt']);
+
+        $this->assertStringContainsString('codex exec --json', $command);
+        $this->assertStringNotContainsString('/usr/bin/claude', $command);
+        $this->assertStringContainsString('-m', $command);
+        $this->assertStringContainsString("'o3'", $command);
+    }
+
+    /**
+     * @param  array<int, mixed>  $args
+     */
+    protected function invokeProtected(object $instance, string $method, array $args = []): mixed
+    {
+        $ref = new ReflectionMethod($instance, $method);
+        $ref->setAccessible(true);
+
+        return $ref->invokeArgs($instance, $args);
     }
 }
