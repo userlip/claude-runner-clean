@@ -140,8 +140,9 @@ You are an autonomous coding agent working on a Laravel application.
 6. Implement that **ONE** story only
 7. Run quality checks:
    - `vendor/bin/pint --dirty` (fix code style)
-   - `{{ verificationCommand }}` (run tests)
+   - Targeted tests only (run only story-specific tests, not full suite)
 8. If checks pass, commit ALL changes: `feat: [Story ID] - [Story Title]`
+   - The full test suite will run in GitHub CI
 9. Update `.ralph/prd.json`: set `passes: true` for the completed story
 10. Append learnings to `.ralph/progress.txt`
 
@@ -201,7 +202,8 @@ Only add patterns that are **general and reusable**, not story-specific.
 
 ## Quality Requirements
 
-- ALL commits must pass `vendor/bin/pint --dirty` and `{{ verificationCommand }}`
+- ALL commits must pass `vendor/bin/pint --dirty` and targeted story-specific tests
+- The full test suite will be verified in GitHub CI
 - Do NOT commit broken code
 - Keep changes focused and minimal
 - Follow existing code patterns in sibling files
@@ -225,8 +227,8 @@ If there are still stories with `passes: false`, end your response normally (ano
 MD;
 
         $prompt = str_replace(
-            ['{{ branchName }}', '{{ verificationCommand }}'],
-            [$config['branch_name'] ?? 'main', $config['verification_command'] ?? 'php artisan test'],
+            '{{ branchName }}',
+            $config['branch_name'] ?? 'main',
             $template
         );
 
@@ -237,7 +239,6 @@ MD;
     {
         $prd = [
             'branchName' => '',
-            'verificationCommand' => 'php artisan test',
             'userStories' => $stories,
         ];
 

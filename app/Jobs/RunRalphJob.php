@@ -488,6 +488,9 @@ class RunRalphJob implements ShouldQueue
     /**
      * Run the verification command to check if the implementation passes.
      *
+     * Only runs targeted tests for the story, not the full suite.
+     * The full test suite will run in GitHub CI.
+     *
      * @param  \App\Services\RalphWorkspaceService  $ralph  The Ralph workspace service
      * @param  \App\DataObjects\RalphState  $state  The current Ralph state
      * @param  array<string, mixed>  $story  The user story being verified
@@ -495,14 +498,15 @@ class RunRalphJob implements ShouldQueue
      */
     protected function runVerification(RalphWorkspaceService $ralph, RalphState $state, array $story): bool
     {
-        // Get verification command from prd
-        $command = $state->prd['verificationCommand'] ?? 'php artisan test';
+        // Build targeted test command based on story ID
+        // Only runs story-specific tests, not the full suite
+        $targetedCommand = $this->buildTargetedTestCommand($story);
 
         try {
-            // Run in workspace directory with generous timeout (10 minutes)
+            // Run targeted tests in workspace directory with generous timeout (10 minutes)
             $process = Process::path($this->task->workspace_path)
-                ->timeout(1200)
-                ->run($command);
+                ->timeout(600)
+                ->run($targetedCommand);
 
             $passed = $process->successful();
 
@@ -515,9 +519,9 @@ class RunRalphJob implements ShouldQueue
             Log::warning('Ralph verification timed out', [
                 'task_id' => $this->task->id,
                 'iteration' => $this->iteration,
-                'command' => $command,
+                'command' => $targetedCommand,
             ]);
-            $ralph->appendProgress($this->task, "## Verification Timed Out\n\nCommand `{$command}` exceeded 20 minute timeout.");
+            $ralph->appendProgress($this->task, "## Verification Timed Out\n\nCommand `{$targetedCommand}` exceeded 10 minute timeout.");
 
             return false;
         } catch (\Exception $e) {
@@ -530,6 +534,61 @@ class RunRalphJob implements ShouldQueue
 
             return false;
         }
+    }
+
+    /**
+     * Build a targeted test command for the specific story.
+     * Only runs tests related to the story, not the full suite.
+     *
+     * @param  array<string, mixed>  $story  The user story
+     * @return string The test command
+     */
+    protected function buildTargetedTestCommand(array $story): string
+    {
+        $storyId = $story['id'] ?? '';
+
+        // Map story IDs to specific test files/patterns
+        // This avoids running the full test suite locally
+        $testMapping = [
+            // Kununu stories
+            'STORY-1' => 'tests/Feature/KununuDbFirstReviewsTest.php tests/Feature/Jobs/FetchKununuReviewsTest.php',
+            'STORY-2' => 'tests/Feature/KununuOrchestrationTest.php',
+            'STORY-3' => 'tests/Feature/KununuDiscoveryTest.php',
+            'STORY-4' => 'tests/Feature/KununuFullScanTest.php',
+            'STORY-5' => 'tests/Feature/KununuIncrementalScanTest.php',
+            'STORY-6' => 'tests/Feature/KununuReviewLifecycleTest.php',
+        ];
+
+        // If we have a specific mapping, use it
+        if (isset($testMapping[$storyId])) {
+            return 'php artisan test '.$testMapping[$storyId];
+        }
+
+        // Default: try to guess test files from story title/ID
+        // Convert story ID to a likely test file name
+        $testName = str_replace(['STORY-', '-'], ['', ''], $storyId);
+        $possibleFiles = [
+            "tests/Feature/{$testName}Test.php",
+            'tests/Feature/'.str_replace(' ', '', $story['title'] ?? '').'Test.php',
+        ];
+
+        // Check which test files exist and run only those
+        $existingFiles = [];
+        foreach ($possibleFiles as $file) {
+            $fullPath = $this->task->workspace_path.'/'.$file;
+            if (file_exists($fullPath)) {
+                $existingFiles[] = $file;
+            }
+        }
+
+        if (! empty($existingFiles)) {
+            return 'php artisan test '.implode(' ', $existingFiles);
+        }
+
+        // Fallback: run phpunit with --filter to target likely test names
+        $filterPattern = strtolower(str_replace(['STORY-', '-', ' '], ['', '', ''], $storyId));
+
+        return 'php artisan test --filter='.$filterPattern;
     }
 
     /**
