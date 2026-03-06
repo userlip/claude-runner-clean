@@ -1,12 +1,16 @@
 <?php
 
 use App\Jobs\RunClaudeMessageJob;
+use App\Jobs\RunRalphJob;
 use App\Livewire\TaskChat;
 use App\Models\Message;
 use App\Models\Repository;
 use App\Models\Site;
 use App\Models\Task;
 use App\Models\User;
+use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
 
@@ -44,6 +48,93 @@ test('can send a message', function () {
 
     expect(Message::where('content', 'Hello Claude!')->exists())->toBeTrue();
     Queue::assertPushed(RunClaudeMessageJob::class);
+});
+
+test('typing start ralph starts the ralph loop locally instead of sending a normal chat message', function () {
+    Bus::fake();
+
+    $repository = Repository::factory()->create([
+        'user_id' => $this->user->id,
+        'full_name' => 'nxtyou/RezensionsHeld-Dashboard',
+    ]);
+
+    $workspacePath = '/tmp/task-chat-start-ralph';
+    File::deleteDirectory($workspacePath);
+    File::ensureDirectoryExists($workspacePath.'/.ralph');
+    File::put($workspacePath.'/.ralph/prd.json', json_encode([
+        'parentIssue' => 622,
+    ], JSON_PRETTY_PRINT));
+
+    Process::fake([
+        '*gh issue list*' => Process::result(output: json_encode([
+            [
+                'number' => 623,
+                'title' => 'Foundation',
+                'body' => "## Parent PRD\n#622\n\n## Acceptance criteria\n- [ ] First criterion",
+            ],
+        ])),
+    ]);
+
+    $task = Task::factory()->create([
+        'repository_id' => $repository->id,
+        'workspace_path' => $workspacePath,
+        'ralph_enabled' => false,
+    ]);
+
+    Livewire::test(TaskChat::class, ['task' => $task])
+        ->set('prompt', 'start ralph')
+        ->call('sendMessage');
+
+    expect($task->fresh()->ralph_enabled)->toBeTrue();
+    expect($task->fresh()->ralph_branch_name)->toBe("ralph/{$task->uuid}");
+    Bus::assertDispatched(RunRalphJob::class);
+    Bus::assertNotDispatched(RunClaudeMessageJob::class);
+    expect(Message::where('task_id', $task->id)->where('content', 'start ralph')->exists())->toBeFalse();
+});
+
+test('typing start ralph detects the parent PRD from the existing ralph prd.json structure', function () {
+    Bus::fake();
+
+    $repository = Repository::factory()->create([
+        'user_id' => $this->user->id,
+        'full_name' => 'nxtyou/RezensionsHeld-Dashboard',
+    ]);
+
+    $workspacePath = '/tmp/task-chat-start-ralph-nested-prd';
+    File::deleteDirectory($workspacePath);
+    File::ensureDirectoryExists($workspacePath.'/.ralph');
+    File::put($workspacePath.'/.ralph/prd.json', json_encode([
+        'prd' => [
+            'issue_number' => 622,
+            'title' => 'Existing PRD',
+        ],
+        'slices' => [],
+    ], JSON_PRETTY_PRINT));
+
+    Process::fake([
+        '*gh issue list*' => Process::result(output: json_encode([
+            [
+                'number' => 623,
+                'title' => 'Foundation',
+                'body' => "## Parent PRD\n#622\n\n## Acceptance criteria\n- [ ] First criterion",
+            ],
+        ])),
+    ]);
+
+    $task = Task::factory()->create([
+        'repository_id' => $repository->id,
+        'workspace_path' => $workspacePath,
+        'ralph_enabled' => false,
+    ]);
+
+    Livewire::test(TaskChat::class, ['task' => $task])
+        ->set('prompt', 'start ralph')
+        ->call('sendMessage');
+
+    expect($task->fresh()->ralph_enabled)->toBeTrue();
+    expect($task->fresh()->ralph_branch_name)->toBe("ralph/{$task->uuid}");
+    Bus::assertDispatched(RunRalphJob::class);
+    Bus::assertNotDispatched(RunClaudeMessageJob::class);
 });
 
 test('shows repository and location in header', function () {

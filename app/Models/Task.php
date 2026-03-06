@@ -49,9 +49,12 @@ class Task extends Model
         'ralph_enabled',
         'ralph_iteration',
         'ralph_max_iterations',
+        'ralph_anchor_path',
+        'ralph_branch_name',
         'ralph_rotation_threshold',
         'ralph_model_rotation',
         'ralph_gutter_count',
+        'ralph_stopped_reason',
     ];
 
     protected function casts(): array

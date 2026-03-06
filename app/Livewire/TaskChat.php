@@ -428,8 +428,8 @@ class TaskChat extends Component
         // Refresh task to get latest status before checking isRunning
         $this->task->refresh();
 
-        // Handle slash commands locally (only when not running)
-        if (! $this->task->isRunning() && ! empty($this->prompt) && $this->handleSlashCommand($this->prompt)) {
+        // Handle local chat commands (only when not running)
+        if (! $this->task->isRunning() && ! empty($this->prompt) && $this->handleLocalCommand($this->prompt)) {
             $this->prompt = '';
             $this->images = [];
 
@@ -488,11 +488,23 @@ class TaskChat extends Component
     }
 
     /**
-     * Handle slash commands locally without sending to Claude.
+     * Handle local commands locally without sending to Claude.
      */
-    protected function handleSlashCommand(string $prompt): bool
+    protected function handleLocalCommand(string $prompt): bool
     {
         $command = strtolower(trim($prompt));
+
+        if (in_array($command, ['start ralph', '/start ralph'], true)) {
+            $this->startRalphLoop();
+
+            return true;
+        }
+
+        if (in_array($command, ['restart ralph', '/restart ralph'], true)) {
+            $this->restartRalphLoop();
+
+            return true;
+        }
 
         if ($command === '/usage') {
             $this->handleUsageCommand();
@@ -843,6 +855,10 @@ class TaskChat extends Component
                 if (! empty($prd['parentIssue'])) {
                     return (int) $prd['parentIssue'];
                 }
+
+                if (! empty($prd['prd']['issue_number'])) {
+                    return (int) $prd['prd']['issue_number'];
+                }
             }
         }
 
@@ -859,7 +875,7 @@ class TaskChat extends Component
             }
 
             // Match "PRD #123", "PRD issue #123", "Parent PRD:** #123", "PRD:** [#123](url)"
-            if (preg_match('/PRD[:\s*]*(?:issue\s*)?(?:\[)?#(\d+)/i', $content, $matches)) {
+            if (preg_match('/PRD[:\s*]*(?:issue(?:\s+is)?\s*)?(?:created\s+as\s+github\s+issue\s*)?(?:\[)?#(\d+)/i', $content, $matches)) {
                 return (int) $matches[1];
             }
         }
