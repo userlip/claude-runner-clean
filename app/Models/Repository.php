@@ -25,6 +25,7 @@ class Repository extends Model
         'private',
         'description',
         'security_management_enabled',
+        'claude_code_enabled',
         'ploi_server_id',
         'ploi_server_name',
         'ploi_site_id',
@@ -39,6 +40,7 @@ class Repository extends Model
             'private' => 'boolean',
             'value_tier' => ValueTier::class,
             'security_management_enabled' => 'boolean',
+            'claude_code_enabled' => 'boolean',
         ];
     }
 

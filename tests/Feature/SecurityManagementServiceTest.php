@@ -763,4 +763,150 @@ class SecurityManagementServiceTest extends TestCase
                 && str_contains($request->data()['body'], '@dependabot close');
         });
     }
+
+    public function test_design_sensitive_dependency_updates_require_manual_review_even_if_ai_allows_merge(): void
+    {
+        $orchestrator = $this->ensureCodexProvider();
+        config(['services.security_ai.orchestrator_provider_id' => $orchestrator->id]);
+        Queue::fake();
+
+        $repo = Repository::factory()->create([
+            'security_management_enabled' => true,
+            'full_name' => 'org/repo',
+        ]);
+        GitHubConnection::factory()->create(['user_id' => $repo->user_id, 'access_token' => 'token']);
+
+        $run = SecurityRun::create([
+            'repository_id' => $repo->id,
+            'github_pr_id' => 1,
+            'github_pr_number' => 10,
+            'status' => SecurityRunStatus::Researching,
+        ]);
+
+        $task = Task::create([
+            'title' => "Security PR #{$run->github_pr_number}",
+            'repository_id' => $repo->id,
+            'ai_provider_id' => $orchestrator->id,
+            'status' => TaskStatus::Pending,
+        ]);
+        $run->update(['task_id' => $task->id]);
+
+        Message::create([
+            'task_id' => $task->id,
+            'role' => MessageRole::Assistant,
+            'status' => MessageStatus::Sent,
+            'content' => "Summary\n```json\n{\"merge_allowed\":true,\"action\":\"merge\",\"risk_level\":\"low\",\"rationale\":\"CI passes\"}\n```",
+        ]);
+
+        Http::fake(function ($request) {
+            if ($request->url() === 'https://api.github.com/rate_limit') {
+                return Http::response([
+                    'resources' => ['core' => ['remaining' => 1000, 'limit' => 5000, 'reset' => time() + 3600]],
+                ]);
+            }
+
+            if ($request->url() === 'https://api.github.com/repos/org/repo/pulls?state=open&per_page=100') {
+                return Http::response([]);
+            }
+
+            if ($request->url() === 'https://api.github.com/repos/org/repo/pulls/10') {
+                return Http::response([
+                    'number' => 10,
+                    'title' => 'Bump tailwindcss from 3.4.0 to 4.0.0',
+                    'body' => '',
+                    'head' => ['sha' => 'abc'],
+                ]);
+            }
+
+            if ($request->url() === 'https://api.github.com/repos/org/repo/pulls/10/merge') {
+                return Http::response(['sha' => 'merge-sha']);
+            }
+
+            return Http::response([], 404);
+        });
+
+        app(SecurityManagementService::class)->processRepository($repo->fresh());
+
+        $this->assertDatabaseHas('security_runs', [
+            'id' => $run->id,
+            'status' => SecurityRunStatus::NeedsUserAction->value,
+        ]);
+
+        Http::assertNotSent(function ($request) {
+            return $request->url() === 'https://api.github.com/repos/org/repo/pulls/10/merge';
+        });
+    }
+
+    public function test_major_dependency_updates_require_manual_review_even_if_not_design_sensitive(): void
+    {
+        $orchestrator = $this->ensureCodexProvider();
+        config(['services.security_ai.orchestrator_provider_id' => $orchestrator->id]);
+        Queue::fake();
+
+        $repo = Repository::factory()->create([
+            'security_management_enabled' => true,
+            'full_name' => 'org/repo',
+        ]);
+        GitHubConnection::factory()->create(['user_id' => $repo->user_id, 'access_token' => 'token']);
+
+        $run = SecurityRun::create([
+            'repository_id' => $repo->id,
+            'github_pr_id' => 1,
+            'github_pr_number' => 10,
+            'status' => SecurityRunStatus::Researching,
+        ]);
+
+        $task = Task::create([
+            'title' => "Security PR #{$run->github_pr_number}",
+            'repository_id' => $repo->id,
+            'ai_provider_id' => $orchestrator->id,
+            'status' => TaskStatus::Pending,
+        ]);
+        $run->update(['task_id' => $task->id]);
+
+        Message::create([
+            'task_id' => $task->id,
+            'role' => MessageRole::Assistant,
+            'status' => MessageStatus::Sent,
+            'content' => "Summary\n```json\n{\"merge_allowed\":true,\"action\":\"merge\",\"risk_level\":\"low\",\"rationale\":\"CI passes\"}\n```",
+        ]);
+
+        Http::fake(function ($request) {
+            if ($request->url() === 'https://api.github.com/rate_limit') {
+                return Http::response([
+                    'resources' => ['core' => ['remaining' => 1000, 'limit' => 5000, 'reset' => time() + 3600]],
+                ]);
+            }
+
+            if ($request->url() === 'https://api.github.com/repos/org/repo/pulls?state=open&per_page=100') {
+                return Http::response([]);
+            }
+
+            if ($request->url() === 'https://api.github.com/repos/org/repo/pulls/10') {
+                return Http::response([
+                    'number' => 10,
+                    'title' => 'Bump lodash from 4.17.21 to 5.0.0',
+                    'body' => '',
+                    'head' => ['sha' => 'abc'],
+                ]);
+            }
+
+            if ($request->url() === 'https://api.github.com/repos/org/repo/pulls/10/merge') {
+                return Http::response(['sha' => 'merge-sha']);
+            }
+
+            return Http::response([], 404);
+        });
+
+        app(SecurityManagementService::class)->processRepository($repo->fresh());
+
+        $this->assertDatabaseHas('security_runs', [
+            'id' => $run->id,
+            'status' => SecurityRunStatus::NeedsUserAction->value,
+        ]);
+
+        Http::assertNotSent(function ($request) {
+            return $request->url() === 'https://api.github.com/repos/org/repo/pulls/10/merge';
+        });
+    }
 }

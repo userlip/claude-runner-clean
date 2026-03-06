@@ -527,6 +527,45 @@ class SecurityManagementService
             $action = $decision['action'] ?? ($mergeAllowed ? 'merge' : 'escalate');
             $this->postDecisionMessage($task, $run, $decision, $mergeAllowed);
 
+            if ($this->requiresManualMajorReview($updateDetails)) {
+                $dependency = $updateDetails['dependency'] ?? 'dependency';
+                $from = $updateDetails['from_version'] ?? '?';
+                $to = $updateDetails['to_version'] ?? '?';
+
+                $run->update(['status' => SecurityRunStatus::NeedsUserAction]);
+
+                Message::create([
+                    'task_id' => $task->id,
+                    'role' => MessageRole::Assistant,
+                    'status' => MessageStatus::Sent,
+                    'content' => "Auto-merge overridden: major update detected for {$dependency} ({$from} -> {$to}). Manual review required.",
+                ]);
+
+                $this->createUserNeededAction($task, $repo, $run, $decision, $updateDetails);
+
+                continue;
+            }
+
+            if ($this->requiresManualDesignReview($decision, $updateDetails)) {
+                $dependency = $updateDetails['dependency'] ?? 'dependency';
+                $updateType = $updateDetails['update_type'] ?? 'unknown';
+
+                $run->update(['status' => SecurityRunStatus::NeedsUserAction]);
+
+                Message::create([
+                    'task_id' => $task->id,
+                    'role' => MessageRole::Assistant,
+                    'status' => MessageStatus::Sent,
+                    'content' => "Auto-merge overridden: {$dependency} ({$updateType}) may impact user-visible design/UX. Manual review required.",
+                ]);
+
+                if ($updateType === 'major') {
+                    $this->createUserNeededAction($task, $repo, $run, $decision, $updateDetails);
+                }
+
+                continue;
+            }
+
             if ($action === 'ignore') {
                 $this->closePrViaComment($github, $repo, $run, $task);
                 $run->update(['status' => SecurityRunStatus::Closed]);
@@ -759,6 +798,98 @@ class SecurityManagementService
         }
 
         return 'unknown';
+    }
+
+    /**
+     * Never auto-merge major dependency version bumps.
+     *
+     * @param  array{update_type: string, dependency: string|null, from_version: string|null, to_version: string|null}  $updateDetails
+     */
+    private function requiresManualMajorReview(array $updateDetails): bool
+    {
+        return ($updateDetails['update_type'] ?? 'unknown') === 'major';
+    }
+
+    /**
+     * Prevent auto-merging updates that may alter user-visible design/UX.
+     *
+     * @param  array<string, mixed>  $decision
+     * @param  array{update_type: string, dependency: string|null, from_version: string|null, to_version: string|null}  $updateDetails
+     */
+    private function requiresManualDesignReview(array $decision, array $updateDetails): bool
+    {
+        $dependency = $updateDetails['dependency'] ?? null;
+        if (! $this->isDesignSensitiveDependency($dependency)) {
+            return false;
+        }
+
+        $explicitDesignImpact = [
+            $decision['design_impact'] ?? null,
+            $decision['ui_impact'] ?? null,
+            $decision['user_visible_impact'] ?? null,
+        ];
+
+        foreach ($explicitDesignImpact as $impact) {
+            if (! is_string($impact)) {
+                continue;
+            }
+
+            if (in_array(strtolower($impact), ['possible', 'likely', 'confirmed', 'yes', 'true', 'impact'], true)) {
+                return true;
+            }
+        }
+
+        if (filter_var($decision['requires_manual_qa'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
+            return true;
+        }
+
+        // Conservative default: frontend/design-sensitive dependencies always require manual review.
+        return true;
+    }
+
+    private function isDesignSensitiveDependency(?string $dependency): bool
+    {
+        if (! $dependency) {
+            return false;
+        }
+
+        $value = strtolower($dependency);
+        $needles = [
+            'tailwind',
+            'bootstrap',
+            'bulma',
+            'material-ui',
+            '@mui/',
+            'chakra-ui',
+            'semantic-ui',
+            'antd',
+            'react',
+            'vue',
+            'svelte',
+            'next',
+            'nuxt',
+            'vite',
+            'webpack',
+            'postcss',
+            'autoprefixer',
+            'sass',
+            'less',
+            'styled-components',
+            'emotion',
+            'framer-motion',
+            'swiper',
+            'chart.js',
+            'd3',
+            'recharts',
+        ];
+
+        foreach ($needles as $needle) {
+            if (str_contains($value, $needle)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

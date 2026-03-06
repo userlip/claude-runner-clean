@@ -9,10 +9,13 @@ use App\Jobs\RunSecurityManagementJob;
 use App\Models\Repository;
 use App\Models\SecurityRun;
 use Filament\Actions\Action;
+use Filament\Actions\BulkAction;
+use Filament\Actions\BulkActionGroup;
 use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\File;
 
 class SecurityRunResource extends Resource
 {
@@ -23,6 +26,11 @@ class SecurityRunResource extends Resource
     protected static ?string $navigationLabel = 'Security Dashboard';
 
     protected static ?int $navigationSort = 6;
+
+    public static function getNavigationBadge(): ?string
+    {
+        return (string) SecurityRun::whereHas('task')->count();
+    }
 
     public static function table(Table $table): Table
     {
@@ -38,6 +46,20 @@ class SecurityRunResource extends Resource
                         : null)
                     ->openUrlInNewTab(),
 
+                Tables\Columns\TextColumn::make('from_version')
+                    ->label('From')
+                    ->badge()
+                    ->color('gray')
+                    ->placeholder('-')
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('to_version')
+                    ->label('To')
+                    ->badge()
+                    ->color('success')
+                    ->placeholder('-')
+                    ->sortable(),
+
                 Tables\Columns\TextColumn::make('repository.name')
                     ->label('Repo')
                     ->searchable()
@@ -46,6 +68,7 @@ class SecurityRunResource extends Resource
                 Tables\Columns\TextColumn::make('status')
                     ->label('Status')
                     ->badge()
+                    ->sortable()
                     ->formatStateUsing(fn (SecurityRunStatus|string $state): string => match ($state instanceof SecurityRunStatus ? $state->value : $state) {
                         'deployed' => 'Deployed',
                         'merged' => 'Merged',
@@ -63,7 +86,7 @@ class SecurityRunResource extends Resource
                         'deployed' => 'success',
                         'merged' => 'info',
                         'approved' => 'info',
-                        'closed' => 'success',  // User decided to close - that's a successful resolution
+                        'closed' => 'danger',
                         'failed' => 'danger',
                         'needs_user_action' => 'warning',
                         'fixing_ci' => 'warning',
@@ -103,6 +126,17 @@ class SecurityRunResource extends Resource
                     ->sortable(),
             ])
             ->filters([
+                Tables\Filters\TernaryFilter::make('show_deleted_chats')
+                    ->label('Show deleted chats')
+                    ->placeholder('Hide deleted')
+                    ->trueLabel('Show all')
+                    ->falseLabel('Hide deleted')
+                    ->default(false)
+                    ->queries(
+                        true: fn ($query) => $query,
+                        false: fn ($query) => $query->whereHas('task'),
+                        blank: fn ($query) => $query->whereHas('task'),
+                    ),
                 Tables\Filters\TernaryFilter::make('show_completed')
                     ->label('Show completed')
                     ->placeholder('Active only')
@@ -202,6 +236,66 @@ class SecurityRunResource extends Resource
                             ->success()
                             ->send();
                     }),
+            ])
+            ->bulkActions([
+                BulkActionGroup::make([
+                    BulkAction::make('deleteChatAndWorkspace')
+                        ->label('Delete Chat & Workspace')
+                        ->icon('heroicon-o-trash')
+                        ->color('danger')
+                        ->requiresConfirmation()
+                        ->modalHeading('Delete Chat & Workspace')
+                        ->modalDescription('This will permanently delete the selected tasks, their workspaces from the server, and all associated data.')
+                        ->action(function (\Illuminate\Database\Eloquent\Collection $records): void {
+                            $deletedCount = 0;
+                            $workspaceCount = 0;
+
+                            foreach ($records as $record) {
+                                if ($record->task) {
+                                    // Delete workspace from server if exists
+                                    if ($record->task->workspace_path && File::isDirectory($record->task->workspace_path)) {
+                                        File::deleteDirectory($record->task->workspace_path);
+                                        $workspaceCount++;
+                                    }
+
+                                    // Delete the task (cascades to messages, etc.)
+                                    $record->task->delete();
+                                    $deletedCount++;
+                                }
+                            }
+
+                            Notification::make()
+                                ->title('Deletion complete')
+                                ->body("Deleted {$deletedCount} chats and {$workspaceCount} workspaces.")
+                                ->success()
+                                ->send();
+                        }),
+
+                    BulkAction::make('deleteWorkspaceOnly')
+                        ->label('Delete Workspace Only')
+                        ->icon('heroicon-o-folder-minus')
+                        ->color('warning')
+                        ->requiresConfirmation()
+                        ->modalHeading('Delete Workspace Only')
+                        ->modalDescription('This will delete the workspace directories from the server but keep the chat history in the database.')
+                        ->action(function (\Illuminate\Database\Eloquent\Collection $records): void {
+                            $workspaceCount = 0;
+
+                            foreach ($records as $record) {
+                                if ($record->task && $record->task->workspace_path && File::isDirectory($record->task->workspace_path)) {
+                                    File::deleteDirectory($record->task->workspace_path);
+                                    $record->task->update(['workspace_path' => null]);
+                                    $workspaceCount++;
+                                }
+                            }
+
+                            Notification::make()
+                                ->title('Workspaces deleted')
+                                ->body("Deleted {$workspaceCount} workspaces from the server.")
+                                ->success()
+                                ->send();
+                        }),
+                ]),
             ])
             ->defaultSort('updated_at', 'desc')
             ->poll('10s');

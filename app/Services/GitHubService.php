@@ -381,6 +381,96 @@ class GitHubService
     }
 
     /**
+     * Create or update a file in a GitHub repository.
+     *
+     * @return array<string, mixed>
+     */
+    public function createOrUpdateFile(string $fullName, string $path, string $content, string $message, string $branch): array
+    {
+        $existingSha = $this->getFileSha($fullName, $path, $branch);
+
+        $payload = [
+            'message' => $message,
+            'content' => base64_encode($content),
+            'branch' => $branch,
+        ];
+
+        if ($existingSha) {
+            $payload['sha'] = $existingSha;
+        }
+
+        $response = Http::withToken($this->connection->access_token)
+            ->accept('application/vnd.github+json')
+            ->put(self::API_BASE."/repos/{$fullName}/contents/{$path}", $payload);
+
+        if ($response->failed()) {
+            throw new \RuntimeException("Failed to create/update file {$path}: ".$response->body());
+        }
+
+        return $response->json();
+    }
+
+    /**
+     * Get the SHA of an existing file, or null if it doesn't exist.
+     */
+    private function getFileSha(string $fullName, string $path, string $branch): ?string
+    {
+        $response = Http::withToken($this->connection->access_token)
+            ->accept('application/vnd.github+json')
+            ->get(self::API_BASE."/repos/{$fullName}/contents/{$path}", [
+                'ref' => $branch,
+            ]);
+
+        if ($response->failed()) {
+            return null;
+        }
+
+        return $response->json('sha');
+    }
+
+    /**
+     * Set a GitHub Actions secret on a repository.
+     */
+    public function setRepositorySecret(string $fullName, string $secretName, string $secretValue): void
+    {
+        $publicKey = $this->getRepositoryPublicKey($fullName);
+
+        $encryptedValue = sodium_crypto_box_seal(
+            $secretValue,
+            sodium_base642bin($publicKey['key'], SODIUM_BASE64_VARIANT_ORIGINAL)
+        );
+
+        $response = Http::withToken($this->connection->access_token)
+            ->accept('application/vnd.github+json')
+            ->put(self::API_BASE."/repos/{$fullName}/actions/secrets/{$secretName}", [
+                'encrypted_value' => sodium_bin2base64($encryptedValue, SODIUM_BASE64_VARIANT_ORIGINAL),
+                'key_id' => $publicKey['key_id'],
+            ]);
+
+        if ($response->failed()) {
+            throw new \RuntimeException("Failed to set secret {$secretName}: ".$response->body());
+        }
+    }
+
+    /**
+     * Get the repository's public key for encrypting secrets.
+     *
+     * @return array{key: string, key_id: string}
+     */
+    private function getRepositoryPublicKey(string $fullName): array
+    {
+        $response = Http::withToken($this->connection->access_token)
+            ->accept('application/vnd.github+json')
+            ->get(self::API_BASE."/repos/{$fullName}/actions/secrets/public-key");
+
+        if ($response->failed()) {
+            throw new \RuntimeException('Failed to get repository public key: '.$response->body());
+        }
+
+        return $response->json();
+    }
+
+    /**
      * @return array<int, array<string, mixed>>
      */
     public function fetchIssueComments(string $fullName, int $number, ?string $sinceIso8601 = null): array

@@ -37,6 +37,8 @@ test('can view security runs list', function () {
     ]);
 
     livewire(ListSecurityRuns::class)
+        ->filterTable('show_deleted_chats', true)
+        ->filterTable('show_completed', false)
         ->assertSuccessful()
         ->assertCanSeeTableRecords([$activeRun])
         ->assertCanNotSeeTableRecords([$completedRun]);
@@ -53,6 +55,7 @@ test('can view completed runs with filter', function () {
     ]);
 
     livewire(ListSecurityRuns::class)
+        ->filterTable('show_deleted_chats', true)
         ->filterTable('show_completed', true)
         ->assertCanSeeTableRecords([$completedRun]);
 });

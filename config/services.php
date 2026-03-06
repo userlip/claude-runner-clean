@@ -42,6 +42,11 @@ return [
         'pr_polling_enabled' => env('GITHUB_PR_POLLING_ENABLED', true),
     ],
 
+    'anthropic' => [
+        'api_key' => env('ANTHROPIC_API_KEY'),
+        'claude_code_oauth_token' => env('CLAUDE_CODE_OAUTH_TOKEN'),
+    ],
+
     'codex' => [
         'path' => env('CODEX_PATH', '/home/ploi/.npm-global/bin/codex'),
     ],

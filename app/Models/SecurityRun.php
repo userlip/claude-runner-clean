@@ -17,6 +17,8 @@ class SecurityRun extends Model
         'github_pr_id',
         'github_pr_number',
         'pr_title',
+        'from_version',
+        'to_version',
         'risk_level',
         'status',
         'decision_summary',
@@ -31,6 +33,25 @@ class SecurityRun extends Model
             'status' => SecurityRunStatus::class,
             'last_checked_at' => 'datetime',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::saving(function (self $run) {
+            // Extract versions from PR title when saving
+            if ($run->isDirty('pr_title')) {
+                $run->from_version = null;
+                $run->to_version = null;
+
+                if (preg_match('/from\s+([\d.]+(?:-[\w.]+)?)/i', $run->pr_title, $matches)) {
+                    $run->from_version = $matches[1];
+                }
+
+                if (preg_match('/to\s+([\d.]+(?:-[\w.]+)?)/i', $run->pr_title, $matches)) {
+                    $run->to_version = $matches[1];
+                }
+            }
+        });
     }
 
     public function repository(): BelongsTo
