@@ -130,14 +130,20 @@ class RunRalphJob implements ShouldQueue
             if (! empty($result['learnings'])) {
                 $ralph->appendProgress($this->task, $result['learnings']);
             }
+
+            // 10. Reset counters on success - we made progress!
+            $this->task->update([
+                'ralph_gutter_count' => 0,
+                'ralph_iteration' => 0, // Reset iteration count since we completed a story
+            ]);
         }
 
         // Post iteration result to chat
         $this->postChatMessage($this->buildResultMessage($state, $story, $result, $verificationPassed));
 
-        // 10. Check max iterations
-        if ($this->task->ralph_max_iterations && $this->iteration >= $this->task->ralph_max_iterations) {
-            $this->failWithError('max_iterations_reached');
+        // 10. Check for too many consecutive failures (gutter)
+        if ($this->task->ralph_gutter_count >= self::GUTTER_THRESHOLD) {
+            $this->failWithError('gutter_detected');
 
             return;
         }
