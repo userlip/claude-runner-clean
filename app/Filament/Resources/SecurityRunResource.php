@@ -5,8 +5,11 @@ namespace App\Filament\Resources;
 use App\Enums\SecurityRunStatus;
 use App\Filament\Resources\SecurityRunResource\Pages;
 use App\Filament\Resources\Tasks\TaskResource;
+use App\Jobs\RunSecurityManagementJob;
+use App\Models\Repository;
 use App\Models\SecurityRun;
 use Filament\Actions\Action;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -82,6 +85,18 @@ class SecurityRunResource extends Resource
                     })
                     ->placeholder('-'),
 
+                Tables\Columns\TextColumn::make('task.aiProvider.name')
+                    ->label('AI')
+                    ->badge()
+                    ->formatStateUsing(fn (?string $state): string => $state ? strtoupper($state) : '-')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                Tables\Columns\TextColumn::make('error_message')
+                    ->label('Error')
+                    ->limit(60)
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->placeholder('-'),
+
                 Tables\Columns\TextColumn::make('updated_at')
                     ->label('Updated')
                     ->since()
@@ -93,7 +108,7 @@ class SecurityRunResource extends Resource
                     ->placeholder('Active only')
                     ->trueLabel('All runs')
                     ->falseLabel('Active only')
-                    ->default(false)
+                    ->default(true)
                     ->queries(
                         true: fn ($query) => $query,
                         false: fn ($query) => $query->whereNotIn('status', [
@@ -118,10 +133,10 @@ class SecurityRunResource extends Resource
                 Action::make('viewChat')
                     ->label('View Chat')
                     ->icon('heroicon-o-chat-bubble-left-right')
-                    ->url(fn (SecurityRun $record): ?string => $record->repository?->securityTask
-                        ? TaskResource::getUrl('chat', ['record' => $record->repository->securityTask->uuid])
+                    ->url(fn (SecurityRun $record): ?string => $record->task
+                        ? TaskResource::getUrl('chat', ['record' => $record->task->uuid])
                         : null)
-                    ->visible(fn (SecurityRun $record): bool => $record->repository?->securityTask !== null),
+                    ->visible(fn (SecurityRun $record): bool => $record->task !== null),
 
                 Action::make('retry')
                     ->label('Retry')
@@ -147,6 +162,46 @@ class SecurityRunResource extends Resource
                         ? "https://github.com/{$record->repository->full_name}/pull/{$record->github_pr_number}"
                         : null)
                     ->openUrlInNewTab(),
+            ])
+            ->toolbarActions([
+                Action::make('rerunStuck')
+                    ->label('Rerun Stuck')
+                    ->icon('heroicon-o-arrow-path')
+                    ->color('warning')
+                    ->requiresConfirmation()
+                    ->modalHeading('Rerun Stuck Security Runs')
+                    ->modalDescription('Reset active/stuck runs to Pending and queue orchestration for all security-enabled repositories.')
+                    ->action(function (): void {
+                        $resetCount = SecurityRun::query()
+                            ->whereIn('status', [
+                                SecurityRunStatus::Pending->value,
+                                SecurityRunStatus::WaitingCi->value,
+                                SecurityRunStatus::FixingCi->value,
+                                SecurityRunStatus::Researching->value,
+                                SecurityRunStatus::NeedsUserAction->value,
+                                SecurityRunStatus::Failed->value,
+                            ])
+                            ->update([
+                                'status' => SecurityRunStatus::Pending->value,
+                                'decision_summary' => null,
+                                'risk_level' => null,
+                                'error_message' => null,
+                            ]);
+
+                        $repoIds = Repository::query()
+                            ->where('security_management_enabled', true)
+                            ->pluck('id');
+
+                        foreach ($repoIds as $repoId) {
+                            RunSecurityManagementJob::dispatch($repoId);
+                        }
+
+                        Notification::make()
+                            ->title('Security rerun queued')
+                            ->body("Reset {$resetCount} runs and queued {$repoIds->count()} repositories.")
+                            ->success()
+                            ->send();
+                    }),
             ])
             ->defaultSort('updated_at', 'desc')
             ->poll('10s');

@@ -91,7 +91,6 @@ class RepositoryResource extends Resource
                         }
 
                         $service = app(SecurityManagementService::class);
-                        $service->ensureSecurityTask($record);
                         $service->processRepository($record);
 
                         Notification::make()

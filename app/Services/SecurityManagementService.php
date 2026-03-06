@@ -13,6 +13,7 @@ use App\Enums\TaskStatus;
 use App\Jobs\CloneRepositoryJob;
 use App\Jobs\RunClaudeMessageJob;
 use App\Jobs\RunCodexMessageJob;
+use App\Models\AiProvider;
 use App\Models\MajorUpgradeRun;
 use App\Models\Message;
 use App\Models\Proposal;
@@ -510,6 +511,8 @@ class SecurityManagementService
             // Find decision in this run's dedicated task
             $decision = $this->findDecisionForRun($task);
             if (! $decision) {
+                $this->retryResearchingRunAfterProviderLimit($task, $run, $repo, $github);
+
                 continue;
             }
 
@@ -614,6 +617,68 @@ class SecurityManagementService
         }
 
         return null;
+    }
+
+    /**
+     * If the active provider hit a usage/rate limit, retry once with the default provider.
+     */
+    private function retryResearchingRunAfterProviderLimit(Task $task, SecurityRun $run, Repository $repo, GitHubService $github): bool
+    {
+        $latestAssistant = Message::query()
+            ->where('task_id', $task->id)
+            ->where('role', MessageRole::Assistant)
+            ->whereNotNull('content')
+            ->latest('id')
+            ->first();
+
+        $content = strtolower((string) ($latestAssistant?->content ?? ''));
+        if (! str_contains($content, 'hit your limit')) {
+            return false;
+        }
+
+        $fallbackProvider = AiProvider::getDefault();
+
+        if (! $fallbackProvider || ! $fallbackProvider->is_active || $fallbackProvider->id === $task->ai_provider_id) {
+            $run->update([
+                'status' => SecurityRunStatus::Failed,
+                'last_checked_at' => now(),
+                'error_message' => 'Security provider hit its limit and no alternate active provider is configured.',
+            ]);
+
+            Message::create([
+                'task_id' => $task->id,
+                'role' => MessageRole::Assistant,
+                'status' => MessageStatus::Sent,
+                'content' => 'Security automation paused: provider limit reached and no alternate active provider is configured.',
+            ]);
+
+            return true;
+        }
+
+        $task->update(['ai_provider_id' => $fallbackProvider->id]);
+
+        Message::create([
+            'task_id' => $task->id,
+            'role' => MessageRole::Assistant,
+            'status' => MessageStatus::Sent,
+            'content' => "Primary provider hit its limit. Retrying with fallback provider {$fallbackProvider->display_name}.",
+        ]);
+
+        $pr = $github->fetchPullRequest($repo->full_name, $run->github_pr_number);
+        $headSha = $pr['head']['sha'] ?? null;
+        if (! $headSha) {
+            return true;
+        }
+
+        $status = $github->fetchCombinedStatus($repo->full_name, $headSha);
+        $this->dispatchOrchestratorPrompt($task, $run, $repo, $pr, $status, $fallbackProvider);
+
+        $run->update([
+            'last_checked_at' => now(),
+            'error_message' => null,
+        ]);
+
+        return true;
     }
 
     /**
@@ -820,11 +885,11 @@ class SecurityManagementService
         return $activeRunCount < $maxConcurrent;
     }
 
-    private function dispatchOrchestratorPrompt(Task $task, SecurityRun $run, Repository $repo, array $pr, array $status): void
+    private function dispatchOrchestratorPrompt(Task $task, SecurityRun $run, Repository $repo, array $pr, array $status, ?AiProvider $providerOverride = null): void
     {
         $content = $this->buildOrchestratorPrompt($repo, $pr, $status);
 
-        $orchestratorProvider = $this->aiResolver->orchestratorProvider();
+        $orchestratorProvider = $providerOverride ?? $this->aiResolver->orchestratorProvider();
         if ($orchestratorProvider) {
             $task->update(['ai_provider_id' => $orchestratorProvider->id]);
         }

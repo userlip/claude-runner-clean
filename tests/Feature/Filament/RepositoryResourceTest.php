@@ -4,6 +4,7 @@ use App\Filament\Resources\RepositoryResource\Pages\ListRepositories;
 use App\Models\GitHubConnection;
 use App\Models\Repository;
 use App\Models\User;
+use App\Services\SecurityManagementService;
 use Filament\Facades\Filament;
 use Illuminate\Support\Facades\Http;
 use Livewire\Livewire;
@@ -58,4 +59,20 @@ test('shows error when github not connected', function () {
     Livewire::test(ListRepositories::class)
         ->callTableAction('sync')
         ->assertNotified('GitHub not connected');
+});
+
+test('run security action triggers processing using security management service', function () {
+    $repo = Repository::factory()->create(['user_id' => $this->user->id]);
+    GitHubConnection::factory()->create(['user_id' => $this->user->id]);
+
+    $service = \Mockery::mock(SecurityManagementService::class);
+    $service->shouldReceive('processRepository')
+        ->once()
+        ->with(\Mockery::on(fn ($arg) => $arg instanceof Repository && $arg->is($repo)));
+
+    app()->instance(SecurityManagementService::class, $service);
+
+    Livewire::test(ListRepositories::class)
+        ->callTableAction('runSecurity', $repo)
+        ->assertNotified('Security check completed');
 });

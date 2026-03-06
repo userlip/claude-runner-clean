@@ -602,6 +602,97 @@ class SecurityManagementServiceTest extends TestCase
         ]);
     }
 
+    public function test_researching_run_retries_with_default_provider_when_orchestrator_hits_limit(): void
+    {
+        $fallbackProvider = $this->ensureCodexProvider();
+        $fallbackProvider->update([
+            'is_default' => true,
+            'is_active' => true,
+        ]);
+
+        $orchestrator = AiProvider::factory()->claude()->create([
+            'is_default' => false,
+            'is_active' => true,
+        ]);
+
+        config(['services.security_ai.orchestrator_provider_id' => $orchestrator->id]);
+        Queue::fake();
+
+        $repo = Repository::factory()->create([
+            'security_management_enabled' => true,
+            'full_name' => 'org/repo',
+        ]);
+        GitHubConnection::factory()->create(['user_id' => $repo->user_id, 'access_token' => 'token']);
+
+        $run = SecurityRun::create([
+            'repository_id' => $repo->id,
+            'github_pr_id' => 1,
+            'github_pr_number' => 10,
+            'status' => SecurityRunStatus::Researching,
+        ]);
+
+        $task = Task::create([
+            'title' => "Security PR #{$run->github_pr_number}",
+            'repository_id' => $repo->id,
+            'ai_provider_id' => $orchestrator->id,
+            'status' => TaskStatus::Completed,
+        ]);
+        $run->update(['task_id' => $task->id]);
+
+        Message::create([
+            'task_id' => $task->id,
+            'role' => MessageRole::Assistant,
+            'status' => MessageStatus::Sent,
+            'content' => "You've hit your limit · resets Mar 6, 7am (UTC)",
+        ]);
+
+        Http::fake(function ($request) {
+            if ($request->url() === 'https://api.github.com/rate_limit') {
+                return Http::response([
+                    'resources' => ['core' => ['remaining' => 1000, 'limit' => 5000, 'reset' => time() + 3600]],
+                ]);
+            }
+
+            if ($request->url() === 'https://api.github.com/repos/org/repo/pulls?state=open&per_page=100') {
+                return Http::response([]);
+            }
+
+            if ($request->url() === 'https://api.github.com/repos/org/repo/pulls/10') {
+                return Http::response([
+                    'number' => 10,
+                    'user' => ['login' => 'dependabot[bot]'],
+                    'head' => ['sha' => 'abc'],
+                ]);
+            }
+
+            if ($request->url() === 'https://api.github.com/repos/org/repo/commits/abc/status') {
+                return Http::response(['state' => 'success', 'statuses' => []]);
+            }
+
+            if ($request->url() === 'https://api.github.com/repos/org/repo/commits/abc/check-runs') {
+                return Http::response(['total_count' => 0, 'check_runs' => []]);
+            }
+
+            return Http::response([], 404);
+        });
+
+        app(SecurityManagementService::class)->processRepository($repo->fresh());
+
+        $this->assertDatabaseHas('tasks', [
+            'id' => $task->id,
+            'ai_provider_id' => $fallbackProvider->id,
+        ]);
+
+        $retryPrompt = Message::query()
+            ->where('task_id', $task->id)
+            ->where('role', MessageRole::User)
+            ->latest()
+            ->first();
+
+        $this->assertNotNull($retryPrompt);
+        $this->assertStringContainsString('"pr_number": 10', $retryPrompt->content ?? '');
+    }
+
     public function test_ignore_action_closes_pr_without_escalating(): void
     {
         $orchestrator = $this->ensureCodexProvider();
