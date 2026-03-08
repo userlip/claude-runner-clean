@@ -14,6 +14,7 @@ class TaskSchedule extends Model
         'repository_id',
         'user_id',
         'ai_provider_id',
+        'persona_id',
         'name',
         'prompt',
         'cron_expression',
@@ -48,6 +49,11 @@ class TaskSchedule extends Model
     public function aiProvider(): BelongsTo
     {
         return $this->belongsTo(AiProvider::class);
+    }
+
+    public function persona(): BelongsTo
+    {
+        return $this->belongsTo(Persona::class);
     }
 
     public function lastTask(): BelongsTo
