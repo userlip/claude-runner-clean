@@ -3,8 +3,6 @@
 namespace App\Providers;
 
 use App\Filament\Pages\PWASettingsPage;
-use App\Models\Message;
-use App\Observers\MessageObserver;
 use Illuminate\Support\ServiceProvider;
 use TomatoPHP\FilamentSettingsHub\Facades\FilamentSettingsHub;
 use TomatoPHP\FilamentSettingsHub\Services\Contracts\SettingHold;
@@ -25,7 +23,6 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         // Register observers
-        Message::observe(MessageObserver::class);
 
         FilamentSettingsHub::register([
             SettingHold::make()
