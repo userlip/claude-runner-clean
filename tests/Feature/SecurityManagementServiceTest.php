@@ -153,7 +153,16 @@ class SecurityManagementServiceTest extends TestCase
                     'head' => ['sha' => 'abc'],
                 ],
             ]),
-            'https://api.github.com/repos/org/repo/commits/*/status' => Http::response(['state' => 'success']),
+            'https://api.github.com/repos/org/repo/commits/*/status' => Http::response([
+                'state' => 'success',
+                'statuses' => [],
+            ]),
+            'https://api.github.com/repos/org/repo/commits/*/check-runs' => Http::response([
+                'total_count' => 1,
+                'check_runs' => [
+                    ['name' => 'tests', 'status' => 'completed', 'conclusion' => 'success'],
+                ],
+            ]),
         ]);
 
         app(SecurityManagementService::class)->processRepository($repo);
@@ -278,7 +287,16 @@ class SecurityManagementServiceTest extends TestCase
                     'head' => ['sha' => 'abc'],
                 ],
             ]),
-            'https://api.github.com/repos/org/repo/commits/*/status' => Http::response(['state' => 'success']),
+            'https://api.github.com/repos/org/repo/commits/*/status' => Http::response([
+                'state' => 'success',
+                'statuses' => [],
+            ]),
+            'https://api.github.com/repos/org/repo/commits/*/check-runs' => Http::response([
+                'total_count' => 1,
+                'check_runs' => [
+                    ['name' => 'tests', 'status' => 'completed', 'conclusion' => 'success'],
+                ],
+            ]),
         ]);
 
         app(SecurityManagementService::class)->processRepository($repo);

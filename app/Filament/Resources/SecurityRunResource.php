@@ -236,8 +236,6 @@ class SecurityRunResource extends Resource
                             ->success()
                             ->send();
                     }),
-            ])
-            ->bulkActions([
                 BulkActionGroup::make([
                     BulkAction::make('deleteChatAndWorkspace')
                         ->label('Delete Chat & Workspace')

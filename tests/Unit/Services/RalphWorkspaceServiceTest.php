@@ -81,6 +81,22 @@ class RalphWorkspaceServiceTest extends TestCase
         $this->assertArrayHasKey('userStories', $state->prd);
     }
 
+    public function test_reads_ralph_state_when_prd_is_missing(): void
+    {
+        $task = Task::factory()->create([
+            'workspace_path' => '/tmp/test-workspace',
+        ]);
+
+        File::ensureDirectoryExists($task->getRalphWorkspacePath());
+        File::put($task->getRalphWorkspacePath().'/prompt.md', 'Prompt');
+        File::put($task->getRalphWorkspacePath().'/progress.txt', '');
+
+        $state = $this->service->readState($task);
+
+        $this->assertInstanceOf(RalphState::class, $state);
+        $this->assertSame([], $state->prd);
+    }
+
     public function test_updates_prd_story_as_passed(): void
     {
         $task = Task::factory()->create(['workspace_path' => '/tmp/test-workspace']);

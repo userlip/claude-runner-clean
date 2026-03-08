@@ -13,16 +13,14 @@ use Illuminate\Support\Facades\Process;
 
 class PloiService
 {
-    protected string $serverId;
+    protected ?string $serverId;
 
-    protected string $serverName;
+    protected ?string $serverName;
 
     public function __construct()
     {
-        $this->serverId = config('services.ploi.server_id')
-            ?? throw new \RuntimeException('Ploi server ID not configured');
-        $this->serverName = config('services.ploi.server_name')
-            ?? throw new \RuntimeException('Ploi server name not configured');
+        $this->serverId = config('services.ploi.server_id');
+        $this->serverName = config('services.ploi.server_name');
     }
 
     public function syncSites(): int
@@ -60,7 +58,7 @@ class PloiService
     {
         $result = Process::run([
             'ploi', 'site:list',
-            '--server='.$this->serverName,
+            '--server='.$this->requireServerName(),
             '--no-interaction',
         ]);
 
@@ -129,11 +127,12 @@ class PloiService
     public function resolveSiteIdForRepository(Repository $repo, string $domain): ?string
     {
         $sites = $this->fetchSites();
+        $serverId = $this->requireServerId();
 
         foreach ($sites as $site) {
             if ($site['domain'] === $domain) {
                 $repo->update([
-                    'ploi_server_id' => $this->serverId,
+                    'ploi_server_id' => $serverId,
                     'ploi_site_id' => (string) $site['id'],
                 ]);
 
@@ -455,7 +454,7 @@ class PloiService
     {
         $result = Process::run([
             'ploi', 'daemon:list',
-            '--server='.$this->serverName,
+            '--server='.$this->requireServerName(),
             '--no-interaction',
         ]);
 
@@ -481,7 +480,7 @@ class PloiService
     ): ?array {
         $result = Process::run([
             'ploi', 'daemon:create',
-            '--server='.$this->serverName,
+            '--server='.$this->requireServerName(),
             '--command='.$command,
             '--directory='.$directory,
             '--system-user='.$user,
@@ -517,7 +516,7 @@ class PloiService
     {
         $result = Process::run([
             'ploi', 'daemon:delete',
-            '--server='.$this->serverName,
+            '--server='.$this->requireServerName(),
             '--daemon-id='.$daemonId,
             '--no-interaction',
         ]);
@@ -543,7 +542,7 @@ class PloiService
     {
         $result = Process::run([
             'ploi', 'daemon:restart',
-            '--server='.$this->serverName,
+            '--server='.$this->requireServerName(),
             '--daemon='.$daemonId,
             '--no-interaction',
         ]);
@@ -610,5 +609,17 @@ class PloiService
         }
 
         return $daemons;
+    }
+
+    protected function requireServerId(): string
+    {
+        return $this->serverId
+            ?? throw new \RuntimeException('Ploi server ID not configured');
+    }
+
+    protected function requireServerName(): string
+    {
+        return $this->serverName
+            ?? throw new \RuntimeException('Ploi server name not configured');
     }
 }

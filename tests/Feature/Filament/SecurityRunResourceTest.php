@@ -20,7 +20,6 @@ beforeEach(function () {
 test('can view security runs list', function () {
     $repo = Repository::factory()->create(['user_id' => $this->user->id]);
 
-    // Create an active run (should be visible by default)
     $activeRun = SecurityRun::create([
         'repository_id' => $repo->id,
         'github_pr_id' => 1,
@@ -28,7 +27,6 @@ test('can view security runs list', function () {
         'status' => 'waiting_ci',
     ]);
 
-    // Create a completed run (should be hidden by default)
     $completedRun = SecurityRun::create([
         'repository_id' => $repo->id,
         'github_pr_id' => 2,

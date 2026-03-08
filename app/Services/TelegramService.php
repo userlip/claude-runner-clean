@@ -15,18 +15,34 @@ use Telegram\Bot\Objects\Message as TelegramMessage;
 
 class TelegramService
 {
-    private Api $telegram;
+    private ?Api $telegram = null;
 
-    private string $adminChatId;
+    private ?string $adminChatId = null;
 
     public function __construct()
     {
-        $this->telegram = new Api(config('telegram.bots.claude_runner.token'));
+        $token = config('telegram.bots.claude_runner.token');
         $this->adminChatId = config('telegram.admin_chat_id');
+
+        if (! filled($token)) {
+            return;
+        }
+
+        try {
+            $this->telegram = new Api($token);
+        } catch (TelegramSDKException $e) {
+            Log::warning('Telegram integration is not configured correctly', [
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     public function sendProposalNotification(Proposal $proposal): ?TelegramMessage
     {
+        if (! $this->canMessageAdmin()) {
+            return null;
+        }
+
         try {
             $keyboard = $this->buildProposalKeyboard($proposal);
 
@@ -53,6 +69,10 @@ class TelegramService
 
     public function sendErrorAlert(string $project, string $message, array $context = []): ?TelegramMessage
     {
+        if (! $this->canMessageAdmin()) {
+            return null;
+        }
+
         try {
             $contextText = ! empty($context) ? "\n\n*Context:*\n```\n".json_encode($context, JSON_PRETTY_PRINT)."\n```" : '';
 
@@ -84,6 +104,10 @@ TEXT;
 
     public function sendCompletionNotification(Task $task): ?TelegramMessage
     {
+        if (! $this->canMessageAdmin()) {
+            return null;
+        }
+
         try {
             $status = $task->status->label();
             $emoji = $task->status->value === 'completed' ? '' : '';
@@ -119,6 +143,10 @@ TEXT;
 
     public function sendMessage(string $text, ?array $keyboard = null, bool $isReplyKeyboard = false): ?TelegramMessage
     {
+        if (! $this->canMessageAdmin()) {
+            return null;
+        }
+
         try {
             $params = [
                 'chat_id' => $this->adminChatId,
@@ -158,6 +186,10 @@ TEXT;
      */
     public function sendPlainMessage(string $text, ?array $keyboard = null): ?TelegramMessage
     {
+        if (! $this->canMessageAdmin()) {
+            return null;
+        }
+
         try {
             $params = [
                 'chat_id' => $this->adminChatId,
@@ -183,6 +215,10 @@ TEXT;
 
     public function editMessage(int $messageId, string $text, ?array $keyboard = null): ?TelegramMessage
     {
+        if (! $this->canMessageAdmin()) {
+            return null;
+        }
+
         try {
             $params = [
                 'chat_id' => $this->adminChatId,
@@ -210,6 +246,10 @@ TEXT;
 
     public function answerCallbackQuery(string $callbackQueryId, string $text = '', bool $showAlert = false): bool
     {
+        if (! $this->isConfigured()) {
+            return false;
+        }
+
         try {
             $this->telegram->answerCallbackQuery([
                 'callback_query_id' => $callbackQueryId,
@@ -230,6 +270,10 @@ TEXT;
 
     public function setWebhook(string $url): bool
     {
+        if (! $this->isConfigured()) {
+            return false;
+        }
+
         try {
             $this->telegram->setWebhook([
                 'url' => $url,
@@ -250,6 +294,10 @@ TEXT;
 
     public function deleteWebhook(): bool
     {
+        if (! $this->isConfigured()) {
+            return false;
+        }
+
         try {
             $this->telegram->deleteWebhook();
 
@@ -265,6 +313,10 @@ TEXT;
 
     public function getWebhookInfo(): array
     {
+        if (! $this->isConfigured()) {
+            return [];
+        }
+
         try {
             $info = $this->telegram->getWebhookInfo();
 
@@ -280,7 +332,7 @@ TEXT;
 
     public function isFromAdmin(?string $chatId): bool
     {
-        return $chatId === $this->adminChatId;
+        return $chatId !== null && $chatId === $this->adminChatId;
     }
 
     public function updateProposalMessage(Proposal $proposal): ?TelegramMessage
@@ -342,6 +394,10 @@ TEXT;
      */
     public function sendTaskMessage(Message $message): ?TelegramMessage
     {
+        if (! $this->canMessageAdmin()) {
+            return null;
+        }
+
         try {
             $task = $message->task;
             if (! $task) {
@@ -418,6 +474,10 @@ TEXT;
      */
     public function updateTaskMessage(Message $message): ?TelegramMessage
     {
+        if (! $this->canMessageAdmin()) {
+            return null;
+        }
+
         try {
             if (! $message->telegram_message_id) {
                 return null;
@@ -486,6 +546,16 @@ TEXT;
         $cachedId = Cache::get("telegram:task_thread:{$taskId}");
 
         return $cachedId ? (int) $cachedId : null;
+    }
+
+    private function isConfigured(): bool
+    {
+        return $this->telegram instanceof Api;
+    }
+
+    private function canMessageAdmin(): bool
+    {
+        return $this->isConfigured() && filled($this->adminChatId);
     }
 
     /**

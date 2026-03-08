@@ -47,11 +47,11 @@ class RalphWorkspaceService
         try {
             $prdJson = File::get($ralphPath.'/prd.json');
             $prd = json_decode($prdJson, true);
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                $prd = null;
+            if (json_last_error() !== JSON_ERROR_NONE || ! is_array($prd)) {
+                $prd = [];
             }
         } catch (\Exception $e) {
-            $prd = null;
+            $prd = [];
         }
 
         try {
