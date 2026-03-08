@@ -455,24 +455,13 @@ class TelegramWebhookController extends Controller
             return response()->json(['status' => 'already_processed']);
         }
 
-        // Create a task from the proposal
-        $task = Task::create([
-            'title' => $proposal->title,
-            'user_id' => 1, // Default admin user
-            'status' => TaskStatus::Pending,
-        ]);
-
-        $proposal->update([
-            'status' => ProposalStatus::Approved,
-            'task_id' => $task->id,
-            'approved_at' => now(),
-        ]);
+        $proposal->approve();
 
         // Update the Telegram message
-        $this->telegram->updateProposalMessage($proposal);
-        $this->telegram->answerCallbackQuery($callbackQueryId, 'Proposal approved! Task created.');
+        $this->telegram->updateProposalMessage($proposal->fresh());
+        $this->telegram->answerCallbackQuery($callbackQueryId, 'Proposal approved! Execution starting.');
 
-        return response()->json(['status' => 'approved', 'task_id' => $task->id]);
+        return response()->json(['status' => 'approved']);
     }
 
     private function approveSubtasks(int $proposalId, string $callbackQueryId): JsonResponse
@@ -652,23 +641,12 @@ TEXT;
             return response()->json(['status' => 'already_processed']);
         }
 
-        // Create a task from the proposal
-        $task = Task::create([
-            'title' => $proposal->title,
-            'user_id' => 1,
-            'status' => TaskStatus::Pending,
-        ]);
+        $proposal->approve();
 
-        $proposal->update([
-            'status' => ProposalStatus::Approved,
-            'task_id' => $task->id,
-            'approved_at' => now(),
-        ]);
+        $this->telegram->updateProposalMessage($proposal->fresh());
+        $this->telegram->sendMessage("Proposal #{$proposalId} approved\\. Execution starting\\.");
 
-        $this->telegram->updateProposalMessage($proposal);
-        $this->telegram->sendMessage("Proposal #{$proposalId} approved. Task `{$task->uuid}` created.");
-
-        return response()->json(['status' => 'approved', 'task_id' => $task->id]);
+        return response()->json(['status' => 'approved']);
     }
 
     private function commandReject(array $args): JsonResponse
