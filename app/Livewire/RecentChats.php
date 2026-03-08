@@ -3,6 +3,7 @@
 namespace App\Livewire;
 
 use App\Enums\MessageRole;
+use App\Enums\TaskStatus;
 use App\Filament\Resources\Tasks\TaskResource;
 use App\Models\SecurityRun;
 use App\Models\Task;
@@ -141,6 +142,21 @@ class RecentChats extends Component
     public function getChatTitle(array $chat): string
     {
         return $chat['model']->title ?? 'Untitled';
+    }
+
+    public function getChatStatusClass(array $chat): string
+    {
+        $task = $chat['model'];
+
+        if (
+            $task->ralph_enabled
+            && ! $task->ralph_stopped_reason
+            && ! in_array($task->status, [TaskStatus::Completed, TaskStatus::Failed], true)
+        ) {
+            return 'recent-chat-status-ralph';
+        }
+
+        return 'recent-chat-status-'.$task->status->value;
     }
 
     public function getChatBadge(array $chat): ?string

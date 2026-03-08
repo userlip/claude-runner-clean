@@ -15,7 +15,7 @@
         @forelse($this->recentChats as $chat)
             <li wire:key="chat-{{ $chat['model']->id }}">
                 <a href="{{ $this->getChatUrl($chat) }}" class="recent-chat-item">
-                    <span class="recent-chat-status {{ $chat['model']->ralph_enabled && !$chat['model']->ralph_stopped_reason ? 'recent-chat-status-ralph' : 'recent-chat-status-' . $chat['model']->status->value }}"></span>
+                    <span class="recent-chat-status {{ $this->getChatStatusClass($chat) }}"></span>
                     <span class="recent-chat-title">
                         @if($this->hasUnreadReply($chat))
                             <span class="recent-chat-unread">💬</span>
