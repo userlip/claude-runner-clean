@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Personas\Tables;
 
 use App\Enums\PersonaStatus;
+use App\Jobs\RunPersonaCycleJob;
 use App\Models\Persona;
 use Filament\Actions;
 use Filament\Actions\BulkActionGroup;
@@ -62,6 +63,23 @@ class PersonasTable
                     ->label('Active'),
             ])
             ->recordActions([
+                Actions\Action::make('run_now')
+                    ->label('Run Now')
+                    ->icon('heroicon-o-play-circle')
+                    ->color('primary')
+                    ->requiresConfirmation()
+                    ->modalHeading('Run Analysis Cycle')
+                    ->modalDescription('This will dispatch an analysis cycle for this persona immediately.')
+                    ->disabled(fn (Persona $record): bool => ! $record->is_active || $record->status === PersonaStatus::Running)
+                    ->action(function (Persona $record): void {
+                        RunPersonaCycleJob::dispatch($record);
+
+                        Notification::make()
+                            ->title('Analysis cycle dispatched')
+                            ->body("Running analysis for {$record->name}")
+                            ->success()
+                            ->send();
+                    }),
                 Actions\Action::make('toggle_active')
                     ->label(fn (Persona $record): string => $record->is_active ? 'Deactivate' : 'Activate')
                     ->icon(fn (Persona $record): string => $record->is_active ? 'heroicon-o-pause' : 'heroicon-o-play')

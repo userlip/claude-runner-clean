@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Personas\Pages;
 use App\Enums\PersonaStatus;
 use App\Filament\Resources\Personas\PersonaResource;
 use App\Filament\Resources\Personas\Widgets\PersonaStatsWidget;
+use App\Jobs\RunPersonaCycleJob;
 use App\Models\Persona;
 use App\Services\PersonaStorageService;
 use Filament\Actions;
@@ -73,6 +74,26 @@ class EditPersona extends EditRecord
 
                     Notification::make()
                         ->title('Context updated')
+                        ->success()
+                        ->send();
+                }),
+
+            Actions\Action::make('run_now')
+                ->label('Run Now')
+                ->icon('heroicon-o-play-circle')
+                ->color('primary')
+                ->requiresConfirmation()
+                ->modalHeading('Run Analysis Cycle')
+                ->modalDescription('This will dispatch an analysis cycle for this persona immediately.')
+                ->disabled(fn (): bool => ! $this->record->is_active || $this->record->status === PersonaStatus::Running)
+                ->action(function (): void {
+                    /** @var Persona $record */
+                    $record = $this->record;
+                    RunPersonaCycleJob::dispatch($record);
+
+                    Notification::make()
+                        ->title('Analysis cycle dispatched')
+                        ->body("Running analysis for {$record->name}")
                         ->success()
                         ->send();
                 }),
