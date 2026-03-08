@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\ProposalType;
 use App\Jobs\CloneRepositoryJob;
+use App\Jobs\GeneratePersonaSubtasksJob;
 use App\Jobs\RunClaudeMessageJob;
 use App\Jobs\RunCodexMessageJob;
 use App\Models\AiProvider;
@@ -18,6 +19,10 @@ class ProposalExecutionService
 {
     public function execute(Proposal $proposal): Task
     {
+        // Fork to subtask generation when persona_id is present
+        if ($proposal->persona_id) {
+            return $this->executePersonaProposal($proposal);
+        }
         // Find repository by project key
         $repository = Repository::findByProjectKey($proposal->project);
 
@@ -64,6 +69,38 @@ class ProposalExecutionService
         } else {
             $task->dispatchMessage($message);
         }
+
+        return $task;
+    }
+
+    /**
+     * For persona proposals, dispatch subtask generation instead of direct execution.
+     */
+    protected function executePersonaProposal(Proposal $proposal): Task
+    {
+        $persona = $proposal->persona;
+        $repository = $persona->repository;
+
+        $aiProvider = $persona->aiProvider
+            ?? AiProvider::where('name', 'kimi')->where('is_active', true)->first()
+            ?? AiProvider::getDefault();
+
+        $workspacePath = '/home/ploi/workspaces/'.Str::slug($repository->name).'-'.Str::random(8);
+
+        $task = Task::create([
+            'title' => "[Persona] {$proposal->title} — Generating Subtasks",
+            'status' => \App\Enums\TaskStatus::Pending,
+            'ai_provider_id' => $aiProvider?->id,
+            'repository_id' => $repository->id,
+            'workspace_path' => $workspacePath,
+            'user_id' => $persona->user_id,
+        ]);
+
+        $proposal->update(['executed_task_id' => $task->id]);
+
+        $subtaskJob = new GeneratePersonaSubtasksJob($proposal->fresh(), $task);
+
+        CloneRepositoryJob::withChain([$subtaskJob])->dispatch($task);
 
         return $task;
     }

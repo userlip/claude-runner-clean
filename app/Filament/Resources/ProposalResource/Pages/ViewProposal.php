@@ -5,6 +5,7 @@ namespace App\Filament\Resources\ProposalResource\Pages;
 use App\Filament\Resources\ProposalResource;
 use App\Jobs\RunPersonaSubtaskJob;
 use App\Models\Proposal;
+use App\Services\PersonaCycleService;
 use Filament\Actions;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
@@ -39,8 +40,10 @@ class ViewProposal extends ViewRecord
                     $proposal = $this->record;
                     $proposal->update(['subtasks_approved_at' => now()]);
 
+                    app(PersonaCycleService::class)->startSubtaskExecution($proposal->fresh());
+
                     Notification::make()
-                        ->title('Subtasks approved')
+                        ->title('Subtasks approved — execution starting')
                         ->success()
                         ->send();
                 }),
