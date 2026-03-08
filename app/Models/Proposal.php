@@ -36,6 +36,7 @@ class Proposal extends Model
         'execution_completed_at',
         'execution_success',
         'follow_up_count',
+        'persona_id',
     ];
 
     protected function casts(): array
@@ -79,6 +80,11 @@ class Proposal extends Model
     public function playbook(): BelongsTo
     {
         return $this->belongsTo(Playbook::class);
+    }
+
+    public function persona(): BelongsTo
+    {
+        return $this->belongsTo(Persona::class);
     }
 
     public function scopePending(Builder $query): Builder

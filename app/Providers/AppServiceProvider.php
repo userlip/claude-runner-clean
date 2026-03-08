@@ -3,8 +3,14 @@
 namespace App\Providers;
 
 use App\Filament\Pages\PWASettingsPage;
+use App\Models\GoogleAnalyticsConnection;
 use App\Models\Message;
+use App\Models\Persona;
+use App\Models\SearchConsoleConnection;
+use App\Observers\GoogleAnalyticsConnectionObserver;
 use App\Observers\MessageObserver;
+use App\Observers\PersonaObserver;
+use App\Observers\SearchConsoleConnectionObserver;
 use Illuminate\Support\ServiceProvider;
 use TomatoPHP\FilamentSettingsHub\Facades\FilamentSettingsHub;
 use TomatoPHP\FilamentSettingsHub\Services\Contracts\SettingHold;
@@ -26,6 +32,9 @@ class AppServiceProvider extends ServiceProvider
     {
         // Register observers
         Message::observe(MessageObserver::class);
+        GoogleAnalyticsConnection::observe(GoogleAnalyticsConnectionObserver::class);
+        SearchConsoleConnection::observe(SearchConsoleConnectionObserver::class);
+        Persona::observe(PersonaObserver::class);
 
         FilamentSettingsHub::register([
             SettingHold::make()
