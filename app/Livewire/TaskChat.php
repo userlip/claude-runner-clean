@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Enums\MessageRole;
 use App\Enums\MessageStatus;
+use App\Enums\TaskStatus;
 use App\Jobs\RunRalphJob;
 use App\Models\AiProvider;
 use App\Models\Message;
@@ -227,7 +228,7 @@ class TaskChat extends Component
     #[Computed]
     public function shouldPoll(): bool
     {
-        return $this->isRunning || $this->waitingForResponse || $this->hasActiveSubagents;
+        return $this->isRunning || $this->waitingForResponse || $this->hasActiveSubagents || $this->task->ralph_enabled;
     }
 
     #[Computed]
@@ -798,14 +799,17 @@ class TaskChat extends Component
             'userStories' => $userStories,
         ]);
 
-        // Enable Ralph on the task
+        // Enable Ralph on the task and set status to running so polling kicks in
         $this->task->update([
+            'status' => TaskStatus::Running,
             'ralph_enabled' => true,
             'ralph_max_iterations' => 25,
             'ralph_branch_name' => $branchName,
             'ralph_iteration' => 1,
             'ralph_gutter_count' => 0,
         ]);
+
+        $this->waitingForResponse = true;
 
         // Dispatch the first iteration
         RunRalphJob::dispatch($this->task);
@@ -848,7 +852,7 @@ class TaskChat extends Component
     protected function detectPrdIssueNumber(): ?int
     {
         // 1. Check existing .ralph/ prd files in the workspace
-        $ralphDir = $this->task->workspace_path.'/.ralph';
+        $ralphDir = $this->task->working_directory.'/.ralph';
         if (is_dir($ralphDir)) {
             // Check prd-<number>.json files first (most explicit)
             $prdFiles = glob($ralphDir.'/prd-*.json');
@@ -858,12 +862,16 @@ class TaskChat extends Component
                 }
             }
 
-            // Check parentIssue in prd.json
+            // Check parentIssue / parentPrd in prd.json
             $prdJsonPath = $ralphDir.'/prd.json';
             if (file_exists($prdJsonPath)) {
                 $prd = json_decode(file_get_contents($prdJsonPath), true);
                 if (! empty($prd['parentIssue'])) {
-                    return (int) $prd['parentIssue'];
+                    return (int) preg_replace('/\D/', '', $prd['parentIssue']);
+                }
+
+                if (! empty($prd['parentPrd'])) {
+                    return (int) preg_replace('/\D/', '', $prd['parentPrd']);
                 }
 
                 if (! empty($prd['prd']['issue_number'])) {

@@ -6,7 +6,7 @@ class RalphState
 {
     public function __construct(
         public readonly string $prompt,
-        public readonly array $prd,
+        public readonly ?array $prd,
         public readonly string $progress,
         public readonly string $guardrails,
     ) {}
