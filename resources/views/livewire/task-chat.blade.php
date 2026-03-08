@@ -136,20 +136,6 @@
                     </button>
                 @endforeach
             </div>
-            {{-- Actions --}}
-            @if($this->chatMessages->isNotEmpty())
-                <button
-                    wire:click="generateTitle"
-                    @click="mobileMenuOpen = false"
-                    wire:loading.attr="disabled"
-                    wire:target="generateTitle"
-                    class="chat-mobile-dropdown-item"
-                >
-                    <span>✨</span>
-                    <span wire:loading.remove wire:target="generateTitle">Rename Chat</span>
-                    <span wire:loading wire:target="generateTitle">Renaming...</span>
-                </button>
-            @endif
             <button
                 @click="$dispatch('open-sidebar'); mobileMenuOpen = false"
                 class="chat-mobile-dropdown-item"
@@ -288,16 +274,6 @@
                 <div class="chat-header-title-row">
                     <h2 class="chat-header-title">{{ $task->title ?? ($task->repository?->name ?? 'Chat') }}</h2>
                     @if($this->chatMessages->isNotEmpty())
-                        <button
-                            wire:click="generateTitle"
-                            wire:loading.attr="disabled"
-                            wire:target="generateTitle"
-                            title="Generate title from conversation"
-                            class="chat-rename-btn"
-                        >
-                            <span wire:loading.remove wire:target="generateTitle">✨ Rename</span>
-                            <span wire:loading wire:target="generateTitle">✨ ...</span>
-                        </button>
                         @if($task->repository)
                             <button
                                 wire:click="triggerPrdToIssues"

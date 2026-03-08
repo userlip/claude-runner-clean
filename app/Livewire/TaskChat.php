@@ -413,6 +413,7 @@ class TaskChat extends Component
     {
         // Allow sending with just images (no text required)
         $hasContent = ! empty(trim($this->prompt)) || ! empty($this->images);
+        $plainPrompt = trim($this->prompt);
 
         if (! $hasContent) {
             return;
@@ -479,12 +480,21 @@ class TaskChat extends Component
             'images' => ! empty($this->images) ? $this->images : null,
         ]);
 
+        if ($this->shouldAutoGenerateTitle($plainPrompt)) {
+            $this->generateTitle(notify: false);
+        }
+
         $this->task->dispatchMessage($userMessage, continue: $hasSuccessfulResponse);
 
         $this->prompt = '';
         $this->images = [];
         $this->waitingForResponse = true;
         $this->lastMessageCount = $this->task->messages()->where('status', MessageStatus::Sent)->count();
+    }
+
+    protected function shouldAutoGenerateTitle(string $plainPrompt): bool
+    {
+        return blank($this->task->title) && $plainPrompt !== '';
     }
 
     /**
@@ -1234,15 +1244,17 @@ PROMPT,
         }
     }
 
-    public function generateTitle(): void
+    public function generateTitle(bool $notify = true): void
     {
         $messages = $this->task->messages()->oldest()->take(20)->get();
 
         if ($messages->isEmpty()) {
-            Notification::make()
-                ->title('No messages to generate title from')
-                ->warning()
-                ->send();
+            if ($notify) {
+                Notification::make()
+                    ->title('No messages to generate title from')
+                    ->warning()
+                    ->send();
+            }
 
             return;
         }
@@ -1270,11 +1282,13 @@ PROMPT,
             $kimiProvider = AiProvider::where('name', 'kimi')->where('is_active', true)->first();
 
             if (! $kimiProvider) {
-                Notification::make()
-                    ->title('Kimi provider not available')
-                    ->body('Please configure Kimi in AI Provider Settings')
-                    ->danger()
-                    ->send();
+                if ($notify) {
+                    Notification::make()
+                        ->title('Kimi provider not available')
+                        ->body('Please configure Kimi in AI Provider Settings')
+                        ->danger()
+                        ->send();
+                }
 
                 return;
             }
@@ -1309,31 +1323,39 @@ PROMPT,
                     $this->task->update(['title' => $title]);
                     $this->task->refresh();
 
-                    Notification::make()
-                        ->title('Title updated')
-                        ->body($title)
-                        ->success()
-                        ->send();
+                    if ($notify) {
+                        Notification::make()
+                            ->title('Title updated')
+                            ->body($title)
+                            ->success()
+                            ->send();
+                    }
                 } else {
+                    if ($notify) {
+                        Notification::make()
+                            ->title('Failed to generate title')
+                            ->body('Kimi returned an empty response')
+                            ->danger()
+                            ->send();
+                    }
+                }
+            } else {
+                if ($notify) {
                     Notification::make()
                         ->title('Failed to generate title')
-                        ->body('Kimi returned an empty response')
+                        ->body('Kimi API error: '.$response->status())
                         ->danger()
                         ->send();
                 }
-            } else {
+            }
+        } catch (\Exception $e) {
+            if ($notify) {
                 Notification::make()
-                    ->title('Failed to generate title')
-                    ->body('Kimi API error: '.$response->status())
+                    ->title('Error generating title')
+                    ->body($e->getMessage())
                     ->danger()
                     ->send();
             }
-        } catch (\Exception $e) {
-            Notification::make()
-                ->title('Error generating title')
-                ->body($e->getMessage())
-                ->danger()
-                ->send();
         }
     }
 
