@@ -862,6 +862,10 @@ class TaskChat extends Component
             $prdJsonPath = $ralphDir.'/prd.json';
             if (file_exists($prdJsonPath)) {
                 $prd = json_decode(file_get_contents($prdJsonPath), true);
+                if (! empty($prd['prd_issue'])) {
+                    return (int) preg_replace('/\D/', '', $prd['prd_issue']);
+                }
+
                 if (! empty($prd['parentIssue'])) {
                     return (int) $prd['parentIssue'];
                 }
@@ -885,7 +889,7 @@ class TaskChat extends Component
             }
 
             // Match "PRD #123", "PRD issue #123", "Parent PRD:** #123", "PRD:** [#123](url)"
-            if (preg_match('/PRD[:\s*]*(?:issue(?:\s+is)?\s*)?(?:created\s+as\s+github\s+issue\s*)?(?:\[)?#(\d+)/i', $content, $matches)) {
+            if (preg_match('/PRD(?:[:\s*]+|.*?\b)(?:issue(?:\s+is)?\s*)?(?:created\s+as\s+github\s+issue\s*)?(?:is\s+live\s+as\s+github\s+issue\s*)?(?:\[)?#(\d+)/i', $content, $matches)) {
                 return (int) $matches[1];
             }
         }

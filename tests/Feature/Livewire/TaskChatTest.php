@@ -50,6 +50,7 @@ test('can send a message', function () {
 
     expect(Message::where('content', 'Hello Claude!')->exists())->toBeTrue();
     Queue::assertPushed(RunClaudeMessageJob::class);
+    Queue::assertPushedOn('default', RunClaudeMessageJob::class);
 });
 
 test('it automatically generates a title after the first user message', function () {
@@ -183,6 +184,48 @@ test('typing start ralph detects the parent PRD from the existing ralph prd.json
                 'number' => 623,
                 'title' => 'Foundation',
                 'body' => "## Parent PRD\n#622\n\n## Acceptance criteria\n- [ ] First criterion",
+            ],
+        ])),
+    ]);
+
+    $task = Task::factory()->create([
+        'repository_id' => $repository->id,
+        'workspace_path' => $workspacePath,
+        'ralph_enabled' => false,
+    ]);
+
+    Livewire::test(TaskChat::class, ['task' => $task])
+        ->set('prompt', 'start ralph')
+        ->call('sendMessage');
+
+    expect($task->fresh()->ralph_enabled)->toBeTrue();
+    expect($task->fresh()->ralph_branch_name)->toBe("ralph/{$task->uuid}");
+    Bus::assertDispatched(RunRalphJob::class);
+    Bus::assertNotDispatched(RunClaudeMessageJob::class);
+});
+
+test('typing start ralph detects the parent PRD from prd_issue in .ralph prd.json', function () {
+    Bus::fake();
+
+    $repository = Repository::factory()->create([
+        'user_id' => $this->user->id,
+        'full_name' => 'userlip/socialint.nxtyou.dev',
+    ]);
+
+    $workspacePath = '/tmp/task-chat-start-ralph-prd-issue-key';
+    File::deleteDirectory($workspacePath);
+    File::ensureDirectoryExists($workspacePath.'/.ralph');
+    File::put($workspacePath.'/.ralph/prd.json', json_encode([
+        'prd_issue' => 1,
+        'title' => 'Social Intelligence Report Generator',
+    ], JSON_PRETTY_PRINT));
+
+    Process::fake([
+        '*gh issue list*' => Process::result(output: json_encode([
+            [
+                'number' => 2,
+                'title' => 'Foundation',
+                'body' => "## Parent PRD\n#1\n\n## Acceptance criteria\n- [ ] First criterion",
             ],
         ])),
     ]);
