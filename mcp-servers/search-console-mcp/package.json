@@ -1,0 +1,21 @@
+{
+  "name": "search-console-mcp",
+  "version": "1.0.0",
+  "description": "MCP proxy server for Google Search Console with multi-account support",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.27.1",
+    "mcp-server-gsc": "^0.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.3.5",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}

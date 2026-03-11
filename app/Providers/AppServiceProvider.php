@@ -3,6 +3,10 @@
 namespace App\Providers;
 
 use App\Filament\Pages\PWASettingsPage;
+use App\Models\GoogleAnalyticsConnection;
+use App\Models\SearchConsoleConnection;
+use App\Observers\GoogleAnalyticsConnectionObserver;
+use App\Observers\SearchConsoleConnectionObserver;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -30,6 +34,8 @@ class AppServiceProvider extends ServiceProvider
         Section::configureUsing(fn (Section $section) => $section->columnSpanFull());
 
         // Register observers
+        GoogleAnalyticsConnection::observe(GoogleAnalyticsConnectionObserver::class);
+        SearchConsoleConnection::observe(SearchConsoleConnectionObserver::class);
 
         FilamentSettingsHub::register([
             SettingHold::make()

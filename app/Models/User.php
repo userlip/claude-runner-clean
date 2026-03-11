@@ -85,4 +85,14 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
     {
         return $this->hasMany(PushSubscription::class);
     }
+
+    public function googleAnalyticsConnections(): HasMany
+    {
+        return $this->hasMany(GoogleAnalyticsConnection::class);
+    }
+
+    public function searchConsoleConnections(): HasMany
+    {
+        return $this->hasMany(SearchConsoleConnection::class);
+    }
 }
