@@ -203,21 +203,23 @@ class RunPersonaCycleJob implements ShouldQueue
     {
         $parsed = $cycleService->parseAnalysisOutput($resultText);
 
-        $proposal = $cycleService->createProposalFromAnalysis(
+        $proposals = $cycleService->createProposalsFromAnalysis(
             $this->persona,
-            $parsed['description'],
+            $parsed['proposals'],
             $parsed['data_appendix']
         );
 
         $cycleNumber = ($this->persona->total_runs ?? 0) + 1;
+        $lastProposal = end($proposals);
 
-        $cycleService->logCycleToHistory($this->persona, $proposal, $cycleNumber);
+        // Log first proposal to history (contains the data appendix)
+        $cycleService->logCycleToHistory($this->persona, $proposals[0], $cycleNumber);
 
         $this->persona->update([
             'last_run_at' => now(),
             'total_runs' => $cycleNumber,
-            'total_proposals' => ($this->persona->total_proposals ?? 0) + 1,
-            'last_proposal_id' => $proposal->id,
+            'total_proposals' => ($this->persona->total_proposals ?? 0) + count($proposals),
+            'last_proposal_id' => $lastProposal->id,
             'status' => PersonaStatus::AwaitingApproval,
         ]);
 
@@ -228,21 +230,31 @@ class RunPersonaCycleJob implements ShouldQueue
 
         Log::info('Persona analysis cycle completed', [
             'persona_id' => $this->persona->id,
-            'proposal_id' => $proposal->id,
+            'proposal_count' => count($proposals),
             'cycle_number' => $cycleNumber,
         ]);
 
-        // Send notification about new proposal
+        // Send cycle completion notification
         try {
             $cycleService->telegramService->sendPersonaCycleNotification(
                 $this->persona->name,
                 'completed',
-                "Proposal created: {$proposal->title}"
+                count($proposals).' proposals created'
             );
-
-            $cycleService->telegramService->sendProposalNotification($proposal);
         } catch (\Throwable $e) {
             Log::warning('Failed to send cycle completion notification', ['error' => $e->getMessage()]);
+        }
+
+        // Send each proposal as a separate Telegram message
+        foreach ($proposals as $proposal) {
+            try {
+                $cycleService->telegramService->sendProposalNotification($proposal);
+            } catch (\Throwable $e) {
+                Log::warning('Failed to send proposal notification', [
+                    'proposal_id' => $proposal->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
     }
 

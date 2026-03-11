@@ -218,15 +218,23 @@ class Proposal extends Model
     {
         $priorityEmoji = $this->priority->emoji();
         $priorityLabel = $this->priority->label();
-        $header = $this->persona_id ? '🤖 *Persona Proposal*' : "{$priorityEmoji} *New Proposal*";
-        $personaLine = $this->persona_id ? "\n*Persona:* {$this->persona->name}" : '';
+
+        if ($this->persona_id) {
+            return <<<TEXT
+🤖 {$priorityEmoji} *{$this->title}*
+
+{$this->description}
+
+_{$this->persona->name} · {$this->project}_
+TEXT;
+        }
 
         return <<<TEXT
-{$header}
+{$priorityEmoji} *New Proposal*
 
 *Title:* {$this->title}
 *Project:* `{$this->project}`
-*Priority:* {$priorityLabel}{$personaLine}
+*Priority:* {$priorityLabel}
 
 *Description:*
 {$this->description}

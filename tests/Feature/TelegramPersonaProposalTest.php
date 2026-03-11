@@ -44,11 +44,11 @@ test('persona proposal formats correctly for Telegram with persona name', functi
 
     $formatted = $proposal->formatForTelegram();
 
-    expect($formatted)->toContain('Persona Proposal');
     expect($formatted)->toContain('SEO Specialist');
     expect($formatted)->toContain('Improve SEO rankings');
     expect($formatted)->toContain('Executive summary: analyze and improve SEO performance across the site.');
     expect($formatted)->toContain('test-project');
+    expect($formatted)->not->toContain('New Proposal');
 });
 
 test('non-persona proposal uses standard header without persona name', function () {

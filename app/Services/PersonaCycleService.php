@@ -94,40 +94,79 @@ class PersonaCycleService
         }
 
         // Output format instructions
-        $prompt .= "### Output Format (IMPORTANT)\n";
-        $prompt .= "You must structure your response with these two clearly marked sections:\n\n";
-        $prompt .= "#### EXECUTIVE_SUMMARY_START\n";
-        $prompt .= "Write a concise executive summary (2-4 paragraphs) of your findings and recommendations.\n";
-        $prompt .= "This will be used as the proposal description.\n";
-        $prompt .= "#### EXECUTIVE_SUMMARY_END\n\n";
-        $prompt .= "#### DETAILED_REPORT_START\n";
-        $prompt .= "Write a detailed analysis report with all data, findings, metrics, and specific recommendations.\n";
-        $prompt .= "Use markdown formatting with headers, lists, and code blocks as needed.\n";
-        $prompt .= "This will be stored as the data appendix for reference.\n";
-        $prompt .= "#### DETAILED_REPORT_END\n\n";
+        $prompt .= "### Output Format (CRITICAL — follow exactly)\n\n";
+        $prompt .= "Your output MUST contain two sections:\n\n";
+        $prompt .= "#### Section 1: Individual Action Items\n";
+        $prompt .= "List 3-7 specific, independent action items. Each one becomes a separate proposal the human will approve or reject individually.\n\n";
+        $prompt .= "Use this EXACT format for each item (the markers are parsed programmatically):\n\n";
+        $prompt .= "```\n";
+        $prompt .= "PROPOSAL_START\n";
+        $prompt .= "TITLE: <short imperative action — max 80 chars, e.g. \"Add JSON-LD structured data to the pricing page\">\n";
+        $prompt .= "PRIORITY: <low|medium|high|critical>\n";
+        $prompt .= "DESCRIPTION: <1-2 sentences explaining WHY this matters and WHAT the expected impact is>\n";
+        $prompt .= "PROPOSAL_END\n";
+        $prompt .= "```\n\n";
+        $prompt .= "Rules for proposals:\n";
+        $prompt .= "- Each proposal should be ONE specific, actionable task (not a category or group of tasks)\n";
+        $prompt .= "- Title must start with a verb: Add, Fix, Update, Create, Remove, Optimize, etc.\n";
+        $prompt .= "- Description should be 1-2 sentences max — concise and to the point\n";
+        $prompt .= "- Order by priority (highest first)\n\n";
+        $prompt .= "#### Section 2: Detailed Report\n";
+        $prompt .= "After ALL proposals, include a detailed analysis section:\n\n";
+        $prompt .= "```\n";
+        $prompt .= "DETAILED_REPORT_START\n";
+        $prompt .= "<Full analysis with data, metrics, reasoning, and supporting evidence for your proposals>\n";
+        $prompt .= "DETAILED_REPORT_END\n";
+        $prompt .= "```\n\n";
         $prompt .= "### Instructions\n";
         $prompt .= "1. Analyze the current state using available MCP tools and context\n";
         $prompt .= "2. Identify improvements, issues, or opportunities\n";
-        $prompt .= "3. Provide actionable recommendations\n";
-        $prompt .= "4. Be specific with data and examples\n";
+        $prompt .= "3. Create individual, specific proposals — NOT broad categories\n";
+        $prompt .= "4. Be specific with data and examples in the detailed report\n";
         $prompt .= "5. Consider what has already been completed to avoid repeating work\n";
 
         return $prompt;
     }
 
     /**
-     * Parse Claude output into executive summary and detailed report.
+     * Parse Claude output into individual proposals and a detailed report.
      *
-     * @return array{description: string, data_appendix: string}
+     * @return array{proposals: array<int, array{title: string, priority: string, description: string}>, data_appendix: string}
      */
     public function parseAnalysisOutput(string $output): array
     {
-        $description = '';
+        $proposals = [];
         $dataAppendix = '';
 
-        // Extract executive summary
-        if (preg_match('/EXECUTIVE_SUMMARY_START\s*\n(.*?)EXECUTIVE_SUMMARY_END/s', $output, $matches)) {
-            $description = trim($matches[1]);
+        // Extract individual proposals
+        if (preg_match_all('/PROPOSAL_START\s*\n(.*?)PROPOSAL_END/s', $output, $matches)) {
+            foreach ($matches[1] as $block) {
+                $title = '';
+                $priority = 'medium';
+                $description = '';
+
+                if (preg_match('/TITLE:\s*(.+)/i', $block, $m)) {
+                    $title = trim($m[1]);
+                }
+                if (preg_match('/PRIORITY:\s*(.+)/i', $block, $m)) {
+                    $priority = strtolower(trim($m[1]));
+                }
+                if (preg_match('/DESCRIPTION:\s*(.+)/is', $block, $m)) {
+                    // Only grab up to the next field marker or end
+                    $desc = trim($m[1]);
+                    // Remove anything after another TITLE/PRIORITY line if accidentally captured
+                    $desc = preg_replace('/\n(TITLE|PRIORITY):.*/s', '', $desc);
+                    $description = trim($desc);
+                }
+
+                if ($title) {
+                    $proposals[] = [
+                        'title' => Str::limit($title, 120),
+                        'priority' => in_array($priority, ['low', 'medium', 'high', 'critical']) ? $priority : 'medium',
+                        'description' => $description,
+                    ];
+                }
+            }
         }
 
         // Extract detailed report
@@ -135,44 +174,50 @@ class PersonaCycleService
             $dataAppendix = trim($matches[1]);
         }
 
-        // Fallback: if markers aren't found, use the full output as description
-        if (empty($description) && empty($dataAppendix)) {
-            // Split roughly in half — first paragraph as summary, rest as appendix
-            $paragraphs = preg_split('/\n{2,}/', trim($output));
-
-            if (count($paragraphs) > 1) {
-                $description = implode("\n\n", array_slice($paragraphs, 0, 2));
-                $dataAppendix = implode("\n\n", array_slice($paragraphs, 2));
-            } else {
-                $description = trim($output);
-            }
+        // Fallback: if no proposals were parsed, create one from the full output
+        if (empty($proposals)) {
+            $summaryText = $dataAppendix ?: $output;
+            $proposals[] = [
+                'title' => 'Analysis cycle completed — review findings',
+                'priority' => 'medium',
+                'description' => Str::limit(trim($summaryText), 300),
+            ];
         }
 
         return [
-            'description' => $description ?: 'Analysis cycle completed — see data appendix for details.',
+            'proposals' => $proposals,
             'data_appendix' => $dataAppendix,
         ];
     }
 
     /**
-     * Create a proposal from analysis results.
+     * Create multiple proposals from analysis results.
+     *
+     * @param  array<int, array{title: string, priority: string, description: string}>  $proposalItems
+     * @return array<int, Proposal>
      */
-    public function createProposalFromAnalysis(Persona $persona, string $description, string $dataAppendix): Proposal
+    public function createProposalsFromAnalysis(Persona $persona, array $proposalItems, string $dataAppendix): array
     {
         $cycleNumber = ($persona->total_runs ?? 0) + 1;
+        $project = $persona->repository?->name ?? 'unknown';
+        $proposals = [];
 
-        $proposal = Proposal::create([
-            'title' => "{$persona->name} — Analysis Cycle #{$cycleNumber}",
-            'description' => $description,
-            'data_appendix' => $dataAppendix,
-            'persona_id' => $persona->id,
-            'type' => ProposalType::SeoImprovement,
-            'priority' => ProposalPriority::Medium,
-            'status' => ProposalStatus::Pending,
-            'project' => $persona->repository?->name ?? 'unknown',
-        ]);
+        foreach ($proposalItems as $index => $item) {
+            $proposal = Proposal::create([
+                'title' => $item['title'],
+                'description' => $item['description'],
+                'data_appendix' => $index === 0 ? $dataAppendix : null,
+                'persona_id' => $persona->id,
+                'type' => ProposalType::SeoImprovement,
+                'priority' => ProposalPriority::tryFrom($item['priority']) ?? ProposalPriority::Medium,
+                'status' => ProposalStatus::Pending,
+                'project' => $project,
+            ]);
 
-        return $proposal;
+            $proposals[] = $proposal;
+        }
+
+        return $proposals;
     }
 
     /**

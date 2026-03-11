@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Enums\ProposalType;
 use App\Jobs\CloneRepositoryJob;
-use App\Jobs\GeneratePersonaSubtasksJob;
 use App\Jobs\RunClaudeMessageJob;
 use App\Jobs\RunCodexMessageJob;
 use App\Models\AiProvider;
@@ -74,7 +73,7 @@ class ProposalExecutionService
     }
 
     /**
-     * For persona proposals, dispatch subtask generation instead of direct execution.
+     * Execute a persona proposal directly — each proposal is a single actionable task.
      */
     protected function executePersonaProposal(Proposal $proposal): Task
     {
@@ -88,7 +87,7 @@ class ProposalExecutionService
         $workspacePath = '/home/ploi/workspaces/'.Str::slug($repository->name).'-'.Str::random(8);
 
         $task = Task::create([
-            'title' => "[Persona] {$proposal->title} — Generating Subtasks",
+            'title' => "[Persona] {$proposal->title}",
             'status' => \App\Enums\TaskStatus::Pending,
             'ai_provider_id' => $aiProvider?->id,
             'repository_id' => $repository->id,
@@ -98,11 +97,53 @@ class ProposalExecutionService
 
         $proposal->update(['executed_task_id' => $task->id]);
 
-        $subtaskJob = new GeneratePersonaSubtasksJob($proposal->fresh(), $task);
+        $prompt = $this->generatePersonaPrompt($proposal);
 
-        CloneRepositoryJob::withChain([$subtaskJob])->dispatch($task);
+        $message = $task->messages()->create([
+            'role' => \App\Enums\MessageRole::User,
+            'content' => $prompt,
+        ]);
+
+        $this->sendStartNotification($proposal, $task);
+
+        $runnerJob = $task->aiProvider?->isCodex()
+            ? new RunCodexMessageJob($task, $message)
+            : new RunClaudeMessageJob($task, $message);
+
+        CloneRepositoryJob::withChain([$runnerJob])->dispatch($task);
 
         return $task;
+    }
+
+    /**
+     * Build the execution prompt for a persona proposal.
+     */
+    protected function generatePersonaPrompt(Proposal $proposal): string
+    {
+        $persona = $proposal->persona;
+
+        $prompt = "## Task: {$proposal->title}\n\n";
+        $prompt .= "{$proposal->description}\n\n";
+
+        if ($persona->master_prompt) {
+            $prompt .= "### Persona Guidelines\n{$persona->master_prompt}\n\n";
+        }
+
+        if ($persona->mcp_guidance) {
+            $prompt .= "### MCP Tools Guidance\n{$persona->mcp_guidance}\n\n";
+        }
+
+        if ($proposal->data_appendix) {
+            $prompt .= "### Supporting Analysis Data\n{$proposal->data_appendix}\n\n";
+        }
+
+        $prompt .= "### Completion Requirements\n";
+        $prompt .= "1. Execute the task described above\n";
+        $prompt .= "2. Commit your changes with descriptive messages\n";
+        $prompt .= "3. Verify changes work (use Playwright/browser if applicable)\n";
+        $prompt .= "4. Report what you did when done\n";
+
+        return $prompt;
     }
 
     protected function generatePrompt(Proposal $proposal): string

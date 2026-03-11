@@ -82,8 +82,11 @@ test('PersonaCycleService builds analysis prompt with all components', function 
         ->toContain('Analyze SEO performance')
         ->toContain('MCP Tools Guidance')
         ->toContain('Google Analytics')
-        ->toContain('EXECUTIVE_SUMMARY_START')
-        ->toContain('EXECUTIVE_SUMMARY_END')
+        ->toContain('PROPOSAL_START')
+        ->toContain('PROPOSAL_END')
+        ->toContain('TITLE:')
+        ->toContain('PRIORITY:')
+        ->toContain('DESCRIPTION:')
         ->toContain('DETAILED_REPORT_START')
         ->toContain('DETAILED_REPORT_END');
 });
@@ -94,10 +97,17 @@ test('PersonaCycleService parses analysis output with markers', function () {
     $output = <<<'TEXT'
     Some preamble text.
 
-    EXECUTIVE_SUMMARY_START
-    The website SEO performance has improved by 15% this month.
-    Key areas for improvement include meta descriptions and internal linking.
-    EXECUTIVE_SUMMARY_END
+    PROPOSAL_START
+    TITLE: Update meta descriptions on key landing pages
+    PRIORITY: high
+    DESCRIPTION: The website SEO performance has improved by 15% this month, but key landing pages still need stronger meta descriptions.
+    PROPOSAL_END
+
+    PROPOSAL_START
+    TITLE: Add internal links to high-value blog posts
+    PRIORITY: medium
+    DESCRIPTION: Internal linking remains a clear opportunity across recent blog content.
+    PROPOSAL_END
 
     DETAILED_REPORT_START
     ## SEO Analysis Report
@@ -114,8 +124,11 @@ test('PersonaCycleService parses analysis output with markers', function () {
 
     $parsed = $cycleService->parseAnalysisOutput($output);
 
-    expect($parsed['description'])->toContain('website SEO performance has improved')
-        ->toContain('meta descriptions and internal linking');
+    expect($parsed['proposals'])->toHaveCount(2);
+    expect($parsed['proposals'][0]['title'])->toBe('Update meta descriptions on key landing pages');
+    expect($parsed['proposals'][0]['priority'])->toBe('high');
+    expect($parsed['proposals'][0]['description'])->toContain('website SEO performance has improved');
+    expect($parsed['proposals'][1]['title'])->toBe('Add internal links to high-value blog posts');
     expect($parsed['data_appendix'])->toContain('SEO Analysis Report')
         ->toContain('Organic traffic: +15%')
         ->toContain('Update meta descriptions on 25 pages');
@@ -128,28 +141,43 @@ test('PersonaCycleService parses analysis output without markers uses fallback',
 
     $parsed = $cycleService->parseAnalysisOutput($output);
 
-    expect($parsed['description'])->not->toBeEmpty();
-    expect($parsed['data_appendix'])->not->toBeEmpty();
+    expect($parsed['proposals'])->toHaveCount(1);
+    expect($parsed['proposals'][0]['title'])->toBe('Analysis cycle completed — review findings');
+    expect($parsed['proposals'][0]['description'])->not->toBeEmpty();
+    expect($parsed['data_appendix'])->toBe('');
 });
 
-test('PersonaCycleService creates proposal from analysis', function () {
+test('PersonaCycleService creates proposals from analysis', function () {
     $cycleService = app(PersonaCycleService::class);
 
-    $proposal = $cycleService->createProposalFromAnalysis(
+    $proposals = $cycleService->createProposalsFromAnalysis(
         $this->persona,
-        'SEO improvements needed',
+        [
+            [
+                'title' => 'Update homepage metadata',
+                'priority' => 'high',
+                'description' => 'SEO improvements needed on the homepage.',
+            ],
+            [
+                'title' => 'Improve blog internal linking',
+                'priority' => 'medium',
+                'description' => 'Strengthen topical authority with more internal links.',
+            ],
+        ],
         '## Detailed report data'
     );
 
-    expect($proposal->id)->not->toBeNull();
-    expect($proposal->persona_id)->toBe($this->persona->id);
-    expect($proposal->description)->toBe('SEO improvements needed');
-    expect($proposal->data_appendix)->toBe('## Detailed report data');
-    expect($proposal->type)->toBe(ProposalType::SeoImprovement);
-    expect($proposal->status)->toBe(ProposalStatus::Pending);
-    expect($proposal->project)->toBe($this->repository->name);
-    expect($proposal->title)->toContain($this->persona->name);
-    expect($proposal->title)->toContain('Analysis Cycle #1');
+    expect($proposals)->toHaveCount(2);
+    expect($proposals[0]->id)->not->toBeNull();
+    expect($proposals[0]->persona_id)->toBe($this->persona->id);
+    expect($proposals[0]->description)->toBe('SEO improvements needed on the homepage.');
+    expect($proposals[0]->data_appendix)->toBe('## Detailed report data');
+    expect($proposals[0]->type)->toBe(ProposalType::SeoImprovement);
+    expect($proposals[0]->status)->toBe(ProposalStatus::Pending);
+    expect($proposals[0]->project)->toBe($this->repository->name);
+    expect($proposals[0]->title)->toBe('Update homepage metadata');
+    expect($proposals[1]->title)->toBe('Improve blog internal linking');
+    expect($proposals[1]->data_appendix)->toBeNull();
 });
 
 test('PersonaCycleService logs cycle to history', function () {
@@ -158,11 +186,16 @@ test('PersonaCycleService logs cycle to history', function () {
 
     $cycleService = app(PersonaCycleService::class);
 
-    $proposal = $cycleService->createProposalFromAnalysis(
+    $proposals = $cycleService->createProposalsFromAnalysis(
         $this->persona,
-        'Test summary',
+        [[
+            'title' => 'Test proposal',
+            'priority' => 'medium',
+            'description' => 'Test summary',
+        ]],
         '## Test data'
     );
+    $proposal = $proposals[0];
 
     $cycleService->logCycleToHistory($this->persona, $proposal, 1);
 
@@ -177,7 +210,7 @@ test('PersonaCycleService logs cycle to history', function () {
         ->toContain($proposal->title);
 });
 
-test('full analysis cycle with mocked Claude process produces valid Proposal', function () {
+test('full analysis cycle with mocked Claude process produces valid proposals', function () {
     $storageService = app(PersonaStorageService::class);
     $storageService->initializeStorage($this->persona);
 
@@ -192,10 +225,17 @@ test('full analysis cycle with mocked Claude process produces valid Proposal', f
 
     // Simulate what RunPersonaCycleJob does after receiving Claude output
     $mockOutput = <<<'TEXT'
-    EXECUTIVE_SUMMARY_START
-    Website SEO analysis reveals 3 critical improvements needed.
-    Meta descriptions are missing on 40% of pages.
-    EXECUTIVE_SUMMARY_END
+    PROPOSAL_START
+    TITLE: Add unique meta descriptions to core pages
+    PRIORITY: critical
+    DESCRIPTION: Website SEO analysis reveals missing meta descriptions on 40% of pages.
+    PROPOSAL_END
+
+    PROPOSAL_START
+    TITLE: Implement structured data markup
+    PRIORITY: high
+    DESCRIPTION: Structured data is missing from high-intent pages and should be added next.
+    PROPOSAL_END
 
     DETAILED_REPORT_START
     ## Full Analysis
@@ -214,11 +254,13 @@ test('full analysis cycle with mocked Claude process produces valid Proposal', f
 
     $parsed = $cycleService->parseAnalysisOutput($mockOutput);
 
-    $proposal = $cycleService->createProposalFromAnalysis(
+    $proposals = $cycleService->createProposalsFromAnalysis(
         $this->persona,
-        $parsed['description'],
+        $parsed['proposals'],
         $parsed['data_appendix']
     );
+    $proposal = $proposals[0];
+    $lastProposal = end($proposals);
 
     $cycleNumber = ($this->persona->total_runs ?? 0) + 1;
     $cycleService->logCycleToHistory($this->persona, $proposal, $cycleNumber);
@@ -227,24 +269,25 @@ test('full analysis cycle with mocked Claude process produces valid Proposal', f
     $this->persona->update([
         'last_run_at' => now(),
         'total_runs' => $cycleNumber,
-        'total_proposals' => ($this->persona->total_proposals ?? 0) + 1,
-        'last_proposal_id' => $proposal->id,
+        'total_proposals' => ($this->persona->total_proposals ?? 0) + count($proposals),
+        'last_proposal_id' => $lastProposal->id,
         'status' => PersonaStatus::AwaitingApproval,
     ]);
 
-    // Verify proposal
+    // Verify proposals
+    expect($proposals)->toHaveCount(2);
     expect($proposal->persona_id)->toBe($this->persona->id);
     expect($proposal->status)->toBe(ProposalStatus::Pending);
     expect($proposal->type)->toBe(ProposalType::SeoImprovement);
-    expect($proposal->description)->toContain('SEO analysis reveals 3 critical improvements');
+    expect($proposal->description)->toContain('missing meta descriptions on 40% of pages');
     expect($proposal->data_appendix)->toContain('Missing Meta Descriptions');
 
     // Verify persona updated
     $this->persona->refresh();
     expect($this->persona->last_run_at)->not->toBeNull();
     expect($this->persona->total_runs)->toBe(1);
-    expect($this->persona->total_proposals)->toBe(1);
-    expect($this->persona->last_proposal_id)->toBe($proposal->id);
+    expect($this->persona->total_proposals)->toBe(2);
+    expect($this->persona->last_proposal_id)->toBe($lastProposal->id);
     expect($this->persona->status)->toBe(PersonaStatus::AwaitingApproval);
 
     // Verify history file
