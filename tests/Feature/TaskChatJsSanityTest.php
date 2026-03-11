@@ -17,6 +17,13 @@ test('task chat cached preview renderer avoids raw double quotes inside x-data a
     expect($src)->not->toContain('x-data="..."');
 });
 
+test('task chat IDE links use the task uuid explicitly', function () {
+    $src = file_get_contents(resource_path('views/livewire/task-chat.blade.php'));
+
+    expect($src)->toContain("TaskIde::getUrl(['record' => \$task->uuid])");
+    expect($src)->not->toContain("TaskIde::getUrl(['record' => \$task])");
+});
+
 test('task chat keeps scroll stable during live updates when user is not near bottom', function () {
     $src = file_get_contents(resource_path('views/livewire/task-chat.blade.php'));
     $css = file_get_contents(resource_path('css/filament/chat.css'));

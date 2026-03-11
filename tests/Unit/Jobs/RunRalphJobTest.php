@@ -144,6 +144,103 @@ class RunRalphJobTest extends TestCase
         $this->assertStringContainsString("'o3'", $command);
     }
 
+    public function test_marks_story_passed_without_mutating_readonly_state(): void
+    {
+        $task = Task::factory()->ralph()->create([
+            'workspace_path' => '/tmp/test-workspace',
+        ]);
+
+        $service = app(RalphWorkspaceService::class);
+        $service->initialize($task, [
+            'branch_name' => 'ralph/test',
+            'stories' => [
+                ['id' => 'US-001', 'title' => 'First story', 'priority' => 1, 'passes' => false],
+                ['id' => 'US-002', 'title' => 'Second story', 'priority' => 2, 'passes' => false],
+            ],
+        ]);
+
+        $job = new RunRalphJob($task, 1);
+        $state = $service->readState($task);
+
+        $this->invokeProtected($job, 'markStoryPassed', [
+            $service,
+            $state,
+            ['id' => 'US-001', 'title' => 'First story', 'priority' => 1, 'passes' => false],
+        ]);
+
+        $updatedState = $service->readState($task);
+
+        $this->assertTrue($updatedState->prd['userStories'][0]['passes']);
+        $this->assertFalse($updatedState->prd['userStories'][1]['passes']);
+    }
+
+    public function test_complete_task_disables_ralph(): void
+    {
+        $task = Task::factory()->ralph()->running()->create([
+            'workspace_path' => '/tmp/test-workspace',
+        ]);
+
+        $service = app(RalphWorkspaceService::class);
+        $service->initialize($task, [
+            'branch_name' => 'ralph/test',
+            'stories' => [
+                ['id' => 'US-001', 'title' => 'Done', 'priority' => 1, 'passes' => true],
+            ],
+        ]);
+
+        $job = new RunRalphJob($task, 3);
+        $state = $service->readState($task);
+
+        $this->invokeProtected($job, 'completeTask', [$state]);
+
+        $this->assertDatabaseHas('tasks', [
+            'id' => $task->id,
+            'status' => 'completed',
+            'ralph_enabled' => false,
+            'ralph_stopped_reason' => 'completed',
+        ]);
+    }
+
+    public function test_fail_with_error_disables_ralph(): void
+    {
+        $task = Task::factory()->ralph()->running()->create([
+            'workspace_path' => '/tmp/test-workspace',
+        ]);
+
+        $job = new RunRalphJob($task, 2);
+
+        $this->invokeProtected($job, 'failWithError', ['gutter_detected']);
+
+        $this->assertDatabaseHas('tasks', [
+            'id' => $task->id,
+            'status' => 'failed',
+            'ralph_enabled' => false,
+            'ralph_stopped_reason' => 'gutter_detected',
+        ]);
+    }
+
+    public function test_handle_returns_early_when_ralph_has_been_disabled(): void
+    {
+        Queue::fake();
+
+        $task = Task::factory()->ralph()->running()->create([
+            'workspace_path' => '/tmp/test-workspace',
+            'ralph_enabled' => false,
+        ]);
+
+        $initialMessageCount = $task->messages()->count();
+
+        $job = new RunRalphJob($task, 2);
+        $job->handle(app(RalphWorkspaceService::class));
+
+        $task->refresh();
+
+        $this->assertSame('running', $task->status->value);
+        $this->assertNull($task->ralph_stopped_reason);
+        $this->assertSame($initialMessageCount, $task->messages()->count());
+        Queue::assertNothingPushed();
+    }
+
     /**
      * @param  array<int, mixed>  $args
      */

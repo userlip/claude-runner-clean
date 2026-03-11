@@ -661,7 +661,7 @@ class RunCodexMessageJob implements ShouldQueue
         ]);
         $syntheticMessage->id = $lastMessage->id;
 
-        self::dispatch($this->task, $syntheticMessage, continue: true);
+        self::dispatch($this->task, $syntheticMessage, continue: true)->onQueue($this->queue ?? 'default');
     }
 
     public function failed(\Throwable $exception): void

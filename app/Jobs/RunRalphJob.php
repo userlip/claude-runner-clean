@@ -31,6 +31,17 @@ class RunRalphJob implements ShouldQueue
 
     public function handle(RalphWorkspaceService $ralph): void
     {
+        $this->task->refresh();
+
+        if (! $this->task->ralph_enabled) {
+            Log::info('Skipping Ralph iteration because Ralph is disabled', [
+                'task_id' => $this->task->id,
+                'iteration' => $this->iteration,
+            ]);
+
+            return;
+        }
+
         // Prevent infinite loops
         if ($this->iteration > self::MAX_ITERATION_SAFEGUARD) {
             $this->failWithError('max_safeguard_iterations_exceeded');
@@ -144,6 +155,17 @@ class RunRalphJob implements ShouldQueue
         // 10. Check for too many consecutive failures (gutter)
         if ($this->task->ralph_gutter_count >= self::GUTTER_THRESHOLD) {
             $this->failWithError('gutter_detected');
+
+            return;
+        }
+
+        $this->task->refresh();
+
+        if (! $this->task->ralph_enabled) {
+            Log::info('Stopping Ralph loop before dispatch because Ralph was disabled mid-iteration', [
+                'task_id' => $this->task->id,
+                'iteration' => $this->iteration,
+            ]);
 
             return;
         }
@@ -606,15 +628,19 @@ class RunRalphJob implements ShouldQueue
      */
     protected function markStoryPassed(RalphWorkspaceService $ralph, RalphState $state, array $story): void
     {
-        foreach ($state->prd['userStories'] as &$userStory) {
+        $prd = $state->prd ?? [];
+        $userStories = $prd['userStories'] ?? [];
+
+        foreach ($userStories as &$userStory) {
             if ($userStory['id'] === $story['id']) {
                 $userStory['passes'] = true;
                 break;
             }
         }
 
-        $state->prd['userStories'] = collect($state->prd['userStories'])->values()->toArray();
-        $ralph->updatePrd($this->task, $state->prd);
+        $prd['userStories'] = collect($userStories)->values()->toArray();
+
+        $ralph->updatePrd($this->task, $prd);
     }
 
     /**
@@ -624,6 +650,7 @@ class RunRalphJob implements ShouldQueue
     {
         $this->task->update([
             'status' => TaskStatus::Completed,
+            'ralph_enabled' => false,
             'ralph_stopped_reason' => 'completed',
         ]);
 
@@ -647,6 +674,7 @@ class RunRalphJob implements ShouldQueue
     {
         $this->task->update([
             'status' => TaskStatus::Failed,
+            'ralph_enabled' => false,
             'ralph_stopped_reason' => $reason,
         ]);
 

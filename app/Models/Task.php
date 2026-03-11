@@ -172,15 +172,15 @@ class Task extends Model
         return $this->belongsTo(AiProvider::class);
     }
 
-    public function dispatchMessage(Message $userMessage, bool $continue = false): void
+    public function dispatchMessage(Message $userMessage, bool $continue = false, string $queue = 'default'): void
     {
         if ($this->aiProvider?->isCodex()) {
-            RunCodexMessageJob::dispatch($this, $userMessage, continue: $continue);
+            RunCodexMessageJob::dispatch($this, $userMessage, continue: $continue)->onQueue($queue);
 
             return;
         }
 
-        RunClaudeMessageJob::dispatch($this, $userMessage, continue: $continue);
+        RunClaudeMessageJob::dispatch($this, $userMessage, continue: $continue)->onQueue($queue);
     }
 
     public function scrappApi(): BelongsTo

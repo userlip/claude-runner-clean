@@ -808,8 +808,8 @@ class RunClaudeMessageJob implements ShouldQueue
         // Set the ID so hasImages() and other methods work
         $syntheticMessage->id = $lastMessage->id;
 
-        // Dispatch a new job to process the combined content
-        self::dispatch($this->task, $syntheticMessage, continue: true);
+        // Dispatch a new job to process the combined content (preserve queue)
+        self::dispatch($this->task, $syntheticMessage, continue: true)->onQueue($this->queue ?? 'default');
     }
 
     /**

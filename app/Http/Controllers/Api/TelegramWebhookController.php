@@ -1085,7 +1085,7 @@ TEXT;
         // Clear reply mode
         Cache::forget("telegram:{$chatId}:reply_mode");
 
-        // Dispatch the message to Claude
+        // Dispatch the message to the default queue so user replies are handled by the active workers.
         $task->dispatchMessage($message);
 
         // Confirm to user
