@@ -54,6 +54,7 @@ class TaskScheduleResource extends Resource
                     ->columnSpanFull()
                     ->schema([
                         Section::make('Schedule Details')
+                            ->columnSpanFull()
                             ->schema([
                                 Forms\Components\TextInput::make('name')
                                     ->required()

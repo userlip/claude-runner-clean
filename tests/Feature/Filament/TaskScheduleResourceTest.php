@@ -1,6 +1,7 @@
 <?php
 
 use App\Filament\Resources\TaskSchedules\Pages\CreateTaskSchedule;
+use App\Filament\Resources\TaskSchedules\Pages\EditTaskSchedule;
 use App\Filament\Resources\TaskSchedules\Pages\ListTaskSchedules;
 use App\Models\AiProvider;
 use App\Models\Repository;
@@ -56,4 +57,14 @@ it('can create a task schedule', function () {
         ->assertHasNoFormErrors();
 
     expect(TaskSchedule::where('name', 'Nightly checks')->exists())->toBeTrue();
+});
+
+it('uses the default panel content width on the edit page', function () {
+    expect((new EditTaskSchedule)->getMaxContentWidth())->toBeNull();
+});
+
+it('makes the schedule details section span the full form width', function () {
+    $src = file_get_contents(app_path('Filament/Resources/TaskSchedules/TaskScheduleResource.php'));
+
+    expect($src)->toMatch("/Section::make\\('Schedule Details'\\)\\s*->columnSpanFull\\(\\)/s");
 });
