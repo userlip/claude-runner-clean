@@ -136,6 +136,11 @@ class ProposalResource extends Resource
                     ->searchable()
                     ->limit(50),
 
+                Tables\Columns\TextColumn::make('persona.name')
+                    ->label('Persona')
+                    ->placeholder('—')
+                    ->toggleable(),
+
                 Tables\Columns\TextColumn::make('project')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
@@ -208,6 +213,9 @@ class ProposalResource extends Resource
                         'rezensionsheld' => 'Rezensionsheld',
                         'claude_runner' => 'Claude Runner',
                     ]),
+
+                Tables\Filters\SelectFilter::make('persona')
+                    ->relationship('persona', 'name'),
             ])
             ->recordActions([
                 Actions\Action::make('approve')

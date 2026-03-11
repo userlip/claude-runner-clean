@@ -309,7 +309,7 @@ class Task extends Model
 
     public function getRalphWorkspacePath(): string
     {
-        return $this->workspace_path.'/.ralph';
+        return $this->working_directory.'/.ralph';
     }
 
     public function getRalphState(): RalphState

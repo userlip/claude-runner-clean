@@ -15,6 +15,7 @@ use App\Models\Proposal;
 use App\Models\Repository;
 use App\Models\Site;
 use App\Models\Task;
+use App\Services\PersonaCycleService;
 use App\Services\TelegramMenuService;
 use App\Services\TelegramService;
 use Illuminate\Http\JsonResponse;
@@ -127,6 +128,18 @@ class TelegramWebhookController extends Controller
         // Handle reply callbacks (for channel-like messaging)
         if ($action === 'reply') {
             return $this->handleReplyCallback($parts, $callbackQueryId, $chatId);
+        }
+
+        // Handle subtask approval callback
+        if ($action === 'approve_subtasks') {
+            $id = $parts[1] ?? null;
+            if (! $id) {
+                $this->telegram->answerCallbackQuery($callbackQueryId, 'Invalid action');
+
+                return response()->json(['status' => 'invalid_action']);
+            }
+
+            return $this->approveSubtasks((int) $id, $callbackQueryId);
         }
 
         // Legacy callback format (approve:ID, reject:ID, details:ID)
@@ -442,24 +455,46 @@ class TelegramWebhookController extends Controller
             return response()->json(['status' => 'already_processed']);
         }
 
-        // Create a task from the proposal
-        $task = Task::create([
-            'title' => $proposal->title,
-            'user_id' => 1, // Default admin user
-            'status' => TaskStatus::Pending,
-        ]);
-
-        $proposal->update([
-            'status' => ProposalStatus::Approved,
-            'task_id' => $task->id,
-            'approved_at' => now(),
-        ]);
+        $proposal->approve();
 
         // Update the Telegram message
-        $this->telegram->updateProposalMessage($proposal);
-        $this->telegram->answerCallbackQuery($callbackQueryId, 'Proposal approved! Task created.');
+        $this->telegram->updateProposalMessage($proposal->fresh());
+        $this->telegram->answerCallbackQuery($callbackQueryId, 'Proposal approved! Execution starting.');
 
-        return response()->json(['status' => 'approved', 'task_id' => $task->id]);
+        return response()->json(['status' => 'approved']);
+    }
+
+    private function approveSubtasks(int $proposalId, string $callbackQueryId): JsonResponse
+    {
+        $proposal = Proposal::find($proposalId);
+
+        if (! $proposal) {
+            $this->telegram->answerCallbackQuery($callbackQueryId, 'Proposal not found', true);
+
+            return response()->json(['status' => 'not_found']);
+        }
+
+        if (! $proposal->hasSubtasksPendingApproval()) {
+            $this->telegram->answerCallbackQuery($callbackQueryId, 'Subtasks already approved or not available', true);
+
+            return response()->json(['status' => 'already_processed']);
+        }
+
+        $proposal->update(['subtasks_approved_at' => now()]);
+
+        app(PersonaCycleService::class)->startSubtaskExecution($proposal->fresh());
+
+        $this->telegram->answerCallbackQuery($callbackQueryId, 'Subtasks approved! Execution starting.');
+
+        $subtaskCount = count($proposal->subtasks ?? []);
+        $this->telegram->sendPlainMessage(
+            "✅ Subtasks Approved\n\n"
+            ."Proposal: {$proposal->title}\n"
+            ."Subtasks: {$subtaskCount}\n\n"
+            .'Execution starting...'
+        );
+
+        return response()->json(['status' => 'subtasks_approved']);
     }
 
     private function rejectProposal(int $proposalId, string $callbackQueryId, ?string $reason = null): JsonResponse
@@ -606,23 +641,12 @@ TEXT;
             return response()->json(['status' => 'already_processed']);
         }
 
-        // Create a task from the proposal
-        $task = Task::create([
-            'title' => $proposal->title,
-            'user_id' => 1,
-            'status' => TaskStatus::Pending,
-        ]);
+        $proposal->approve();
 
-        $proposal->update([
-            'status' => ProposalStatus::Approved,
-            'task_id' => $task->id,
-            'approved_at' => now(),
-        ]);
+        $this->telegram->updateProposalMessage($proposal->fresh());
+        $this->telegram->sendMessage("Proposal #{$proposalId} approved\\. Execution starting\\.");
 
-        $this->telegram->updateProposalMessage($proposal);
-        $this->telegram->sendMessage("Proposal #{$proposalId} approved. Task `{$task->uuid}` created.");
-
-        return response()->json(['status' => 'approved', 'task_id' => $task->id]);
+        return response()->json(['status' => 'approved']);
     }
 
     private function commandReject(array $args): JsonResponse

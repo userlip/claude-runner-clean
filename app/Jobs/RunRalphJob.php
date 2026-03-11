@@ -54,9 +54,9 @@ class RunRalphJob implements ShouldQueue
         // 2. Read state files
         try {
             $state = $ralph->readState($this->task);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('Failed to read Ralph state', ['error' => $e->getMessage()]);
-            $this->failWithError('Cannot read Ralph state files');
+            $this->failWithError('Cannot read Ralph state files: '.$e->getMessage());
 
             return;
         }
@@ -214,7 +214,7 @@ class RunRalphJob implements ShouldQueue
             2 => ['pipe', 'w'],
         ];
 
-        $process = proc_open($command, $descriptors, $pipes, $this->task->workspace_path);
+        $process = proc_open($command, $descriptors, $pipes, $this->task->working_directory);
 
         if (! is_resource($process)) {
             $liveMessage->update(['content' => "*Failed to start {$providerName} process*"]);
@@ -510,7 +510,7 @@ class RunRalphJob implements ShouldQueue
 
         try {
             // Run targeted tests in workspace directory with generous timeout (10 minutes)
-            $process = Process::path($this->task->workspace_path)
+            $process = Process::path($this->task->working_directory)
                 ->timeout(600)
                 ->run($targetedCommand);
 
@@ -581,7 +581,7 @@ class RunRalphJob implements ShouldQueue
         // Check which test files exist and run only those
         $existingFiles = [];
         foreach ($possibleFiles as $file) {
-            $fullPath = $this->task->workspace_path.'/'.$file;
+            $fullPath = $this->task->working_directory.'/'.$file;
             if (file_exists($fullPath)) {
                 $existingFiles[] = $file;
             }

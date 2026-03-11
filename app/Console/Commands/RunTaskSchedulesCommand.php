@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Jobs\RunPersonaCycleJob;
 use App\Jobs\RunScheduledTaskJob;
 use App\Models\TaskSchedule;
 use Cron\CronExpression;
@@ -54,7 +55,11 @@ class RunTaskSchedulesCommand extends Command
 
                     $lockedSchedule->update(['last_run_at' => $now]);
 
-                    RunScheduledTaskJob::dispatch($lockedSchedule->id);
+                    if ($lockedSchedule->persona_id) {
+                        RunPersonaCycleJob::dispatch($lockedSchedule->persona);
+                    } else {
+                        RunScheduledTaskJob::dispatch($lockedSchedule->id);
+                    }
                 });
             });
 

@@ -39,7 +39,7 @@ test('chat prompt input is manually resizable', function () {
 });
 
 test('can send a message', function () {
-    Queue::fake();
+    Bus::fake();
 
     $repository = Repository::factory()->create(['user_id' => $this->user->id]);
     $task = Task::factory()->create(['repository_id' => $repository->id]);
@@ -49,12 +49,11 @@ test('can send a message', function () {
         ->call('sendMessage');
 
     expect(Message::where('content', 'Hello Claude!')->exists())->toBeTrue();
-    Queue::assertPushed(RunClaudeMessageJob::class);
-    Queue::assertPushedOn('default', RunClaudeMessageJob::class);
+    Bus::assertDispatched(RunClaudeMessageJob::class);
 });
 
 test('it automatically generates a title after the first user message', function () {
-    Queue::fake();
+    Bus::fake();
     Http::fake([
         'https://api.kimi.com/coding/v1/messages' => Http::response([
             'content' => [
@@ -76,7 +75,7 @@ test('it automatically generates a title after the first user message', function
         ->call('sendMessage');
 
     expect($task->fresh()->title)->toBe('CSV Import Wizard');
-    Queue::assertPushed(RunClaudeMessageJob::class);
+    Bus::assertDispatched(RunClaudeMessageJob::class);
     Http::assertSentCount(1);
 });
 
@@ -246,6 +245,59 @@ test('typing start ralph detects the parent PRD from prd_issue in .ralph prd.jso
     Bus::assertNotDispatched(RunClaudeMessageJob::class);
 });
 
+test('typing start ralph detects the parent PRD from parent_issue.number in .ralph prd.json', function () {
+    Bus::fake();
+
+    $repository = Repository::factory()->create([
+        'user_id' => $this->user->id,
+        'full_name' => 'nxtyou/RezensionsHeld-Dashboard',
+    ]);
+
+    $workspacePath = '/tmp/task-chat-start-ralph-parent-issue-number';
+    File::deleteDirectory($workspacePath);
+    File::ensureDirectoryExists($workspacePath.'/.ralph');
+    File::put($workspacePath.'/.ralph/prd.json', json_encode([
+        'parent_issue' => [
+            'number' => 646,
+            'title' => 'Enable affiliate self-service percentage coupons',
+        ],
+        'labels' => ['ralph', 'prd-slice'],
+        'slices' => [
+            [
+                'number' => 647,
+                'title' => 'Add affiliate-level controls',
+                'classification' => 'AFK',
+                'blocked_by' => [],
+                'user_stories' => [1, 2, 3, 4],
+            ],
+        ],
+    ], JSON_PRETTY_PRINT));
+
+    Process::fake([
+        '*gh issue list*' => Process::result(output: json_encode([
+            [
+                'number' => 647,
+                'title' => 'Add affiliate-level controls',
+                'body' => "## Parent PRD\n#646\n\n## Acceptance criteria\n- [ ] First criterion",
+            ],
+        ])),
+    ]);
+
+    $task = Task::factory()->create([
+        'repository_id' => $repository->id,
+        'workspace_path' => $workspacePath,
+        'ralph_enabled' => false,
+    ]);
+
+    Livewire::test(TaskChat::class, ['task' => $task])
+        ->set('prompt', 'start ralph')
+        ->call('sendMessage');
+
+    expect($task->fresh()->ralph_enabled)->toBeTrue();
+    expect($task->fresh()->ralph_branch_name)->toBe("ralph/{$task->uuid}");
+    Bus::assertDispatched(RunRalphJob::class);
+    Bus::assertNotDispatched(RunClaudeMessageJob::class);
+});
 test('shows repository and location in header', function () {
     $repository = Repository::factory()->create([
         'user_id' => $this->user->id,

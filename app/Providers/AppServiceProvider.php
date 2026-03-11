@@ -4,8 +4,10 @@ namespace App\Providers;
 
 use App\Filament\Pages\PWASettingsPage;
 use App\Models\GoogleAnalyticsConnection;
+use App\Models\Persona;
 use App\Models\SearchConsoleConnection;
 use App\Observers\GoogleAnalyticsConnectionObserver;
+use App\Observers\PersonaObserver;
 use App\Observers\SearchConsoleConnectionObserver;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Grid;
@@ -36,6 +38,7 @@ class AppServiceProvider extends ServiceProvider
         // Register observers
         GoogleAnalyticsConnection::observe(GoogleAnalyticsConnectionObserver::class);
         SearchConsoleConnection::observe(SearchConsoleConnectionObserver::class);
+        Persona::observe(PersonaObserver::class);
 
         FilamentSettingsHub::register([
             SettingHold::make()

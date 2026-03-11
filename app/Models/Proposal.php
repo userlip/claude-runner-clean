@@ -19,6 +19,10 @@ class Proposal extends Model
         'uuid',
         'title',
         'description',
+        'data_appendix',
+        'subtasks',
+        'subtasks_approved_at',
+        'current_subtask_index',
         'priority',
         'status',
         'project',
@@ -36,6 +40,7 @@ class Proposal extends Model
         'execution_completed_at',
         'execution_success',
         'follow_up_count',
+        'persona_id',
     ];
 
     protected function casts(): array
@@ -45,6 +50,9 @@ class Proposal extends Model
             'status' => ProposalStatus::class,
             'type' => ProposalType::class,
             'proposed_action' => 'array',
+            'subtasks' => 'array',
+            'subtasks_approved_at' => 'datetime',
+            'current_subtask_index' => 'integer',
             'approved_at' => 'datetime',
             'rejected_at' => 'datetime',
             'execution_completed_at' => 'datetime',
@@ -79,6 +87,11 @@ class Proposal extends Model
     public function playbook(): BelongsTo
     {
         return $this->belongsTo(Playbook::class);
+    }
+
+    public function persona(): BelongsTo
+    {
+        return $this->belongsTo(Persona::class);
     }
 
     public function scopePending(Builder $query): Builder
@@ -146,17 +159,74 @@ class Proposal extends Model
         $this->increment('follow_up_count');
     }
 
+    public function hasSubtasksPendingApproval(): bool
+    {
+        return ! empty($this->subtasks) && is_null($this->subtasks_approved_at);
+    }
+
+    public function areSubtasksApproved(): bool
+    {
+        return ! empty($this->subtasks) && ! is_null($this->subtasks_approved_at);
+    }
+
+    /**
+     * @return array{index: int, title: string, description: string, status: string}|null
+     */
+    public function getCurrentSubtask(): ?array
+    {
+        if (empty($this->subtasks)) {
+            return null;
+        }
+
+        return $this->subtasks[$this->current_subtask_index] ?? null;
+    }
+
+    public function advanceSubtaskIndex(): void
+    {
+        $this->increment('current_subtask_index');
+    }
+
+    public function updateSubtaskStatus(int $index, string $status): void
+    {
+        $subtasks = $this->subtasks;
+
+        if (isset($subtasks[$index])) {
+            $subtasks[$index]['status'] = $status;
+            $this->update(['subtasks' => $subtasks]);
+        }
+    }
+
+    public function allSubtasksCompleted(): bool
+    {
+        if (empty($this->subtasks)) {
+            return false;
+        }
+
+        return collect($this->subtasks)->every(fn (array $s): bool => in_array($s['status'], ['completed', 'skipped']));
+    }
+
+    public function hasFailedSubtask(): bool
+    {
+        if (empty($this->subtasks)) {
+            return false;
+        }
+
+        return collect($this->subtasks)->contains(fn (array $s): bool => $s['status'] === 'failed');
+    }
+
     public function formatForTelegram(): string
     {
         $priorityEmoji = $this->priority->emoji();
         $priorityLabel = $this->priority->label();
+        $header = $this->persona_id ? '🤖 *Persona Proposal*' : "{$priorityEmoji} *New Proposal*";
+        $personaLine = $this->persona_id ? "\n*Persona:* {$this->persona->name}" : '';
 
         return <<<TEXT
-{$priorityEmoji} *New Proposal*
+{$header}
 
 *Title:* {$this->title}
 *Project:* `{$this->project}`
-*Priority:* {$priorityLabel}
+*Priority:* {$priorityLabel}{$personaLine}
 
 *Description:*
 {$this->description}

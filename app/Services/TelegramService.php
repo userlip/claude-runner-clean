@@ -373,6 +373,24 @@ TEXT;
         return $this->editMessage((int) $proposal->telegram_message_id, $text);
     }
 
+    /**
+     * Send an informational persona cycle notification (start or complete).
+     */
+    public function sendPersonaCycleNotification(string $personaName, string $event, string $details = ''): ?TelegramMessage
+    {
+        $emoji = $event === 'started' ? '🔄' : '✅';
+        $label = ucfirst($event);
+
+        $text = "{$emoji} *Persona Cycle {$label}*\n\n";
+        $text .= "*Persona:* {$personaName}\n";
+
+        if ($details) {
+            $text .= "\n{$details}";
+        }
+
+        return $this->sendPlainMessage($text);
+    }
+
     private function buildProposalKeyboard(Proposal $proposal): Keyboard
     {
         return Keyboard::make([
