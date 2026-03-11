@@ -16,10 +16,14 @@ class CleanupStaleTasks extends Command
     public function handle(): int
     {
         $minutes = (int) $this->option('minutes');
+        $activityThreshold = now()->subMinutes($minutes);
 
         $staleTasks = Task::query()
             ->where('status', TaskStatus::Running)
-            ->where('last_message_at', '<', now()->subMinutes($minutes))
+            ->where('last_message_at', '<', $activityThreshold)
+            ->whereDoesntHave('messages', function ($query) use ($activityThreshold) {
+                $query->where('updated_at', '>=', $activityThreshold);
+            })
             ->get();
 
         if ($staleTasks->isEmpty()) {
