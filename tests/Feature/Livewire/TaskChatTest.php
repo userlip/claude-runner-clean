@@ -388,3 +388,25 @@ test('defers rendering existing messages until loadMessages is called', function
         ->call('loadMessages')
         ->assertSee('hello from history');
 });
+
+test('does not add standalone polling to the context usage indicators', function () {
+    $repository = Repository::factory()->create(['user_id' => $this->user->id]);
+    $task = Task::factory()->create(['repository_id' => $repository->id]);
+
+    $html = Livewire::test(TaskChat::class, ['task' => $task])->html();
+
+    expect($html)->not->toMatch('/class="chat-mobile-context"[^>]*wire:poll\.5s/');
+    expect($html)->not->toMatch('/class="chat-context-usage"[^>]*wire:poll\.5s/');
+});
+
+test('keeps the main chat poll for active tasks', function () {
+    $repository = Repository::factory()->create(['user_id' => $this->user->id]);
+    $task = Task::factory()->create([
+        'repository_id' => $repository->id,
+        'status' => \App\Enums\TaskStatus::Running,
+    ]);
+
+    $html = Livewire::test(TaskChat::class, ['task' => $task])->html();
+
+    expect($html)->toContain('wire:poll.2s.visible="checkPolling"');
+});
