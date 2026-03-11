@@ -1,0 +1,177 @@
+# Ralph Progress Log
+Started: 2026-03-08 11:28:34
+
+## Codebase Patterns
+- Use Pest for all tests, not PHPUnit
+- Filament resources live in app/Filament/Resources/{ResourceName}/
+- Filament resource pages, schemas, tables, widgets are in subdirectories of the resource
+- Always run vendor/bin/pint --dirty before committing
+- PersonaStatsWidget uses instance property `protected ?string $pollingInterval = null` (NOT static)
+- PersonaStorageService handles file I/O for personas at storage_path("personas/{slug}")
+- PersonaObserver auto-initializes storage on create, syncs prompt.md on master_prompt update
+- Factories are in database/factories/ and follow the convention of states for different scenarios
+- Filament tests authenticate user and set panel: `Filament::setCurrentPanel(Filament::getPanel('admin'))`
+- Claude execution via proc_open: use `env -i` with explicit env vars, `/usr/bin/claude -p`, `--output-format stream-json`
+- PersonaCycleService handles orchestration; RunPersonaSubtaskJob handles individual subtask execution
+- TelegramService mock pattern: `Mockery::mock(TelegramService::class)` + `app()->instance()`
+- Telegram callback_data format: `action:id` (e.g. `approve_subtasks:123`); parsed via explode(':')
+- Double approval gate: ProposalExecutionService forks persona proposals to GeneratePersonaSubtasksJob, then subtask approval triggers PersonaCycleService::startSubtaskExecution()
+- Telegram webhook test pattern: postJson with X-Telegram-Bot-Api-Secret-Token header, mock TelegramService, set config values
+- RunPersonaCycleJob handles full analysis cycle: workspace creation, repo clone, Claude execution, output parsing, proposal creation, stats update, cleanup
+- Persona status lifecycle: Active -> Running -> AwaitingApproval -> Active (or back to Active on failure)
+- Schedule integration: persona_id on TaskSchedule determines job type (RunPersonaCycleJob vs RunScheduledTaskJob)
+
+## Iteration History
+
+## 2026-03-08 - STORY-1
+- What was implemented: Created ProposalFactory (missing dependency), ran pint on dirty files
+- All acceptance criteria were already implemented in working tree from prior iterations
+- The only missing piece was ProposalFactory which caused test failure
+- Files changed:
+  - database/factories/ProposalFactory.php (NEW)
+  - app/Filament/Resources/Personas/Tables/PersonasTable.php (pint fix)
+  - app/Filament/Resources/Personas/Pages/EditPersona.php (pint fix)
+- **Learnings for future iterations:**
+  - ProposalFactory was missing but needed by PersonaResourceEditTest - always ensure factories exist for models used in tests
+  - The pollingInterval issue from progress.txt was already fixed in prior iterations (using instance property, not static)
+  - All 8 persona-related tests pass (7 feature + 1 unit)
+---
+
+
+## 2026-03-08 - STORY-2
+- What was implemented:
+  - PersonaCycleService with startSubtaskExecution() and completeExecution() methods
+  - RunPersonaSubtaskJob that executes Claude via proc_open with streaming JSON parsing
+  - Subtask status management: updateSubtaskStatus(), allSubtasksCompleted(), hasFailedSubtask() on Proposal model
+  - Success flow: marks subtask completed, advances index, dispatches next RunPersonaSubtaskJob
+  - Completion flow: logs to completed-plans/, updates context.md, marks proposal complete, sends Telegram notification
+  - Failure flow: marks subtask failed, sets Task to WaitingForInput, sends Telegram failure notification
+  - Resume Subtask and Skip Subtask Filament actions on ViewProposal page
+  - 9 feature tests covering all acceptance criteria
+- Files changed:
+  - app/Services/PersonaCycleService.php (NEW)
+  - app/Jobs/RunPersonaSubtaskJob.php (NEW)
+  - app/Models/Proposal.php (MODIFIED - added updateSubtaskStatus, allSubtasksCompleted, hasFailedSubtask)
+  - app/Filament/Resources/ProposalResource/Pages/ViewProposal.php (MODIFIED - added resume/skip actions)
+  - tests/Feature/PersonaSubtaskExecutionTest.php (NEW)
+- **Learnings for future iterations:**
+  - RunPersonaSubtaskJob follows same proc_open pattern as RunClaudeMessageJob but simpler (no session resume, no rate limit handling)
+  - PersonaCycleService orchestrates the high-level flow; RunPersonaSubtaskJob handles individual subtask execution
+  - Failure handling: no auto-retry, no auto-skip — stops at failed subtask and waits for human decision via Filament actions
+  - When mocking TelegramService in tests, use Mockery::mock and app()->instance() pattern
+  - Queue::fake() is essential for testing job dispatches without actually running them
+  - The CloneRepositoryJob is chained before the first subtask job to ensure workspace is ready
+---
+
+## 2026-03-08 - STORY-3
+- What was implemented:
+  - ProposalExecutionService::execute() now forks to subtask generation when persona_id is present
+  - GeneratePersonaSubtasksJob: creates workspace, builds prompt with proposal description + data appendix + persona context + MCP guidance, executes Claude via proc_open, parses subtasks from response
+  - Subtask parsing supports both fenced JSON code blocks and raw JSON arrays
+  - Generated subtasks stored on proposal.subtasks with index, title, description, status (all "pending")
+  - Telegram notification sent after subtask generation with formatted list and "Approve Subtasks" / "Reject" buttons
+  - TelegramWebhookController: new approve_subtasks callback handler that sets subtasks_approved_at and triggers PersonaCycleService::startSubtaskExecution()
+  - ViewProposal Filament action updated to also trigger startSubtaskExecution after approval
+  - 9 feature tests covering all acceptance criteria
+- Files changed:
+  - app/Services/ProposalExecutionService.php (MODIFIED - added persona fork + executePersonaProposal method)
+  - app/Jobs/GeneratePersonaSubtasksJob.php (NEW)
+  - app/Http/Controllers/Api/TelegramWebhookController.php (MODIFIED - added approveSubtasks callback)
+  - app/Filament/Resources/ProposalResource/Pages/ViewProposal.php (MODIFIED - approve action triggers startSubtaskExecution)
+  - tests/Feature/PersonaSubtaskGenerationTest.php (NEW)
+- **Learnings for future iterations:**
+  - GeneratePersonaSubtasksJob follows same proc_open + stream JSON pattern as RunPersonaSubtaskJob
+  - Subtask parsing uses regex to find JSON arrays in Claude output (fenced code blocks first, then raw)
+  - normalizeSubtasks ensures consistent structure with index, title, description, status fields
+  - Telegram callback_data format for subtask approval: "approve_subtasks:{proposal_id}"
+  - Double approval gate: Gate 1 = approve proposal (triggers generation), Gate 2 = approve subtasks (triggers execution)
+  - When testing ProposalExecutionService, mock TelegramService since it's constructed with config values
+---
+
+## 2026-03-08 - STORY-4
+- What was implemented:
+  - TelegramWebhookController::approveProposal() refactored to use Proposal::approve() instead of direct Task creation
+  - commandApprove() also refactored to use Proposal::approve() (same legacy pattern)
+  - TelegramService::sendPersonaCycleNotification() added for informational start/complete messages
+  - 6 feature tests covering: formatForTelegram persona formatting, Telegram callback approval flow, sendPersonaCycleNotification
+- Files changed:
+  - app/Http/Controllers/Api/TelegramWebhookController.php (MODIFIED - refactored approveProposal + commandApprove to use Proposal::approve())
+  - app/Services/TelegramService.php (MODIFIED - added sendPersonaCycleNotification())
+  - tests/Feature/TelegramPersonaProposalTest.php (NEW)
+- **Learnings for future iterations:**
+  - Proposal::approve() calls ProposalExecutionService::execute() internally, which handles both persona and non-persona flows
+  - Telegram webhook tests need to mock TelegramService and set config values for webhook_secret and admin_chat_id
+  - The webhook validates via X-Telegram-Bot-Api-Secret-Token header, not the URL secret param
+  - formatForTelegram() already included persona support from STORY-6 — just needed tests
+---
+
+## 2026-03-08 - STORY-5
+- What was implemented:
+  - PersonaCycleService extended with analysis cycle methods: buildStateContext(), buildAnalysisPrompt(), parseAnalysisOutput(), createProposalFromAnalysis(), logCycleToHistory()
+  - RunPersonaCycleJob: creates workspace, clones repo, executes Claude via proc_open with stream-json, parses output into executive summary + data appendix, creates Proposal, updates persona stats, cleans up workspace
+  - RunPersonaCycleJob has 3-hour timeout, sends Telegram notifications on start/complete/failure
+  - RunTaskSchedulesCommand updated to dispatch RunPersonaCycleJob when schedule has persona_id
+  - "Run Now" action added to PersonaResource list page and edit page, disabled when inactive or already running
+  - 14 feature tests covering all acceptance criteria
+- Files changed:
+  - app/Services/PersonaCycleService.php (MODIFIED - added analysis cycle methods)
+  - app/Jobs/RunPersonaCycleJob.php (NEW)
+  - app/Console/Commands/RunTaskSchedulesCommand.php (MODIFIED - persona schedule fork)
+  - app/Filament/Resources/Personas/Tables/PersonasTable.php (MODIFIED - added Run Now action)
+  - app/Filament/Resources/Personas/Pages/EditPersona.php (MODIFIED - added Run Now action)
+  - tests/Feature/PersonaCycleAnalysisTest.php (NEW)
+- **Learnings for future iterations:**
+  - Analysis output parsing uses EXECUTIVE_SUMMARY_START/END and DETAILED_REPORT_START/END markers with fallback to paragraph splitting
+  - RunPersonaCycleJob follows same proc_open pattern as GeneratePersonaSubtasksJob and RunPersonaSubtaskJob
+  - RunPersonaCycleJob handles its own repo cloning (inline) rather than using CloneRepositoryJob chain, since it's a single self-contained job
+  - Persona status lifecycle: Active -> Running (during cycle) -> AwaitingApproval (after proposal created) -> Active (after execution complete or on failure)
+  - Schedule integration is simple: check persona_id on schedule, dispatch RunPersonaCycleJob instead of RunScheduledTaskJob
+  - Filament action disabled() accepts a closure — used for conditional disabling based on model state
+---
+
+## 2026-03-08 - STORY-6
+- What was implemented:
+  - Migration adds `data_appendix`, `subtasks`, `subtasks_approved_at`, `current_subtask_index` to proposals table
+  - Migration adds `persona_id` to task_schedules table
+  - TaskSchedule model: added `persona_id` to fillable, added `persona()` BelongsTo relationship
+  - ProposalResource table: added persona name column (toggleable) and persona SelectFilter with relationship
+  - ViewProposal page: data appendix rendered as collapsible markdown section, subtask list with status badges
+  - ViewProposal page: Approve Subtasks action with modal and PersonaCycleService integration
+  - Blade templates: proposal-subtasks.blade.php (status icons + badges), proposal-data-appendix.blade.php (markdown render)
+  - 9 feature tests covering persona filtering, approve subtasks action, subtask helpers, formatForTelegram
+  - Most model changes (Proposal persona relationship, subtask helpers, casts, formatForTelegram) were already committed in STORY-1/2/3 iterations
+- Files changed:
+  - database/migrations/2026_03_08_120314_add_subtask_columns_to_proposals_table.php (NEW)
+  - database/migrations/2026_03_08_120332_add_persona_id_to_task_schedules_table.php (NEW)
+  - app/Models/TaskSchedule.php (MODIFIED - added persona_id, persona() relationship)
+  - app/Filament/Resources/ProposalResource.php (MODIFIED - persona column + filter)
+  - resources/views/filament/pages/proposal-data-appendix.blade.php (NEW)
+  - resources/views/filament/pages/proposal-subtasks.blade.php (NEW)
+  - tests/Feature/Filament/ProposalResourcePersonaTest.php (NEW)
+- **Learnings for future iterations:**
+  - assertNotified() in Filament tests requires exact title match — 'Subtasks approved' != 'Subtasks approved — execution starting'
+  - When Filament action triggers service that dispatches jobs, mock the service in tests to avoid side effects (repo cloning etc.)
+  - Pattern: `Mockery::mock(Service::class)` + `app()->instance()` to replace service in container
+  - STORY-6 was a foundation story — most code was already implemented by later stories (STORY-1 through STORY-5) that depended on it
+---
+
+## 2026-03-08 - STORY-7
+- What was implemented:
+  - Created PersonaResourceCrudTest.php with 6 feature tests covering STORY-7 acceptance criteria
+  - Test: creating persona via Filament verifies storage directory + prompt.md created (via observer)
+  - Test: editing master_prompt verifies prompt.md updated (via observer)
+  - Test: activate/deactivate toggle works on list page (callTableAction)
+  - Test: activate/deactivate toggle works on edit page (callAction)
+  - Test: list page shows persona table with correct columns
+  - Test: persona resource appears in "Automation" navigation group
+  - All core STORY-7 implementation (model, migration, enum, factory, storage service, observer, Filament CRUD) was already committed by STORY-1 through STORY-6
+- Files changed:
+  - tests/Feature/Filament/PersonaResourceCrudTest.php (NEW)
+- **Learnings for future iterations:**
+  - STORY-7 was the foundation story but was implemented last — all dependent stories had already committed the core code
+  - When a foundation story is implemented after its dependents, only tests may be needed
+  - Filament create test: use fillForm() + call('create') + assertHasNoFormErrors(), then verify side effects (storage, DB)
+  - Filament table action test: use callTableAction('action_name', $record) for row-level actions
+  - Filament header action test: use callAction('action_name') for page-level header actions
+  - afterEach cleanup: clean up storage directories created during tests to avoid test pollution
+---

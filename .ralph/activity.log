@@ -1,0 +1,11 @@
+{"iteration":1,"timestamp":"2026-03-08T11:34:51+00:00","story":"STORY-1","tokens_in":52,"tokens_out":15484,"duration_seconds":376,"status":"failed"}
+{"iteration":2,"timestamp":"2026-03-08T11:44:47+00:00","story":"STORY-1","tokens_in":52,"tokens_out":13352,"duration_seconds":595,"status":"failed"}
+{"iteration":3,"timestamp":"2026-03-08T11:52:04+00:00","story":"STORY-1","tokens_in":89,"tokens_out":13396,"duration_seconds":436,"status":"failed"}
+{"iteration":4,"timestamp":"2026-03-08T11:57:39+00:00","story":"STORY-1","tokens_in":44,"tokens_out":9205,"duration_seconds":334,"status":"failed"}
+{"iteration":5,"timestamp":"2026-03-08T12:07:14+00:00","story":"STORY-2","tokens_in":54,"tokens_out":15532,"duration_seconds":574,"status":"failed"}
+{"iteration":6,"timestamp":"2026-03-08T12:16:01+00:00","story":"STORY-2","tokens_in":43,"tokens_out":19192,"duration_seconds":526,"status":"failed"}
+{"iteration":7,"timestamp":"2026-03-08T12:23:12+00:00","story":"STORY-3","tokens_in":44,"tokens_out":18569,"duration_seconds":431,"status":"failed"}
+{"iteration":8,"timestamp":"2026-03-08T12:52:30+00:00","story":"STORY-4","tokens_in":39,"tokens_out":9986,"duration_seconds":241,"status":"failed"}
+{"iteration":9,"timestamp":"2026-03-08T13:03:20+00:00","story":"STORY-5","tokens_in":46,"tokens_out":22549,"duration_seconds":450,"status":"failed"}
+{"iteration":10,"timestamp":"2026-03-08T13:08:04+00:00","story":"STORY-6","tokens_in":52,"tokens_out":12194,"duration_seconds":282,"status":"failed"}
+{"iteration":11,"timestamp":"2026-03-08T13:12:32+00:00","story":"STORY-7","tokens_in":32,"tokens_out":8643,"duration_seconds":267,"status":"passed"}

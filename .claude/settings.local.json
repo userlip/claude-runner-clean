@@ -26,7 +26,9 @@
       "Bash(git push:*)",
       "mcp__project-db__db-query",
       "Bash(composer show:*)",
-      "Bash(find /home/ploi/claude-runner.marin.sh/vendor/filament -path \"*/Forms/Components/Actions/Action.php\" 2>/dev/null; find /home/ploi/claude-runner.marin.sh/vendor/filament -name \"Action.php\" -path \"*/Forms/*\" 2>/dev/null | head -10)"
+      "Bash(find /home/ploi/claude-runner.marin.sh/vendor/filament -path \"*/Forms/Components/Actions/Action.php\" 2>/dev/null; find /home/ploi/claude-runner.marin.sh/vendor/filament -name \"Action.php\" -path \"*/Forms/*\" 2>/dev/null | head -10)",
+      "Bash(grep -r \"3446\\\\|allsmartrepair\\\\|RunClaudeMessage.*error\\\\|RunClaudeMessage.*fail\" storage/logs/laravel-2026-03-08.log 2>/dev/null | tail -20; grep -r \"3446\\\\|allsmartrepair\" storage/logs/laravel*.log 2>/dev/null | tail -20)",
+      "Bash(sudo tee /etc/supervisor/conf.d/worker-196890.conf << 'EOF'\n[program:worker-196890]\ncommand=/usr/bin/php /home/ploi/claude-runner.marin.sh/artisan queue:work redis --timeout=30000 --sleep=0 --tries=3 --queue=\"default\" --memory=2048 --env=\"production\"\nprocess_name=%\\(program_name\\)s_%\\(process_num\\)02d\nautostart=true\nautorestart=true\nuser=ploi\nredirect_stderr=true\nnumprocs=10\nstdout_logfile=/home/ploi/.ploi/worker-196890.log\n\n[program:worker-chat]\ncommand=/usr/bin/php /home/ploi/claude-runner.marin.sh/artisan queue:work redis --timeout=30000 --sleep=0 --tries=3 --queue=\"chat,default\" --memory=2048 --env=\"production\"\nprocess_name=%\\(program_name\\)s_%\\(process_num\\)02d\nautostart=true\nautorestart=true\nuser=ploi\nredirect_stderr=true\nnumprocs=2\nstdout_logfile=/home/ploi/.ploi/worker-chat.log\nEOF)"
     ],
     "deny": [
       "Bash(php artisan migrate:fresh)",

@@ -25,6 +25,24 @@
                 "PROJECT_DB_CLAUDE_RUNNER_USERNAME": "claude_runner_app",
                 "PROJECT_DB_CLAUDE_RUNNER_PASSWORD": "xQIFVDduaSrOQVliM6AK2KFG"
             }
+        },
+        "google-analytics": {
+            "command": "node",
+            "args": [
+                "/home/ploi/claude-runner.marin.sh/mcp-servers/google-analytics-mcp/dist/index.js"
+            ],
+            "env": {
+                "GA_ACCOUNT_MAIN_MARIN_CREDENTIALS_PATH": "/home/ploi/claude-runner.marin.sh/storage/app/private/google-analytics/1.json"
+            }
+        },
+        "search-console": {
+            "command": "node",
+            "args": [
+                "/home/ploi/claude-runner.marin.sh/mcp-servers/search-console-mcp/dist/index.js"
+            ],
+            "env": {
+                "GSC_ACCOUNT_MAIN_MARIN_CREDENTIALS_PATH": "/home/ploi/claude-runner.marin.sh/storage/app/private/search-console/1.json"
+            }
         }
     }
 }
