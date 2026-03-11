@@ -881,6 +881,10 @@ class TaskChat extends Component
                 if (! empty($prd['prd']['issue_number'])) {
                     return (int) $prd['prd']['issue_number'];
                 }
+
+                if (! empty($prd['parent_issue']['number'])) {
+                    return (int) $prd['parent_issue']['number'];
+                }
             }
         }
 

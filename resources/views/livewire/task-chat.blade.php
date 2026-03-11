@@ -84,7 +84,7 @@
             </p>
         </div>
         {{-- Context indicator --}}
-        <div class="chat-mobile-context" title="{{ $task->is_compacting ? 'Compacting conversation...' : number_format($this->contextUsed) . ' / ' . number_format($this->contextLimit) . ' tokens' }}">
+        <div class="chat-mobile-context" title="{{ $task->is_compacting ? 'Compacting conversation...' : number_format($this->contextUsed) . ' / ' . number_format($this->contextLimit) . ' tokens' }}" wire:poll.5s>
             @if($task->is_compacting)
                 <div class="chat-mobile-compacting">
                     <svg class="chat-mobile-compacting-icon animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -408,7 +408,7 @@
                             Compacting...
                         </span>
                     @else
-                        <span class="chat-context-usage" title="{{ number_format($this->contextUsed) }} / {{ number_format($this->contextLimit) }} tokens">
+                        <span class="chat-context-usage" title="{{ number_format($this->contextUsed) }} / {{ number_format($this->contextLimit) }} tokens" wire:poll.5s>
                             <span class="chat-context-bar">
                                 <span class="chat-context-fill {{ $this->contextColor }}" style="width: {{ min($this->contextPercentage, 100) }}%"></span>
                             </span>

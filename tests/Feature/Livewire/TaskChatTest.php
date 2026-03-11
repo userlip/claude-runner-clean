@@ -246,6 +246,60 @@ test('typing start ralph detects the parent PRD from prd_issue in .ralph prd.jso
     Bus::assertNotDispatched(RunClaudeMessageJob::class);
 });
 
+test('typing start ralph detects the parent PRD from parent_issue.number in .ralph prd.json', function () {
+    Bus::fake();
+
+    $repository = Repository::factory()->create([
+        'user_id' => $this->user->id,
+        'full_name' => 'nxtyou/RezensionsHeld-Dashboard',
+    ]);
+
+    $workspacePath = '/tmp/task-chat-start-ralph-parent-issue-number';
+    File::deleteDirectory($workspacePath);
+    File::ensureDirectoryExists($workspacePath.'/.ralph');
+    File::put($workspacePath.'/.ralph/prd.json', json_encode([
+        'parent_issue' => [
+            'number' => 646,
+            'title' => 'Enable affiliate self-service percentage coupons',
+        ],
+        'labels' => ['ralph', 'prd-slice'],
+        'slices' => [
+            [
+                'number' => 647,
+                'title' => 'Add affiliate-level controls',
+                'classification' => 'AFK',
+                'blocked_by' => [],
+                'user_stories' => [1, 2, 3, 4],
+            ],
+        ],
+    ], JSON_PRETTY_PRINT));
+
+    Process::fake([
+        '*gh issue list*' => Process::result(output: json_encode([
+            [
+                'number' => 647,
+                'title' => 'Add affiliate-level controls',
+                'body' => "## Parent PRD\n#646\n\n## Acceptance criteria\n- [ ] First criterion",
+            ],
+        ])),
+    ]);
+
+    $task = Task::factory()->create([
+        'repository_id' => $repository->id,
+        'workspace_path' => $workspacePath,
+        'ralph_enabled' => false,
+    ]);
+
+    Livewire::test(TaskChat::class, ['task' => $task])
+        ->set('prompt', 'start ralph')
+        ->call('sendMessage');
+
+    expect($task->fresh()->ralph_enabled)->toBeTrue();
+    expect($task->fresh()->ralph_branch_name)->toBe("ralph/{$task->uuid}");
+    Bus::assertDispatched(RunRalphJob::class);
+    Bus::assertNotDispatched(RunClaudeMessageJob::class);
+});
+
 test('shows repository and location in header', function () {
     $repository = Repository::factory()->create([
         'user_id' => $this->user->id,

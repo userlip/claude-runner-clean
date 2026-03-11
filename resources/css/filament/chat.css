@@ -5062,3 +5062,23 @@ a,
 .dark .chat-message .chat-bubble-content a {
     color: var(--chat-tokyo-fg-active) !important;
 }
+
+/* Fix mobile notifications being cut off */
+@media (max-width: 767px) {
+    /* Ensure notifications are visible below the mobile header */
+    .fi-notification {
+        margin-top: 4rem !important;
+        margin-left: 0.5rem !important;
+        margin-right: 0.5rem !important;
+        max-width: calc(100vw - 1rem) !important;
+    }
+
+    /* Stack notifications from top on mobile */
+    .fi-notification-wrapper {
+        top: 0 !important;
+        bottom: auto !important;
+        right: 0 !important;
+        left: 0 !important;
+        padding: 0.5rem !important;
+    }
+}
