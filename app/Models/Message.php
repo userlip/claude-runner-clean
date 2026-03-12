@@ -35,6 +35,10 @@ class Message extends Model
         'tokens_in',
         'tokens_out',
         'cost_usd',
+        'process_exit_code',
+        'error_output',
+        'result_is_error',
+        'result_subtype',
     ];
 
     protected function casts(): array
@@ -48,6 +52,8 @@ class Message extends Model
             'tokens_in' => 'integer',
             'tokens_out' => 'integer',
             'cost_usd' => 'decimal:6',
+            'process_exit_code' => 'integer',
+            'result_is_error' => 'boolean',
             'from_telegram' => 'boolean',
         ];
     }
@@ -101,6 +107,21 @@ class Message extends Model
         $calls = $this->tool_calls ?? [];
         $calls[] = $toolCall;
         $this->update(['tool_calls' => $calls]);
+    }
+
+    public function storeExecutionDiagnostics(?int $exitCode, ?string $errorOutput = null, ?array $resultMetadata = null): void
+    {
+        $attributes = [
+            'process_exit_code' => $exitCode,
+            'error_output' => $errorOutput !== null && $errorOutput !== '' ? $errorOutput : null,
+        ];
+
+        if ($resultMetadata !== null) {
+            $attributes['result_is_error'] = $resultMetadata['is_error'] ?? null;
+            $attributes['result_subtype'] = $resultMetadata['subtype'] ?? null;
+        }
+
+        $this->update($attributes);
     }
 
     /**

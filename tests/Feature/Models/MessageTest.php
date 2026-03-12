@@ -50,3 +50,28 @@ test('can add tool calls', function () {
     expect($message->tool_calls)->toHaveCount(2);
     expect($message->tool_calls[0]['name'])->toBe('Read');
 });
+
+test('can store execution diagnostics', function () {
+    $message = Message::factory()->assistant()->create([
+        'process_exit_code' => null,
+        'error_output' => null,
+        'result_is_error' => null,
+        'result_subtype' => null,
+    ]);
+
+    $message->storeExecutionDiagnostics(
+        exitCode: 17,
+        errorOutput: "fatal: boom\nstack trace",
+        resultMetadata: [
+            'is_error' => true,
+            'subtype' => 'error_max_turns',
+        ],
+    );
+
+    $message->refresh();
+
+    expect($message->process_exit_code)->toBe(17)
+        ->and($message->error_output)->toContain('fatal: boom')
+        ->and($message->result_is_error)->toBeTrue()
+        ->and($message->result_subtype)->toBe('error_max_turns');
+});

@@ -53,6 +53,10 @@ class RunClaudeMessageJob implements ShouldQueue
             'content' => '',
         ]);
 
+        $process = null;
+        $pipes = [];
+        $resultMetadata = null;
+
         try {
             $command = $this->buildCommand();
             $workingDir = $this->task->working_directory;
@@ -81,6 +85,8 @@ class RunClaudeMessageJob implements ShouldQueue
             if (! is_resource($process)) {
                 throw new \RuntimeException('Failed to start Claude process');
             }
+
+            stream_set_blocking($pipes[2], false);
 
             // For multimodal messages, write the JSON input to stdin
             if ($this->hasImages()) {
@@ -228,13 +234,14 @@ class RunClaudeMessageJob implements ShouldQueue
                     }
                     if (isset($parsed['result_metadata'])) {
                         // Store session result metadata (model usage, duration, turns)
+                        $resultMetadata = $parsed['result_metadata'];
                         $metadata = $this->task->session_metadata ?? [];
-                        $metadata['result'] = $parsed['result_metadata'];
+                        $metadata['result'] = $resultMetadata;
                         $this->task->update(['session_metadata' => $metadata]);
                         Log::debug('Session result metadata captured', [
                             'task_id' => $this->task->id,
-                            'duration_ms' => $parsed['result_metadata']['duration_ms'] ?? null,
-                            'num_turns' => $parsed['result_metadata']['num_turns'] ?? null,
+                            'duration_ms' => $resultMetadata['duration_ms'] ?? null,
+                            'num_turns' => $resultMetadata['num_turns'] ?? null,
                         ]);
                     }
                     if (isset($parsed['compacting'])) {
@@ -323,13 +330,12 @@ class RunClaudeMessageJob implements ShouldQueue
 
             // For resumed sessions, Claude process stays running - don't wait for it
             // Just close our pipes and mark as completed when we got the result
-            fclose($pipes[1]);
-            fclose($pipes[2]);
-
-            // Kill the subprocess since we're done with it
-            // The main Claude session keeps running for future messages
-            proc_terminate($process);
-            proc_close($process);
+            $diagnostics = $this->captureProcessDiagnostics($process, $pipes, ! $resultReceived);
+            $assistantMessage->storeExecutionDiagnostics(
+                exitCode: $diagnostics['exit_code'],
+                errorOutput: $diagnostics['error_output'],
+                resultMetadata: $resultMetadata,
+            );
 
             // Handle AskUserQuestion FIRST - we may have broken early before receiving result
             if ($askUserQuestionDetected) {
@@ -453,6 +459,15 @@ class RunClaudeMessageJob implements ShouldQueue
             // They will be retried with backoff - just re-throw
             throw $e;
         } catch (\Throwable $e) {
+            if (is_resource($process)) {
+                $diagnostics = $this->captureProcessDiagnostics($process, $pipes, true);
+                $assistantMessage->storeExecutionDiagnostics(
+                    exitCode: $diagnostics['exit_code'],
+                    errorOutput: $diagnostics['error_output'],
+                    resultMetadata: $resultMetadata,
+                );
+            }
+
             Log::error("Claude execution failed: {$e->getMessage()}");
 
             $assistantMessage->update([
@@ -480,6 +495,47 @@ class RunClaudeMessageJob implements ShouldQueue
 
             throw $e;
         }
+    }
+
+    /**
+     * @param  resource  $process
+     * @param  array<int, resource>  $pipes
+     * @return array{exit_code: int|null, error_output: string|null}
+     */
+    protected function captureProcessDiagnostics($process, array $pipes, bool $terminateRunning): array
+    {
+        $errorOutput = '';
+
+        if (isset($pipes[1]) && is_resource($pipes[1])) {
+            fclose($pipes[1]);
+        }
+
+        if (isset($pipes[2]) && is_resource($pipes[2])) {
+            $stderr = stream_get_contents($pipes[2]);
+            if ($stderr !== false) {
+                $errorOutput .= $stderr;
+            }
+            fclose($pipes[2]);
+        }
+
+        $status = proc_get_status($process);
+        $wasRunning = $status['running'] ?? false;
+        $exitCode = $wasRunning ? null : ($status['exitcode'] ?? null);
+
+        if ($wasRunning && $terminateRunning) {
+            proc_terminate($process);
+        }
+
+        $closedExitCode = proc_close($process);
+
+        if ($exitCode === null && ($terminateRunning || ! $wasRunning) && $closedExitCode !== -1) {
+            $exitCode = $closedExitCode;
+        }
+
+        return [
+            'exit_code' => $exitCode,
+            'error_output' => $errorOutput !== '' ? $errorOutput : null,
+        ];
     }
 
     protected function sendPushNotification(string $title, string $body, bool $success): void

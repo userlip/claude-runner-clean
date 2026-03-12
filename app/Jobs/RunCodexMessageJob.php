@@ -43,6 +43,8 @@ class RunCodexMessageJob implements ShouldQueue
         ]);
 
         $tempImages = [];
+        $process = null;
+        $pipes = [];
 
         try {
             $this->ensureCodexInitMetadata();
@@ -70,6 +72,8 @@ class RunCodexMessageJob implements ShouldQueue
             if (! is_resource($process)) {
                 throw new \RuntimeException('Failed to start Codex process');
             }
+
+            stream_set_blocking($pipes[2], false);
 
             $prompt = $this->userMessage->content ?? '';
             fwrite($pipes[0], $prompt."\n");
@@ -146,11 +150,11 @@ class RunCodexMessageJob implements ShouldQueue
                 }
             }
 
-            fclose($pipes[1]);
-            fclose($pipes[2]);
-
-            proc_terminate($process);
-            proc_close($process);
+            $diagnostics = $this->captureProcessDiagnostics($process, $pipes, ! $resultReceived);
+            $assistantMessage->storeExecutionDiagnostics(
+                exitCode: $diagnostics['exit_code'],
+                errorOutput: $diagnostics['error_output'],
+            );
 
             if ($resultReceived) {
                 $this->task->markAsCompleted();
@@ -180,6 +184,14 @@ class RunCodexMessageJob implements ShouldQueue
                 $this->task->markAsCompleted();
             }
         } catch (\Throwable $e) {
+            if (is_resource($process)) {
+                $diagnostics = $this->captureProcessDiagnostics($process, $pipes, true);
+                $assistantMessage->storeExecutionDiagnostics(
+                    exitCode: $diagnostics['exit_code'],
+                    errorOutput: $diagnostics['error_output'],
+                );
+            }
+
             Log::error("Codex execution failed: {$e->getMessage()}");
 
             $assistantMessage->update([
@@ -208,6 +220,47 @@ class RunCodexMessageJob implements ShouldQueue
         } finally {
             $this->cleanupTempImages($tempImages);
         }
+    }
+
+    /**
+     * @param  resource  $process
+     * @param  array<int, resource>  $pipes
+     * @return array{exit_code: int|null, error_output: string|null}
+     */
+    protected function captureProcessDiagnostics($process, array $pipes, bool $terminateRunning): array
+    {
+        $errorOutput = '';
+
+        if (isset($pipes[1]) && is_resource($pipes[1])) {
+            fclose($pipes[1]);
+        }
+
+        if (isset($pipes[2]) && is_resource($pipes[2])) {
+            $stderr = stream_get_contents($pipes[2]);
+            if ($stderr !== false) {
+                $errorOutput .= $stderr;
+            }
+            fclose($pipes[2]);
+        }
+
+        $status = proc_get_status($process);
+        $wasRunning = $status['running'] ?? false;
+        $exitCode = $wasRunning ? null : ($status['exitcode'] ?? null);
+
+        if ($wasRunning && $terminateRunning) {
+            proc_terminate($process);
+        }
+
+        $closedExitCode = proc_close($process);
+
+        if ($exitCode === null && ($terminateRunning || ! $wasRunning) && $closedExitCode !== -1) {
+            $exitCode = $closedExitCode;
+        }
+
+        return [
+            'exit_code' => $exitCode,
+            'error_output' => $errorOutput !== '' ? $errorOutput : null,
+        ];
     }
 
     protected function buildCommand(array &$tempImages): string

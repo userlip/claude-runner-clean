@@ -218,6 +218,33 @@ test('parseLine does not flag normal assistant messages as rate limited', functi
     expect($result['content'])->toBe('Hello! How can I help you today?');
 });
 
+test('captureProcessDiagnostics returns stderr and exit code', function () {
+    $site = Site::factory()->active()->create();
+    $task = Task::factory()->create(['site_id' => $site->id]);
+    $message = Message::factory()->user()->create(['task_id' => $task->id]);
+    $job = new RunClaudeMessageJob($task, $message);
+
+    $descriptors = [
+        0 => ['pipe', 'r'],
+        1 => ['pipe', 'w'],
+        2 => ['pipe', 'w'],
+    ];
+
+    $process = proc_open("bash -lc 'echo boom >&2; exit 17'", $descriptors, $pipes, base_path());
+
+    expect(is_resource($process))->toBeTrue();
+
+    fclose($pipes[0]);
+
+    $method = new ReflectionMethod($job, 'captureProcessDiagnostics');
+    $method->setAccessible(true);
+
+    $diagnostics = $method->invoke($job, $process, $pipes, false);
+
+    expect($diagnostics['exit_code'])->toBe(17)
+        ->and($diagnostics['error_output'])->toContain('boom');
+});
+
 test('RateLimitException stores reset time', function () {
     $exception = new RateLimitException(
         resetTime: '6pm (UTC)',
