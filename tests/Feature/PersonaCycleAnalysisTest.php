@@ -296,6 +296,39 @@ test('full analysis cycle with mocked Claude process produces valid proposals', 
     expect($historyFiles[0]['content'])->toContain('Cycle #1');
 });
 
+test('RunPersonaCycleJob does not duplicate proposals when final result repeats streamed text', function () {
+    $job = new RunPersonaCycleJob($this->persona);
+    $method = new ReflectionMethod($job, 'mergeResultText');
+    $method->setAccessible(true);
+
+    $streamedText = <<<'TEXT'
+    PROPOSAL_START
+    TITLE: Fix pricing page meta description to improve CTR
+    PRIORITY: high
+    DESCRIPTION: The pricing page has impressions but no clicks, so the snippet needs a stronger hook.
+    PROPOSAL_END
+
+    PROPOSAL_START
+    TITLE: Fix duplicate google_single_review URL in sitemap.xml
+    PRIORITY: medium
+    DESCRIPTION: Removing the duplicate sitemap entry avoids confusing crawlers.
+    PROPOSAL_END
+
+    DETAILED_REPORT_START
+    Report body
+    DETAILED_REPORT_END
+    TEXT;
+
+    $mergedText = $method->invoke($job, $streamedText, $streamedText);
+
+    $parsed = app(PersonaCycleService::class)->parseAnalysisOutput($mergedText);
+
+    expect($mergedText)->toBe($streamedText);
+    expect($parsed['proposals'])->toHaveCount(2);
+    expect($parsed['proposals'][0]['title'])->toBe('Fix pricing page meta description to improve CTR');
+    expect($parsed['proposals'][1]['title'])->toBe('Fix duplicate google_single_review URL in sitemap.xml');
+});
+
 test('schedule integration dispatches RunPersonaCycleJob for persona schedules', function () {
     Queue::fake();
 

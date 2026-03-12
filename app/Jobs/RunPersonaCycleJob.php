@@ -147,12 +147,15 @@ class RunPersonaCycleJob implements ShouldQueue
 
                     if (isset($parsed['result'])) {
                         if (isset($parsed['result_summary'])) {
-                            $resultText .= "\n\n".$parsed['result_summary'];
-                            $currentContent = $assistantMessage->content ?? '';
                             $resultSummary = $parsed['result_summary'];
-                            if (! str_ends_with(trim($currentContent), trim($resultSummary))) {
+                            $resultText = $this->mergeResultText($resultText, $resultSummary);
+
+                            $currentContent = $assistantMessage->content ?? '';
+                            $mergedContent = $this->mergeResultText($currentContent, $resultSummary);
+
+                            if ($mergedContent !== $currentContent) {
                                 $assistantMessage->update([
-                                    'content' => $currentContent."\n\n".$resultSummary,
+                                    'content' => $mergedContent,
                                 ]);
                             }
                         }
@@ -413,6 +416,30 @@ class RunPersonaCycleJob implements ShouldQueue
         }
 
         return $result ?: null;
+    }
+
+    protected function mergeResultText(string $currentText, string $resultSummary): string
+    {
+        $current = trim($currentText);
+        $summary = trim($resultSummary);
+
+        if ($summary === '') {
+            return $currentText;
+        }
+
+        if ($current === '') {
+            return $resultSummary;
+        }
+
+        if ($current === $summary || str_contains($current, $summary)) {
+            return $currentText;
+        }
+
+        if (str_contains($summary, $current)) {
+            return $resultSummary;
+        }
+
+        return rtrim($currentText)."\n\n".$resultSummary;
     }
 
     public function failed(\Throwable $exception): void
