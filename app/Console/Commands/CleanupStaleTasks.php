@@ -21,6 +21,10 @@ class CleanupStaleTasks extends Command
         $staleTasks = Task::query()
             ->where('status', TaskStatus::Running)
             ->where('last_message_at', '<', $activityThreshold)
+            ->where(function ($query) {
+                $query->where('has_active_subagents', false)
+                    ->orWhereNull('has_active_subagents');
+            })
             ->whereDoesntHave('messages', function ($query) use ($activityThreshold) {
                 $query->where('updated_at', '>=', $activityThreshold);
             })

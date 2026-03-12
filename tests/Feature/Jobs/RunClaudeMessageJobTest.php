@@ -218,6 +218,34 @@ test('parseLine does not flag normal assistant messages as rate limited', functi
     expect($result['content'])->toBe('Hello! How can I help you today?');
 });
 
+test('parseLine detects subagent task start events', function () {
+    $site = Site::factory()->active()->create();
+    $task = Task::factory()->create(['site_id' => $site->id]);
+    $message = Message::factory()->user()->create(['task_id' => $task->id]);
+
+    $job = new RunClaudeMessageJob($task, $message);
+
+    $method = new ReflectionMethod($job, 'parseLine');
+    $method->setAccessible(true);
+
+    $taskStartedLine = json_encode([
+        'type' => 'system',
+        'subtype' => 'task_started',
+        'task_id' => 'abc123',
+        'description' => 'Investigate bug',
+        'task_type' => 'local_agent',
+    ]);
+
+    $result = $method->invoke($job, $taskStartedLine);
+
+    expect($result)->toHaveKey('subagent_started');
+    expect($result['subagent_started'])->toBe([
+        'task_id' => 'abc123',
+        'description' => 'Investigate bug',
+        'task_type' => 'local_agent',
+    ]);
+});
+
 test('captureProcessDiagnostics returns stderr and exit code', function () {
     $site = Site::factory()->active()->create();
     $task = Task::factory()->create(['site_id' => $site->id]);

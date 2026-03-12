@@ -52,3 +52,30 @@ test('cleanup stale tasks completes truly inactive running tasks', function () {
     expect($task->status)->toBe(TaskStatus::Completed)
         ->and($task->completed_at)->not->toBeNull();
 });
+
+test('cleanup stale tasks skips running tasks with active subagents', function () {
+    $task = Task::factory()->running()->create([
+        'has_active_subagents' => true,
+    ]);
+
+    $message = Message::factory()->assistant()->create([
+        'task_id' => $task->id,
+    ]);
+
+    DB::table('messages')
+        ->where('id', $message->id)
+        ->update([
+            'created_at' => now()->subMinutes(25),
+            'updated_at' => now()->subMinutes(25),
+        ]);
+
+    $task->update(['last_message_at' => now()->subMinutes(25)]);
+
+    $this->artisan('tasks:cleanup-stale', ['--minutes' => 20])->assertSuccessful();
+
+    $task->refresh();
+
+    expect($task->status)->toBe(TaskStatus::Running)
+        ->and($task->completed_at)->toBeNull()
+        ->and($task->has_active_subagents)->toBeTrue();
+});

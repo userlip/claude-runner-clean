@@ -232,6 +232,12 @@ class RunClaudeMessageJob implements ShouldQueue
                             'skills_count' => count($parsed['init_metadata']['skills'] ?? []),
                         ]);
                     }
+                    if (isset($parsed['subagent_started'])) {
+                        $this->task->update([
+                            'has_active_subagents' => true,
+                            'last_message_at' => now(),
+                        ]);
+                    }
                     if (isset($parsed['result_metadata'])) {
                         // Store session result metadata (model usage, duration, turns)
                         $resultMetadata = $parsed['result_metadata'];
@@ -1028,6 +1034,14 @@ class RunClaudeMessageJob implements ShouldQueue
             $result['compacting'] = [
                 'trigger' => $data['compact_metadata']['trigger'] ?? 'auto',
                 'pre_tokens' => $data['compact_metadata']['pre_tokens'] ?? null,
+            ];
+        }
+
+        if (($data['type'] ?? '') === 'system' && ($data['subtype'] ?? '') === 'task_started') {
+            $result['subagent_started'] = [
+                'task_id' => $data['task_id'] ?? null,
+                'description' => $data['description'] ?? null,
+                'task_type' => $data['task_type'] ?? null,
             ];
         }
 
