@@ -132,10 +132,13 @@ class RunRalphJob implements ShouldQueue
             Log::warning('Ralph failed to log activity', ['error' => $e->getMessage()]);
         }
 
+        $allStoriesPassed = false;
+
         if ($verificationPassed) {
             // 8. Update prd.json
-            $this->markStoryPassed($ralph, $state, $story);
-            $ralph->updatePrd($this->task, $state->prd);
+            $updatedPrd = $this->markStoryPassed($ralph, $state, $story);
+            $allStoriesPassed = collect($updatedPrd['userStories'] ?? [])
+                ->every(fn ($userStory) => ($userStory['passes'] ?? false) === true);
 
             // 9. Append learnings
             if (! empty($result['learnings'])) {
@@ -143,14 +146,21 @@ class RunRalphJob implements ShouldQueue
             }
 
             // 10. Reset counters on success - we made progress!
-            $this->task->update([
-                'ralph_gutter_count' => 0,
-                'ralph_iteration' => 0, // Reset iteration count since we completed a story
-            ]);
+            $updates = ['ralph_gutter_count' => 0];
+            if (! $allStoriesPassed) {
+                $updates['ralph_iteration'] = 0; // Reset iteration count since we completed a story
+            }
+            $this->task->update($updates);
         }
 
         // Post iteration result to chat
         $this->postChatMessage($this->buildResultMessage($state, $story, $result, $verificationPassed));
+
+        if ($allStoriesPassed) {
+            $this->completeTask($ralph->readState($this->task));
+
+            return;
+        }
 
         // 10. Check for too many consecutive failures (gutter)
         if ($this->task->ralph_gutter_count >= self::GUTTER_THRESHOLD) {
@@ -626,7 +636,7 @@ class RunRalphJob implements ShouldQueue
      * @param  \App\DataObjects\RalphState  $state  The current Ralph state
      * @param  array<string, mixed>  $story  The user story to mark as passed
      */
-    protected function markStoryPassed(RalphWorkspaceService $ralph, RalphState $state, array $story): void
+    protected function markStoryPassed(RalphWorkspaceService $ralph, RalphState $state, array $story): array
     {
         $prd = $state->prd ?? [];
         $userStories = $prd['userStories'] ?? [];
@@ -641,6 +651,8 @@ class RunRalphJob implements ShouldQueue
         $prd['userStories'] = collect($userStories)->values()->toArray();
 
         $ralph->updatePrd($this->task, $prd);
+
+        return $prd;
     }
 
     /**

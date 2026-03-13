@@ -241,6 +241,59 @@ class RunRalphJobTest extends TestCase
         Queue::assertNothingPushed();
     }
 
+    public function test_handle_completes_task_after_final_story_passes_without_dispatching_another_iteration(): void
+    {
+        Queue::fake();
+
+        $task = Task::factory()->ralph()->running()->create([
+            'workspace_path' => '/tmp/test-workspace',
+            'ralph_enabled' => true,
+        ]);
+
+        $service = app(RalphWorkspaceService::class);
+        $service->initialize($task, [
+            'branch_name' => 'ralph/test',
+            'stories' => [
+                ['id' => 'US-001', 'title' => 'Only story', 'priority' => 1, 'passes' => false],
+            ],
+        ]);
+
+        $job = new class($task, 1) extends RunRalphJob
+        {
+            protected function shouldRotate(): bool
+            {
+                return false;
+            }
+
+            protected function executeClaude(\App\DataObjects\RalphState $state, array $story): array
+            {
+                return [
+                    'success' => true,
+                    'learnings' => 'Completed final story.',
+                    'tokens_in' => 100,
+                    'tokens_out' => 50,
+                    'duration' => 1,
+                ];
+            }
+
+            protected function runVerification(RalphWorkspaceService $ralph, \App\DataObjects\RalphState $state, array $story): bool
+            {
+                return true;
+            }
+        };
+
+        $job->handle($service);
+
+        $task->refresh();
+        $updatedState = $service->readState($task);
+
+        $this->assertSame('completed', $task->status->value);
+        $this->assertFalse($task->ralph_enabled);
+        $this->assertSame('completed', $task->ralph_stopped_reason);
+        $this->assertTrue($updatedState->allStoriesPassed());
+        Queue::assertNotPushed(RunRalphJob::class);
+    }
+
     /**
      * @param  array<int, mixed>  $args
      */
