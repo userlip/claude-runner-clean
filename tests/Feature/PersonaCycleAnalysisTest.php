@@ -47,6 +47,26 @@ afterEach(function () {
     }
 });
 
+test('creates a default task schedule when a persona is created', function () {
+    $persona = Persona::factory()->create([
+        'user_id' => $this->user->id,
+        'repository_id' => $this->repository->id,
+        'master_prompt' => 'Analyze conversion funnels and growth opportunities.',
+        'description' => 'Growth analysis specialist',
+    ]);
+
+    $schedule = $persona->taskSchedule()->first();
+
+    expect($schedule)->not->toBeNull();
+    expect($schedule->persona_id)->toBe($persona->id);
+    expect($schedule->repository_id)->toBe($persona->repository_id);
+    expect($schedule->user_id)->toBe($persona->user_id);
+    expect($schedule->ai_provider_id)->toBe($persona->ai_provider_id);
+    expect($schedule->is_active)->toBeTrue();
+    expect($schedule->cron_expression)->toBe(config('personas.default_cron_expression'));
+    expect($schedule->name)->toBe("{$persona->name} — Daily Analysis");
+});
+
 test('PersonaCycleService builds state context from persistent files', function () {
     $storageService = app(PersonaStorageService::class);
     $storageService->initializeStorage($this->persona);
