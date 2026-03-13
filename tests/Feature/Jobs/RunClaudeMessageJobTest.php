@@ -1,11 +1,13 @@
 <?php
 
+use App\Enums\TaskStatus;
 use App\Exceptions\RateLimitException;
 use App\Jobs\RunClaudeMessageJob;
 use App\Models\AiProvider;
 use App\Models\Message;
 use App\Models\Site;
 use App\Models\Task;
+use Illuminate\Support\Facades\Queue;
 
 test('job constructor accepts task and message', function () {
     $site = Site::factory()->active()->create();
@@ -271,6 +273,78 @@ test('captureProcessDiagnostics returns stderr and exit code', function () {
 
     expect($diagnostics['exit_code'])->toBe(17)
         ->and($diagnostics['error_output'])->toContain('boom');
+});
+
+test('autonomous repo task with plan-only single-turn result is retried once', function () {
+    Queue::fake();
+
+    $task = Task::factory()->create();
+    $userMessage = Message::factory()->user()->create([
+        'task_id' => $task->id,
+        'content' => "## Task: Fix the homepage canonical tag\n\n".
+            "Investigate the codebase, make the change, verify it, and report completion.\n\n".
+            str_repeat('Detailed execution requirements. ', 30),
+    ]);
+    $assistantMessage = Message::factory()->assistant()->create([
+        'task_id' => $task->id,
+        'content' => "I'll fix the canonical tag issue. Let me first find where it is set.",
+    ]);
+
+    $job = new RunClaudeMessageJob($task, $userMessage);
+
+    $method = new ReflectionMethod($job, 'handlePrematurePlanOnlyResult');
+    $method->setAccessible(true);
+
+    $handled = $method->invoke($job, $assistantMessage, [], [
+        'subtype' => 'success',
+        'num_turns' => 1,
+    ]);
+
+    expect($handled)->toBeTrue();
+
+    $task->refresh();
+
+    expect($task->status)->toBe(TaskStatus::Running)
+        ->and($task->session_metadata['premature_plan_retry_count'] ?? null)->toBe(1);
+
+    Queue::assertPushed(RunClaudeMessageJob::class, function (RunClaudeMessageJob $queuedJob) use ($task) {
+        return $queuedJob->task->id === $task->id
+            && $queuedJob->continue === false
+            && str_contains($queuedJob->userMessage->content ?? '', 'Do not stop after planning');
+    });
+});
+
+test('short conversational repo prompt is not retried for a plan-only single-turn result', function () {
+    Queue::fake();
+
+    $task = Task::factory()->create();
+    $userMessage = Message::factory()->user()->create([
+        'task_id' => $task->id,
+        'content' => 'why is the canonical wrong?',
+    ]);
+    $assistantMessage = Message::factory()->assistant()->create([
+        'task_id' => $task->id,
+        'content' => "I'll explain the issue. Let me summarize it briefly.",
+    ]);
+
+    $job = new RunClaudeMessageJob($task, $userMessage);
+
+    $method = new ReflectionMethod($job, 'handlePrematurePlanOnlyResult');
+    $method->setAccessible(true);
+
+    $handled = $method->invoke($job, $assistantMessage, [], [
+        'subtype' => 'success',
+        'num_turns' => 1,
+    ]);
+
+    expect($handled)->toBeFalse();
+
+    $task->refresh();
+
+    expect($task->status)->toBe(TaskStatus::Pending)
+        ->and($task->session_metadata['premature_plan_retry_count'] ?? null)->toBeNull();
+
+    Queue::assertNothingPushed();
 });
 
 test('RateLimitException stores reset time', function () {

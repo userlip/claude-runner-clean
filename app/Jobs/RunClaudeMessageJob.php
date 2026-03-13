@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Enums\MessageRole;
 use App\Enums\MessageStatus;
+use App\Enums\TaskStatus;
 use App\Exceptions\RateLimitException;
 use App\Models\Message;
 use App\Models\Task;
@@ -410,6 +411,10 @@ class RunClaudeMessageJob implements ShouldQueue
                 }
             }
 
+            if ($resultReceived && $this->handlePrematurePlanOnlyResult($assistantMessage, $toolCalls, $resultMetadata)) {
+                return;
+            }
+
             if ($resultReceived) {
                 $this->task->markAsCompleted();
                 Log::debug('Task marked as completed (result received)', ['task_id' => $this->task->id]);
@@ -590,6 +595,97 @@ class RunClaudeMessageJob implements ShouldQueue
         }
 
         return $content ?: 'Task completed successfully.';
+    }
+
+    protected function handlePrematurePlanOnlyResult(Message $assistantMessage, array $toolCalls, ?array $resultMetadata): bool
+    {
+        if (! $this->shouldAutoRetryPrematurePlanOnlyResult($assistantMessage, $toolCalls, $resultMetadata)) {
+            return false;
+        }
+
+        $metadata = $this->task->session_metadata ?? [];
+        $metadata['premature_plan_retry_count'] = ($metadata['premature_plan_retry_count'] ?? 0) + 1;
+        $metadata['last_premature_plan_response'] = Str::limit(trim((string) $assistantMessage->content), 500);
+
+        $this->task->update([
+            'status' => TaskStatus::Running,
+            'completed_at' => null,
+            'session_id' => (string) Str::uuid(),
+            'session_metadata' => $metadata,
+        ]);
+
+        $retryMessage = Message::create([
+            'task_id' => $this->task->id,
+            'role' => MessageRole::User,
+            'status' => MessageStatus::Sent,
+            'content' => 'Continue from the previous attempt. The prior turn stopped after a short planning response. '
+                .'Do not stop after planning. Use the available tools and complete the task, or report a concrete blocker.',
+        ]);
+
+        Log::warning('Auto-retrying premature plan-only Claude result', [
+            'task_id' => $this->task->id,
+            'assistant_message_id' => $assistantMessage->id,
+            'retry_count' => $metadata['premature_plan_retry_count'],
+        ]);
+
+        self::dispatch($this->task->fresh(), $retryMessage, continue: false)->onQueue($this->queue ?? 'default');
+
+        return true;
+    }
+
+    protected function shouldAutoRetryPrematurePlanOnlyResult(Message $assistantMessage, array $toolCalls, ?array $resultMetadata): bool
+    {
+        if ($this->task->isGeneralChat()) {
+            return false;
+        }
+
+        if (! empty($toolCalls)) {
+            return false;
+        }
+
+        if (($resultMetadata['subtype'] ?? null) !== 'success') {
+            return false;
+        }
+
+        if (($resultMetadata['num_turns'] ?? null) !== 1) {
+            return false;
+        }
+
+        if (($this->task->session_metadata['premature_plan_retry_count'] ?? 0) >= 1) {
+            return false;
+        }
+
+        return $this->isAutonomousExecutionPrompt($this->userMessage->content ?? '')
+            && $this->looksLikePlanningOnlyResponse($assistantMessage->content ?? '');
+    }
+
+    protected function isAutonomousExecutionPrompt(?string $content): bool
+    {
+        $content = trim((string) $content);
+        if ($content === '') {
+            return false;
+        }
+
+        return str_contains($content, '## Task:')
+            || str_contains($content, 'Commit your changes')
+            || mb_strlen($content) >= 500;
+    }
+
+    protected function looksLikePlanningOnlyResponse(?string $content): bool
+    {
+        $content = trim((string) $content);
+        if ($content === '' || mb_strlen($content) > 280) {
+            return false;
+        }
+
+        $normalized = Str::lower(preg_replace('/\s+/', ' ', $content) ?? $content);
+
+        return str_starts_with($normalized, "i'll ")
+            || str_starts_with($normalized, 'i will ')
+            || str_starts_with($normalized, 'let me ')
+            || str_contains($normalized, 'let me first ')
+            || str_contains($normalized, "i'll start by")
+            || str_contains($normalized, 'i will start by');
     }
 
     public function buildCommand(): string
