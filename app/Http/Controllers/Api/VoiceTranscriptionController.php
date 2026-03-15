@@ -41,7 +41,7 @@ class VoiceTranscriptionController extends Controller
         ]);
 
         $apiKey = (string) config('services.openrouter.api_key', '');
-        $model = (string) config('services.openrouter.transcription_model', 'openai/gpt-4o-audio-preview');
+        $model = (string) config('services.openrouter.transcription_model', 'google/gemini-3.1-flash-lite-preview');
 
         if ($apiKey === '') {
             throw ValidationException::withMessages([

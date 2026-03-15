@@ -12,6 +12,37 @@ beforeEach(function () {
     $this->actingAs($this->user);
 });
 
+test('uses gemini 3.1 flash lite preview as the default transcription model', function () {
+    Storage::fake('local');
+
+    config([
+        'services.openrouter.api_key' => 'test-key',
+    ]);
+
+    Http::fake([
+        'openrouter.ai/api/v1/chat/completions' => Http::response([
+            'choices' => [
+                ['message' => ['content' => 'hello world']],
+            ],
+        ], 200),
+    ]);
+
+    $task = Task::factory()->create(['user_id' => $this->user->id]);
+    $audio = UploadedFile::fake()->create('voice.wav', 10, 'audio/wav');
+
+    $token = 'test-csrf-token';
+    $response = $this
+        ->withSession(['_token' => $token])
+        ->withHeader('X-CSRF-TOKEN', $token)
+        ->postJson(route('api.tasks.voice-transcribe', $task), [
+            'audio' => $audio,
+        ]);
+
+    $response->assertOk()->assertJsonPath('transcript', 'hello world');
+
+    Http::assertSent(fn (\Illuminate\Http\Client\Request $request) => data_get($request->data(), 'model') === 'google/gemini-3.1-flash-lite-preview');
+});
+
 test('can transcribe a voice message and deletes temp audio', function () {
     Storage::fake('local');
 
