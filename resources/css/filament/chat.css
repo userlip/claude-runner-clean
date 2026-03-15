@@ -1,43 +1,63 @@
 /* Chat interface styles - Telegram-inspired minimal design */
+
+/* Light mode: clean, neutral palette */
 :root {
+    --chat-tokyo-fg: #4b5563;
+    --chat-tokyo-fg-active: #1f2937;
+    --chat-tokyo-fg-inactive: #6b7280;
+    --chat-tokyo-fg-dim: #9ca3af;
+    --chat-tokyo-border: #3b82f6;
+    --chat-tokyo-bg: #ffffff;
+    --chat-tokyo-bg-elevated: #f9fafb;
+    --chat-tokyo-bg-hover: #f3f4f6;
+    --chat-tokyo-bg-soft: #f0f2f5;
+    --chat-accent: #3b82f6;
+    --chat-accent-strong: #2563eb;
+    --chat-accent-soft-bg: #eff6ff;
+    --chat-accent-soft-bg-hover: #dbeafe;
+    --chat-accent-soft-text: #2563eb;
+    --chat-accent-border: #e5e7eb;
+    --chat-danger: rgb(220 38 38);
+    --chat-danger-bg: rgb(254 226 226);
+    --chat-danger-bg-hover: rgb(254 202 202);
+    --chat-bg-dark: #ffffff;
+    --chat-fg-dark: #1f2937;
+    --chat-muted-dark: #9ca3af;
+    --chat-keyword: #1f2937;
+    --chat-function: #4b5563;
+    --chat-string: #4b5563;
+    --chat-number: #3b82f6;
+    --chat-operator: #3b82f6;
+}
+
+/* Dark mode: Tokyo Night inspired palette */
+.dark {
     --chat-tokyo-fg: #959cbd;
     --chat-tokyo-fg-active: #bdc7f0;
     --chat-tokyo-fg-inactive: #787c99;
     --chat-tokyo-fg-dim: #696d87;
     --chat-tokyo-border: #3d59a1;
     --chat-tokyo-bg: #202330;
-    --chat-tokyo-bg-elevated: color-mix(in srgb, var(--chat-tokyo-bg) 84%, #2a3559);
-    --chat-tokyo-bg-hover: color-mix(in srgb, var(--chat-tokyo-bg) 70%, #3d59a1);
-    --chat-tokyo-bg-soft: color-mix(in srgb, var(--chat-tokyo-bg) 86%, #3d59a1);
+    --chat-tokyo-bg-elevated: color-mix(in srgb, #202330 84%, #2a3559);
+    --chat-tokyo-bg-hover: color-mix(in srgb, #202330 70%, #3d59a1);
+    --chat-tokyo-bg-soft: color-mix(in srgb, #202330 86%, #3d59a1);
     --chat-accent: #3d59a1;
     --chat-accent-strong: #bdc7f0;
-    --chat-accent-soft-bg: color-mix(in srgb, var(--chat-tokyo-bg) 86%, var(--chat-tokyo-border));
-    --chat-accent-soft-bg-hover: color-mix(in srgb, var(--chat-tokyo-bg) 78%, var(--chat-tokyo-border));
-    --chat-accent-soft-text: var(--chat-tokyo-fg-active);
-    --chat-accent-border: color-mix(in srgb, var(--chat-tokyo-border) 82%, var(--chat-tokyo-bg));
-    --chat-danger: rgb(220 38 38);
-    --chat-danger-bg: rgb(254 226 226);
-    --chat-danger-bg-hover: rgb(254 202 202);
-    --chat-bg-dark: var(--chat-tokyo-bg);
-    --chat-fg-dark: var(--chat-tokyo-fg);
-    --chat-muted-dark: var(--chat-tokyo-fg-dim);
-    --chat-keyword: var(--chat-tokyo-fg-active);
-    --chat-function: var(--chat-tokyo-fg);
-    --chat-string: var(--chat-tokyo-fg);
-    --chat-number: var(--chat-tokyo-border);
-    --chat-operator: var(--chat-tokyo-border);
-}
-
-.dark {
-    --chat-accent: var(--chat-tokyo-border);
-    --chat-accent-strong: var(--chat-tokyo-fg-active);
-    --chat-accent-soft-bg: color-mix(in srgb, var(--chat-tokyo-bg) 84%, var(--chat-tokyo-border));
-    --chat-accent-soft-bg-hover: color-mix(in srgb, var(--chat-tokyo-bg) 74%, var(--chat-tokyo-border));
-    --chat-accent-soft-text: var(--chat-tokyo-fg-active);
-    --chat-accent-border: color-mix(in srgb, var(--chat-tokyo-border) 82%, var(--chat-tokyo-bg));
+    --chat-accent-soft-bg: color-mix(in srgb, #202330 84%, #3d59a1);
+    --chat-accent-soft-bg-hover: color-mix(in srgb, #202330 74%, #3d59a1);
+    --chat-accent-soft-text: #bdc7f0;
+    --chat-accent-border: color-mix(in srgb, #3d59a1 82%, #202330);
     --chat-danger: rgb(248 113 113);
     --chat-danger-bg: rgb(127 29 29 / 0.35);
     --chat-danger-bg-hover: rgb(127 29 29 / 0.55);
+    --chat-bg-dark: #202330;
+    --chat-fg-dark: #959cbd;
+    --chat-muted-dark: #696d87;
+    --chat-keyword: #bdc7f0;
+    --chat-function: #959cbd;
+    --chat-string: #959cbd;
+    --chat-number: #3d59a1;
+    --chat-operator: #3d59a1;
 }
 
 .chat-container {
@@ -4721,7 +4741,7 @@ a,
     background-color: var(--chat-accent);
     border-color: var(--chat-accent);
     box-shadow: none;
-    color: var(--chat-tokyo-fg-active);
+    color: #ffffff;
 }
 
 .dark .chat-bubble-user {
@@ -4731,9 +4751,10 @@ a,
 }
 
 .chat-bubble-assistant {
-    background-color: var(--chat-tokyo-bg-elevated);
+    background-color: #ffffff;
     border-color: var(--chat-accent-border);
-    box-shadow: none;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+    color: rgb(17 24 39);
 }
 
 .chat-message-assistant:hover .chat-bubble-assistant {
@@ -4744,6 +4765,7 @@ a,
     background-color: var(--chat-tokyo-bg-elevated);
     border-color: var(--chat-accent-border);
     color: var(--chat-fg-dark);
+    box-shadow: none;
 }
 
 .chat-input-area {
@@ -4795,12 +4817,12 @@ a,
     background-color: var(--chat-accent);
     border: 1px solid var(--chat-accent);
     box-shadow: none;
-    color: var(--chat-tokyo-fg-active);
+    color: #ffffff;
 }
 
 .chat-submit:hover {
-    background-color: color-mix(in srgb, var(--chat-accent) 74%, var(--chat-tokyo-fg-active));
-    border-color: color-mix(in srgb, var(--chat-accent) 74%, var(--chat-tokyo-fg-active));
+    background-color: var(--chat-accent-strong);
+    border-color: var(--chat-accent-strong);
     transform: none;
 }
 
@@ -4813,7 +4835,14 @@ a,
 .dark .chat-submit:hover {
     background-color: color-mix(in srgb, var(--chat-accent) 74%, var(--chat-tokyo-fg-active));
     border-color: color-mix(in srgb, var(--chat-accent) 74%, var(--chat-tokyo-fg-active));
-    color: var(--chat-tokyo-fg-active);
+}
+
+.chat-page-main {
+    background: var(--chat-tokyo-bg-soft);
+}
+
+.chat-container {
+    background: var(--chat-tokyo-bg-elevated);
 }
 
 .dark .chat-page-main {
@@ -4827,6 +4856,12 @@ a,
 }
 
 @media (min-width: 768px) {
+    .chat-page-main {
+        border: 1px solid var(--chat-accent-border);
+        border-radius: 1rem;
+        overflow: hidden;
+    }
+
     .dark .chat-page-main {
         background: var(--chat-tokyo-bg-soft);
         border: 1px solid var(--chat-accent-border);
@@ -4861,6 +4896,11 @@ a,
         background: var(--chat-tokyo-bg-elevated);
         box-shadow: none;
     }
+}
+
+.chat-header {
+    background-color: var(--chat-tokyo-bg-elevated);
+    border-bottom-color: var(--chat-accent-border);
 }
 
 .dark .chat-header {
