@@ -10,7 +10,7 @@
     @vite(['resources/css/app.css', 'resources/css/filament/chat.css', 'resources/js/app.js'])
 
 </head>
-<body class="min-h-screen bg-base-200 overscroll-none">
+<body class="h-screen bg-base-200 overscroll-none overflow-hidden">
 
     <x-nav sticky full-width>
         <x-slot:brand>
@@ -54,7 +54,7 @@
             @endauth
         </x-slot:sidebar>
 
-        <x-slot:content>
+        <x-slot:content class="!p-0 !overflow-hidden">
             {{ $slot }}
         </x-slot:content>
     </x-main>

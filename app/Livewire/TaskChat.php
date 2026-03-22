@@ -1206,11 +1206,14 @@ PROMPT,
 
     public function deleteTask(): void
     {
+        // Record analytics before cascade-delete wipes messages
+        \App\Models\AnalyticsEvent::recordTaskDeletion($this->task, auth()->id());
+
         // Delete the task (workspace directory and messages are deleted via model events/cascades)
         $this->task->delete();
 
         // Redirect to the tasks list
-        $this->redirect(route('app.home'));
+        $this->redirect(route('workbench.home'));
     }
 
     public function openDeployModal(): void

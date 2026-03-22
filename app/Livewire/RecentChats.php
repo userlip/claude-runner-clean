@@ -9,6 +9,7 @@ use App\Models\Task;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 class RecentChats extends Component
@@ -53,7 +54,7 @@ class RecentChats extends Component
                 });
             })
             ->latest('updated_at')
-            ->limit(10)
+            ->limit((int) Auth::user()->setting('recent_chats_limit', 10))
             ->get();
 
         // Batch-compute unread status in a single query instead of N+1
@@ -127,6 +128,12 @@ class RecentChats extends Component
         return $status;
     }
 
+    #[On('recent-chats-updated')]
+    public function refresh(): void
+    {
+        unset($this->recentChats);
+    }
+
     public function toggleSystemTasks(): void
     {
         $this->showSystemTasks = ! $this->showSystemTasks;
@@ -135,7 +142,7 @@ class RecentChats extends Component
 
     public function getChatUrl(array $chat): string
     {
-        return route('app.tasks.show', ['uuid' => $chat['model']->uuid]);
+        return route('workbench.tasks.show', ['uuid' => $chat['model']->uuid]);
     }
 
     public function getChatTitle(array $chat): string
@@ -174,6 +181,10 @@ class RecentChats extends Component
 
     public function render()
     {
-        return view('livewire.recent-chats');
+        if (! auth()->user()->setting('show_recent_chats', true)) {
+            return view('livewire.recent-chats', ['hidden' => true]);
+        }
+
+        return view('livewire.recent-chats', ['hidden' => false]);
     }
 }

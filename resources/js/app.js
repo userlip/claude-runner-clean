@@ -1,6 +1,9 @@
 import './bootstrap';
 import './native-feel';
 
+import { Chart } from 'chart.js/auto';
+window.Chart = Chart;
+
 // Dynamically import Sentry only when DSN is configured
 // This saves ~150KB from the initial bundle on every page load
 if (window.SENTRY_DSN) {

@@ -1,4 +1,4 @@
-<div class="chat-container" x-data="{
+<div class="flex flex-col h-full overflow-hidden" x-data="{
     mobileMenuOpen: false,
     taskUuid: '{{ $task->uuid }}',
     init() {
@@ -41,504 +41,463 @@
         }
     }
 }">
-    {{-- Mobile Header (shown only on mobile in immersive mode) --}}
-    <div class="chat-mobile-header">
-        <a
-            href="{{ route('filament.admin.resources.tasks.index') }}"
-            class="chat-mobile-back"
-            wire:navigate
-        >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width: 1.5rem; height: 1.5rem;">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-            </svg>
-        </a>
-        <div class="chat-mobile-title-area">
-            <h1 class="chat-mobile-title">{{ $task->title ?? ($task->repository?->name ?? 'Chat') }}</h1>
-            @if($task->taskSchedule)
-                <span class="chat-mobile-schedule-badge">
-                    Scheduled: {{ $task->taskSchedule->name }}
-                </span>
-            @endif
-            <p class="chat-mobile-subtitle">
-                {{ $this->locationLabel }}
-                @if($task->isInWorkspace() && $task->isInitializing())
-                    <span class="chat-mobile-init-status">
-                        @switch($task->init_status)
-                            @case('cloning')
-                                · Cloning...
-                                @break
-                            @case('composer_install')
-                                · Composer...
-                                @break
-                            @case('npm_install')
-                                · npm...
-                                @break
-                            @case('npm_build')
-                                · Building...
-                                @break
-                            @default
-                                · Initializing...
-                        @endswitch
+    {{-- Mobile Header (shown only on mobile) --}}
+    <div class="chat-mobile-header navbar bg-base-100 border-b border-base-300 px-2 py-1 lg:hidden sticky top-0 z-50">
+        <div class="navbar-start w-auto">
+            <a
+                href="{{ route('filament.admin.resources.tasks.index') }}"
+                class="btn btn-ghost btn-sm btn-circle"
+                wire:navigate
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                </svg>
+            </a>
+        </div>
+        <div class="navbar-center flex-1 min-w-0 px-2">
+            <div class="flex flex-col items-center min-w-0 w-full">
+                <h1 class="text-sm font-semibold text-base-content truncate max-w-full">{{ $task->title ?? ($task->repository?->name ?? 'Chat') }}</h1>
+                @if($task->taskSchedule)
+                    <span class="badge badge-xs badge-info">
+                        Scheduled: {{ $task->taskSchedule->name }}
                     </span>
                 @endif
-            </p>
+                <p class="text-xs text-base-content/60 truncate max-w-full">
+                    {{ $this->locationLabel }}
+                    @if($task->isInWorkspace() && $task->isInitializing())
+                        <span class="text-warning">
+                            @switch($task->init_status)
+                                @case('cloning')
+                                    · Cloning...
+                                    @break
+                                @case('composer_install')
+                                    · Composer...
+                                    @break
+                                @case('npm_install')
+                                    · npm...
+                                    @break
+                                @case('npm_build')
+                                    · Building...
+                                    @break
+                                @default
+                                    · Initializing...
+                            @endswitch
+                        </span>
+                    @endif
+                </p>
+            </div>
         </div>
-        {{-- Context indicator --}}
-        <div class="chat-mobile-context" title="{{ $task->is_compacting ? 'Compacting conversation...' : number_format($this->contextUsed) . ' / ' . number_format($this->contextLimit) . ' tokens' }}">
-            @if($task->is_compacting)
-                <div class="chat-mobile-compacting">
-                    <svg class="chat-mobile-compacting-icon animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <div class="navbar-end w-auto flex items-center gap-1">
+            {{-- Context indicator --}}
+            <div class="flex items-center gap-1" title="{{ $task->is_compacting ? 'Compacting conversation...' : number_format($this->contextUsed) . ' / ' . number_format($this->contextLimit) . ' tokens' }}">
+                @if($task->is_compacting)
+                    <svg class="animate-spin size-4 text-base-content/60" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                </div>
-            @else
-                <div class="chat-mobile-context-bar">
-                    <div class="chat-mobile-context-fill {{ $this->contextColor }}" style="width: {{ min($this->contextPercentage, 100) }}%"></div>
-                </div>
-                <span class="chat-mobile-context-text">{{ number_format($this->contextPercentage, 0) }}%</span>
-            @endif
-            @if($task->compaction_count > 0)
-                <span class="chat-mobile-compaction-count">
-                    {{ $task->compaction_count }}
-                </span>
-            @endif
-        </div>
-        {{-- Menu button --}}
-        <button @click="mobileMenuOpen = !mobileMenuOpen" class="chat-mobile-menu">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 1.5rem; height: 1.5rem;">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 12.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 18.75a.75.75 0 110-1.5.75.75 0 010 1.5z" />
-            </svg>
-        </button>
-        {{-- Mobile Dropdown Menu --}}
-        <div
-            x-show="mobileMenuOpen"
-            @click.away="mobileMenuOpen = false"
-            x-transition:enter="transition ease-out duration-100"
-            x-transition:enter-start="opacity-0 scale-95"
-            x-transition:enter-end="opacity-100 scale-100"
-            x-transition:leave="transition ease-in duration-75"
-            x-transition:leave-start="opacity-100 scale-100"
-            x-transition:leave-end="opacity-0 scale-95"
-            class="chat-mobile-dropdown"
-            x-cloak
-        >
-            {{-- Provider selector --}}
-            <div class="chat-mobile-providers">
-                @foreach($this->availableProviders as $provider)
-                    <button
-                        wire:click="setProvider({{ $provider->id }})"
-                        @click="mobileMenuOpen = false"
-                        class="chat-provider-btn {{ $this->currentProvider?->id === $provider->id ? 'chat-provider-btn-active' : '' }}"
-                        @disabled($this->isRunning)
-                    >
-                        {{ $provider->display_name }}
-                    </button>
-                @endforeach
-            </div>
-            <button
-                @click="navigator.clipboard.writeText(window.location.href); mobileMenuOpen = false"
-                class="chat-mobile-dropdown-item"
-            >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 1.25rem; height: 1.25rem;">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
-                </svg>
-                <span>Copy Link</span>
-            </button>
-            <button
-                @click="$dispatch('open-sidebar'); mobileMenuOpen = false"
-                class="chat-mobile-dropdown-item"
-            >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 1.25rem; height: 1.25rem;">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 00-1.883 2.542l.857 6a2.25 2.25 0 002.227 1.932H19.05a2.25 2.25 0 002.227-1.932l.857-6a2.25 2.25 0 00-1.883-2.542m-16.5 0V6A2.25 2.25 0 016 3.75h3.879a1.5 1.5 0 011.06.44l2.122 2.12a1.5 1.5 0 001.06.44H18A2.25 2.25 0 0120.25 9v.776" />
-                </svg>
-                <span>Snippets & Files</span>
-            </button>
-            <a
-                href="{{ \App\Filament\Resources\Tasks\Pages\TaskIde::getUrl(['record' => $task->uuid]) }}"
-                @click="mobileMenuOpen = false"
-                class="chat-mobile-dropdown-item"
-            >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 1.25rem; height: 1.25rem;">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" />
-                </svg>
-                <span>Open IDE</span>
-            </a>
-            @if($task->isInWorkspace())
-                <div class="chat-mobile-dropdown-divider"></div>
-                @if($this->hasEnvConfigs)
-                    <button
-                        wire:click="copyEnvConfig"
-                        @click="mobileMenuOpen = false"
-                        class="chat-mobile-dropdown-item"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 1.25rem; height: 1.25rem;">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75" />
-                        </svg>
-                        <span>Copy .env</span>
-                    </button>
-                @endif
-                <button
-                    wire:click="openDeployModal"
-                    @click="mobileMenuOpen = false"
-                    class="chat-mobile-dropdown-item"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 1.25rem; height: 1.25rem;" class="chat-mobile-action-icon-primary">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
-                    </svg>
-                    <span>Deploy to Site</span>
-                </button>
-                <div class="chat-mobile-dropdown-divider"></div>
-                <button
-                    wire:click="deleteWorkspace"
-                    wire:confirm="Are you sure you want to delete this workspace? This cannot be undone."
-                    @click="mobileMenuOpen = false"
-                    class="chat-mobile-dropdown-item chat-mobile-dropdown-item-danger"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 1.25rem; height: 1.25rem;">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                    </svg>
-                    <span>Delete Workspace</span>
-                </button>
-            @endif
-            {{-- Ralph Actions --}}
-            @if($task->repository)
-                <div class="chat-mobile-dropdown-divider"></div>
-                <button
-                    wire:click="triggerPrdToIssues"
-                    @click="mobileMenuOpen = false"
-                    wire:loading.attr="disabled"
-                    wire:target="triggerPrdToIssues"
-                    class="chat-mobile-dropdown-item"
-                >
-                    <span>🎯</span>
-                    <span wire:loading.remove wire:target="triggerPrdToIssues">PRD → Issues</span>
-                    <span wire:loading wire:target="triggerPrdToIssues">Processing...</span>
-                </button>
-                @if(!$task->ralph_enabled)
-                    <button
-                        wire:click="startRalphLoop"
-                        @click="mobileMenuOpen = false"
-                        wire:loading.attr="disabled"
-                        wire:target="startRalphLoop"
-                        class="chat-mobile-dropdown-item"
-                    >
-                        <span>🔁</span>
-                        <span wire:loading.remove wire:target="startRalphLoop">Start Ralph</span>
-                        <span wire:loading wire:target="startRalphLoop">Starting...</span>
-                    </button>
                 @else
-                    <div wire:poll.5s>
-                        @php $ralphMobile = $this->ralphStatus; @endphp
-                        @if(($ralphMobile['status'] ?? '') === 'completed')
-                            <div class="chat-mobile-dropdown-item" style="opacity: 0.7; cursor: default;">
-                                <span>✅</span>
-                                <span>Ralph Done ({{ $ralphMobile['stories_passed'] ?? 0 }}/{{ $ralphMobile['stories_total'] ?? 0 }})</span>
-                            </div>
-                        @elseif(in_array($ralphMobile['status'] ?? '', ['failed', 'stalled']))
+                    <progress class="progress w-10 h-1.5 {{ $this->contextColor }}" value="{{ min($this->contextPercentage, 100) }}" max="100"></progress>
+                    <span class="text-xs text-base-content/60">{{ number_format($this->contextPercentage, 0) }}%</span>
+                @endif
+                @if($task->compaction_count > 0)
+                    <span class="badge badge-xs badge-neutral">
+                        {{ $task->compaction_count }}
+                    </span>
+                @endif
+            </div>
+            {{-- Menu button --}}
+            <div class="dropdown dropdown-end">
+                <button @click="mobileMenuOpen = !mobileMenuOpen" tabindex="0" class="btn btn-ghost btn-sm btn-circle">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 12.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 18.75a.75.75 0 110-1.5.75.75 0 010 1.5z" />
+                    </svg>
+                </button>
+                {{-- Mobile Dropdown Menu --}}
+                <div
+                    x-show="mobileMenuOpen"
+                    @click.away="mobileMenuOpen = false"
+                    x-transition:enter="transition ease-out duration-100"
+                    x-transition:enter-start="opacity-0 scale-95"
+                    x-transition:enter-end="opacity-100 scale-100"
+                    x-transition:leave="transition ease-in duration-75"
+                    x-transition:leave-start="opacity-100 scale-100"
+                    x-transition:leave-end="opacity-0 scale-95"
+                    class="dropdown-content menu bg-base-200 rounded-box z-50 w-64 p-2 shadow-lg border border-base-300 mt-2"
+                    x-cloak
+                >
+                    {{-- Provider selector --}}
+                    <div class="flex flex-wrap gap-1 p-2 border-b border-base-300 mb-1">
+                        @foreach($this->availableProviders as $provider)
                             <button
-                                wire:click="restartRalphLoop"
+                                wire:click="setProvider({{ $provider->id }})"
+                                @click="mobileMenuOpen = false"
+                                class="btn btn-xs {{ $this->currentProvider?->id === $provider->id ? 'btn-primary' : 'btn-ghost' }}"
+                                @disabled($this->isRunning)
+                            >
+                                {{ $provider->display_name }}
+                            </button>
+                        @endforeach
+                    </div>
+                    <li>
+                        <button
+                            @click="navigator.clipboard.writeText(window.location.href); mobileMenuOpen = false"
+                            class="flex items-center gap-2"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
+                            </svg>
+                            <span>Copy Link</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button
+                            @click="$dispatch('open-sidebar'); mobileMenuOpen = false"
+                            class="flex items-center gap-2"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 00-1.883 2.542l.857 6a2.25 2.25 0 002.227 1.932H19.05a2.25 2.25 0 002.227-1.932l.857-6a2.25 2.25 0 00-1.883-2.542m-16.5 0V6A2.25 2.25 0 016 3.75h3.879a1.5 1.5 0 011.06.44l2.122 2.12a1.5 1.5 0 001.06.44H18A2.25 2.25 0 0120.25 9v.776" />
+                            </svg>
+                            <span>Snippets & Files</span>
+                        </button>
+                    </li>
+                    <li>
+                        <a
+                            href="{{ \App\Filament\Resources\Tasks\Pages\TaskIde::getUrl(['record' => $task->uuid]) }}"
+                            @click="mobileMenuOpen = false"
+                            class="flex items-center gap-2"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" />
+                            </svg>
+                            <span>Open IDE</span>
+                        </a>
+                    </li>
+                    @if($task->isInWorkspace())
+                        <div class="divider my-0"></div>
+                        @if($this->hasEnvConfigs)
+                            <li>
+                                <button
+                                    wire:click="copyEnvConfig"
+                                    @click="mobileMenuOpen = false"
+                                    class="flex items-center gap-2"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 011.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 00-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 01-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 00-3.375-3.375h-1.5a1.125 1.125 0 01-1.125-1.125v-1.5a3.375 3.375 0 00-3.375-3.375H9.75" />
+                                    </svg>
+                                    <span>Copy .env</span>
+                                </button>
+                            </li>
+                        @endif
+                        <li>
+                            <button
+                                wire:click="openDeployModal"
+                                @click="mobileMenuOpen = false"
+                                class="flex items-center gap-2 text-primary"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
+                                </svg>
+                                <span>Deploy to Site</span>
+                            </button>
+                        </li>
+                        <div class="divider my-0"></div>
+                        <li>
+                            <button
+                                wire:click="deleteWorkspace"
+                                wire:confirm="Are you sure you want to delete this workspace? This cannot be undone."
+                                @click="mobileMenuOpen = false"
+                                class="flex items-center gap-2 text-error"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                                </svg>
+                                <span>Delete Workspace</span>
+                            </button>
+                        </li>
+                    @endif
+                    {{-- Ralph Actions --}}
+                    @if($task->repository)
+                        <div class="divider my-0"></div>
+                        <li>
+                            <button
+                                wire:click="triggerPrdToIssues"
                                 @click="mobileMenuOpen = false"
                                 wire:loading.attr="disabled"
-                                wire:target="restartRalphLoop"
-                                class="chat-mobile-dropdown-item"
+                                wire:target="triggerPrdToIssues"
+                                class="flex items-center gap-2"
                             >
-                                <span>🔁</span>
-                                <span wire:loading.remove wire:target="restartRalphLoop">Restart Ralph ({{ $ralphMobile['stories_passed'] ?? 0 }}/{{ $ralphMobile['stories_total'] ?? 0 }})</span>
-                                <span wire:loading wire:target="restartRalphLoop">Restarting...</span>
+                                <span>🎯</span>
+                                <span wire:loading.remove wire:target="triggerPrdToIssues">PRD → Issues</span>
+                                <span wire:loading wire:target="triggerPrdToIssues">Processing...</span>
                             </button>
+                        </li>
+                        @if(!$task->ralph_enabled)
+                            <li>
+                                <button
+                                    wire:click="startRalphLoop"
+                                    @click="mobileMenuOpen = false"
+                                    wire:loading.attr="disabled"
+                                    wire:target="startRalphLoop"
+                                    class="flex items-center gap-2"
+                                >
+                                    <span>🔁</span>
+                                    <span wire:loading.remove wire:target="startRalphLoop">Start Ralph</span>
+                                    <span wire:loading wire:target="startRalphLoop">Starting...</span>
+                                </button>
+                            </li>
                         @else
-                            <div class="chat-mobile-dropdown-item" style="opacity: 0.7; cursor: default;">
-                                <svg class="animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" style="width: 1rem; height: 1rem;">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                                <span>Ralph #{{ $ralphMobile['iteration'] ?? '?' }} ({{ $ralphMobile['stories_passed'] ?? 0 }}/{{ $ralphMobile['stories_total'] ?? 0 }})</span>
+                            <div wire:poll.5s>
+                                @php $ralphMobile = $this->ralphStatus; @endphp
+                                @if(($ralphMobile['status'] ?? '') === 'completed')
+                                    <li class="disabled">
+                                        <span class="flex items-center gap-2 opacity-70">
+                                            <span>✅</span>
+                                            <span>Ralph Done ({{ $ralphMobile['stories_passed'] ?? 0 }}/{{ $ralphMobile['stories_total'] ?? 0 }})</span>
+                                        </span>
+                                    </li>
+                                @elseif(in_array($ralphMobile['status'] ?? '', ['failed', 'stalled']))
+                                    <li>
+                                        <button
+                                            wire:click="restartRalphLoop"
+                                            @click="mobileMenuOpen = false"
+                                            wire:loading.attr="disabled"
+                                            wire:target="restartRalphLoop"
+                                            class="flex items-center gap-2"
+                                        >
+                                            <span>🔁</span>
+                                            <span wire:loading.remove wire:target="restartRalphLoop">Restart Ralph ({{ $ralphMobile['stories_passed'] ?? 0 }}/{{ $ralphMobile['stories_total'] ?? 0 }})</span>
+                                            <span wire:loading wire:target="restartRalphLoop">Restarting...</span>
+                                        </button>
+                                    </li>
+                                @else
+                                    <li class="disabled">
+                                        <span class="flex items-center gap-2 opacity-70">
+                                            <svg class="animate-spin size-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                            <span>Ralph #{{ $ralphMobile['iteration'] ?? '?' }} ({{ $ralphMobile['stories_passed'] ?? 0 }}/{{ $ralphMobile['stories_total'] ?? 0 }})</span>
+                                        </span>
+                                    </li>
+                                @endif
                             </div>
                         @endif
-                    </div>
-                @endif
-            @endif
-            {{-- Delete Chat (always available) --}}
-            <div class="chat-mobile-dropdown-divider"></div>
-            <button
-                wire:click="deleteTask"
-                wire:confirm="Are you sure you want to delete this chat and all its messages? This cannot be undone."
-                @click="mobileMenuOpen = false"
-                class="chat-mobile-dropdown-item chat-mobile-dropdown-item-danger"
-            >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 1.25rem; height: 1.25rem;">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                </svg>
-                <span>Delete Chat</span>
-            </button>
+                    @endif
+                    {{-- Delete Chat (always available) --}}
+                    <div class="divider my-0"></div>
+                    <li>
+                        <button
+                            wire:click="deleteTask"
+                            wire:confirm="Are you sure you want to delete this chat and all its messages? This cannot be undone."
+                            @click="mobileMenuOpen = false"
+                            class="flex items-center gap-2 text-error"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-4">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                            </svg>
+                            <span>Delete Chat</span>
+                        </button>
+                    </li>
+                </div>
+            </div>
         </div>
     </div>
 
     {{-- Desktop Header --}}
-    <div class="chat-header">
-        {{-- Top row: Title and Provider selector --}}
-        <div class="chat-header-top">
-            <div class="chat-header-info">
-                <div class="chat-header-title-row">
-                    <h2 class="chat-header-title">{{ $task->title ?? ($task->repository?->name ?? 'Chat') }}</h2>
-                    @if($this->chatMessages->isNotEmpty())
-                        @if($task->repository)
-                            <button
-                                wire:click="triggerPrdToIssues"
-                                wire:loading.attr="disabled"
-                                wire:target="triggerPrdToIssues"
-                                title="Break PRD into GitHub Issues"
-                                class="chat-rename-btn"
-                            >
-                                <span wire:loading.remove wire:target="triggerPrdToIssues">🎯 PRD → Issues</span>
-                                <span wire:loading wire:target="triggerPrdToIssues">🎯 ...</span>
-                            </button>
-                            @if(!$task->ralph_enabled)
-                                <button
-                                    wire:click="startRalphLoop"
-                                    wire:loading.attr="disabled"
-                                    wire:target="startRalphLoop"
-                                    title="Import PRD slices and start Ralph autonomous loop"
-                                    class="chat-rename-btn"
-                                >
-                                    <span wire:loading.remove wire:target="startRalphLoop">🔁 Start Ralph</span>
-                                    <span wire:loading wire:target="startRalphLoop">🔁 ...</span>
-                                </button>
-                            @else
-                                <div wire:poll.5s style="display: inline;">
-                                    @php $ralph = $this->ralphStatus; @endphp
-                                    @if(($ralph['status'] ?? '') === 'completed')
-                                        <span class="chat-rename-btn chat-ralph-status" title="Ralph completed all stories">
-                                            ✅ Ralph Done ({{ $ralph['stories_passed'] ?? 0 }}/{{ $ralph['stories_total'] ?? 0 }})
-                                        </span>
-                                    @elseif(in_array($ralph['status'] ?? '', ['failed', 'stalled']))
-                                        <button
-                                            wire:click="restartRalphLoop"
-                                            wire:loading.attr="disabled"
-                                            wire:target="restartRalphLoop"
-                                            class="chat-rename-btn"
-                                            title="{{ ($ralph['status'] ?? '') === 'failed' ? 'Ralph failed' : 'Ralph stalled' }} — click to restart"
-                                        >
-                                            <span wire:loading.remove wire:target="restartRalphLoop">🔁 Restart Ralph ({{ $ralph['stories_passed'] ?? 0 }}/{{ $ralph['stories_total'] ?? 0 }})</span>
-                                            <span wire:loading wire:target="restartRalphLoop">🔁 ...</span>
-                                        </button>
-                                    @else
-                                        <span
-                                            class="chat-rename-btn chat-ralph-status"
-                                            title="Ralph loop: Iteration {{ $ralph['iteration'] ?? '?' }} | {{ $ralph['stories_passed'] ?? 0 }}/{{ $ralph['stories_total'] ?? 0 }} stories passed"
-                                        >
-                                            <svg class="animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" style="width: 0.75rem; height: 0.75rem; display: inline;">
-                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                            </svg>
-                                            Ralph #{{ $ralph['iteration'] ?? '?' }} ({{ $ralph['stories_passed'] ?? 0 }}/{{ $ralph['stories_total'] ?? 0 }})
-                                        </span>
-                                    @endif
-                                </div>
-                            @endif
-                        @endif
-                    @endif
-                </div>
-                <div class="chat-header-meta">
-                    <span class="chat-header-subtitle">{{ $this->locationLabel }}</span>
-                    {{-- Init Status Indicators --}}
-                    @if($task->isInWorkspace())
-                        <span class="chat-header-separator">·</span>
-                        <div class="chat-init-status" @if($task->isInitializing()) wire:poll.5s @endif>
-                            @if($task->isInitializing())
-                                <span class="chat-init-badge chat-init-running" title="Initializing workspace...">
-                                    <svg class="animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" style="width: 0.75rem; height: 0.75rem;">
-                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                    @switch($task->init_status)
-                                        @case('cloning')
-                                            Cloning...
-                                            @break
-                                        @case('composer_install')
-                                            Composer...
-                                            @break
-                                        @case('npm_install')
-                                            npm install...
-                                            @break
-                                        @case('npm_build')
-                                            Building...
-                                            @break
-                                        @default
-                                            Initializing...
-                                    @endswitch
-                                </span>
-                            @else
-                                @if($task->ran_composer_install)
-                                    <span class="chat-init-badge chat-init-done" title="Composer install completed">
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" style="width: 0.75rem; height: 0.75rem;">
-                                            <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
-                                        </svg>
-                                        composer
-                                    </span>
-                                @endif
-                                @if($task->ran_npm_install)
-                                    <span class="chat-init-badge chat-init-done" title="npm install completed">
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" style="width: 0.75rem; height: 0.75rem;">
-                                            <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
-                                        </svg>
-                                        npm
-                                    </span>
-                                @endif
-                                @if($task->ran_npm_build)
-                                    <span class="chat-init-badge chat-init-done" title="npm build completed">
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" style="width: 0.75rem; height: 0.75rem;">
-                                            <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
-                                        </svg>
-                                        build
-                                    </span>
-                                @endif
-                            @endif
-                        </div>
-                    @endif
-                    {{-- Context Usage Indicator (inline with subtitle) --}}
-                    <span class="chat-header-separator">·</span>
-                    @if($task->is_compacting)
-                        <span class="chat-context-compacting">
-                            <svg class="animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            Compacting...
-                        </span>
-                    @else
-                        <span class="chat-context-usage" title="{{ number_format($this->contextUsed) }} / {{ number_format($this->contextLimit) }} tokens">
-                            <span class="chat-context-bar">
-                                <span class="chat-context-fill {{ $this->contextColor }}" style="width: {{ min($this->contextPercentage, 100) }}%"></span>
-                            </span>
-                            {{ number_format($this->contextPercentage, 0) }}%
-                        </span>
-                    @endif
-                    @if($task->compaction_count > 0)
-                        <span class="chat-compaction-count" title="{{ $task->compaction_count }} {{ Str::plural('compaction', $task->compaction_count) }}">
-                            ×{{ $task->compaction_count }}
-                        </span>
-                    @endif
-                </div>
-            </div>
-            <div class="chat-provider-selector">
-                @foreach($this->availableProviders as $provider)
-                    <button
-                        wire:click="setProvider({{ $provider->id }})"
-                        class="chat-provider-btn {{ $this->currentProvider?->id === $provider->id ? 'chat-provider-btn-active' : '' }}"
-                        @disabled($this->isRunning)
-                    >
-                        {{ $provider->display_name }}
-                    </button>
-                @endforeach
-            </div>
-        </div>
-        {{-- Bottom row: Action buttons (only for workspaces) --}}
-        @if($task->isInWorkspace())
-            <div class="chat-header-actions">
-                <a
-                    href="{{ \App\Filament\Resources\Tasks\Pages\TaskIde::getUrl(['record' => $task->uuid]) }}"
-                    class="chat-header-action-btn"
-                    title="Open in IDE"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="chat-header-action-icon">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" />
-                    </svg>
-                    <span>IDE</span>
-                </a>
-                @if($this->hasEnvConfigs)
-                    <div x-data="{ open: false }" class="relative">
-                        <button
-                            type="button"
-                            wire:click="copyEnvConfig"
-                            @click.away="open = false"
-                            class="chat-header-action-btn"
-                        >
-                            <x-heroicon-o-document-duplicate class="chat-header-action-icon" />
-                            <span>Copy .env</span>
-                            @if($this->envConfigs->count() > 1)
-                                <button
-                                    type="button"
-                                    @click.stop="open = !open"
-                                    class="chat-header-action-dropdown"
-                                >
-                                    <x-heroicon-o-chevron-down class="chat-header-action-icon" />
-                                </button>
-                            @endif
-                        </button>
+    <div class="hidden lg:block bg-base-100 border-b border-base-300">
+        <div class="flex items-center gap-3 px-4 py-2">
+            {{-- Left: Title + meta --}}
+            <div class="flex items-center gap-3 min-w-0 flex-1">
+                <h2 class="text-sm font-semibold text-base-content truncate max-w-xs">{{ $task->title ?? ($task->repository?->name ?? 'Chat') }}</h2>
 
-                        @if($this->envConfigs->count() > 1)
-                            <div
-                                x-show="open"
-                                x-transition
-                                class="chat-header-dropdown"
+                {{-- Ralph status (only when active) --}}
+                @if($task->ralph_enabled && $this->chatMessages->isNotEmpty() && $task->repository)
+                    <div wire:poll.5s class="inline">
+                        @php $ralph = $this->ralphStatus; @endphp
+                        @if(($ralph['status'] ?? '') === 'completed')
+                            <span class="badge badge-xs badge-success" title="Ralph completed all stories">
+                                Done {{ $ralph['stories_passed'] ?? 0 }}/{{ $ralph['stories_total'] ?? 0 }}
+                            </span>
+                        @elseif(in_array($ralph['status'] ?? '', ['failed', 'stalled']))
+                            <button
+                                wire:click="restartRalphLoop"
+                                wire:loading.attr="disabled"
+                                wire:target="restartRalphLoop"
+                                class="badge badge-xs badge-error cursor-pointer hover:opacity-80"
+                                title="{{ ($ralph['status'] ?? '') === 'failed' ? 'Ralph failed' : 'Ralph stalled' }} — click to restart"
                             >
-                                @foreach($this->envConfigs as $config)
-                                    <button
-                                        type="button"
-                                        wire:click="copyEnvConfig({{ $config->id }})"
-                                        @click="open = false"
-                                        class="chat-header-dropdown-item"
-                                    >
-                                        @if($config->is_default)
-                                            <x-heroicon-o-star class="chat-header-dropdown-icon chat-header-dropdown-star" />
-                                        @endif
-                                        {{ $config->name }}
-                                    </button>
-                                @endforeach
-                            </div>
+                                <span wire:loading.remove wire:target="restartRalphLoop">Restart {{ $ralph['stories_passed'] ?? 0 }}/{{ $ralph['stories_total'] ?? 0 }}</span>
+                                <span wire:loading wire:target="restartRalphLoop">...</span>
+                            </button>
+                        @else
+                            <span
+                                class="badge badge-xs badge-warning gap-0.5"
+                                title="Ralph loop: Iteration {{ $ralph['iteration'] ?? '?' }} | {{ $ralph['stories_passed'] ?? 0 }}/{{ $ralph['stories_total'] ?? 0 }} stories passed"
+                            >
+                                <svg class="animate-spin size-2.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Ralph {{ $ralph['stories_passed'] ?? 0 }}/{{ $ralph['stories_total'] ?? 0 }}
+                            </span>
                         @endif
                     </div>
                 @endif
-                <button wire:click="openDeployModal" class="chat-header-action-btn chat-header-action-btn-success">
-                    <x-heroicon-o-cloud-arrow-up class="chat-header-action-icon" />
-                    <span>Deploy</span>
-                </button>
-                <button
-                    wire:click="deleteWorkspace"
-                    wire:confirm="Are you sure you want to delete this workspace? This cannot be undone."
-                    class="chat-header-action-btn chat-header-action-btn-danger"
-                >
-                    <x-heroicon-o-trash class="chat-header-action-icon" />
-                    <span>Delete Workspace</span>
-                </button>
-                <button
-                    wire:click="deleteTask"
-                    wire:confirm="Are you sure you want to delete this chat and all its messages? This cannot be undone."
-                    class="chat-header-action-btn chat-header-action-btn-danger"
-                >
-                    <x-heroicon-o-trash class="chat-header-action-icon" />
-                    <span>Delete Chat</span>
-                </button>
+
+                {{-- Separator --}}
+                <span class="text-base-content/20">|</span>
+
+                {{-- Compact status line --}}
+                <div class="flex items-center gap-2 text-xs text-base-content/50">
+                    <span>{{ $this->locationLabel }}</span>
+
+                    @if($task->isInWorkspace())
+                        <div class="inline-flex items-center gap-1" @if($task->isInitializing()) wire:poll.5s @endif>
+                            @if($task->isInitializing())
+                                <svg class="animate-spin size-3 text-warning" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <span class="text-warning">
+                                    @switch($task->init_status)
+                                        @case('cloning') Cloning @break
+                                        @case('composer_install') Composer @break
+                                        @case('npm_install') npm @break
+                                        @case('npm_build') Building @break
+                                        @default Init @break
+                                    @endswitch
+                                </span>
+                            @else
+                                @if($task->ran_composer_install)<span class="text-success" title="Composer OK">C</span>@endif
+                                @if($task->ran_npm_install)<span class="text-success" title="npm OK">N</span>@endif
+                                @if($task->ran_npm_build)<span class="text-success" title="Build OK">B</span>@endif
+                            @endif
+                        </div>
+                    @endif
+
+                    {{-- Context bar --}}
+                    @if($task->is_compacting)
+                        <span class="inline-flex items-center gap-1 text-warning">
+                            <svg class="animate-spin size-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        </span>
+                    @else
+                        <span class="inline-flex items-center gap-1" title="{{ number_format($this->contextUsed) }} / {{ number_format($this->contextLimit) }} tokens">
+                            <progress class="progress w-12 h-1 {{ $this->contextColor }}" value="{{ min($this->contextPercentage, 100) }}" max="100"></progress>
+                            <span class="tabular-nums">{{ number_format($this->contextPercentage, 0) }}%</span>
+                        </span>
+                    @endif
+                    @if($task->compaction_count > 0)
+                        <span title="{{ $task->compaction_count }} {{ Str::plural('compaction', $task->compaction_count) }}">x{{ $task->compaction_count }}</span>
+                    @endif
+                </div>
             </div>
-        @else
-            {{-- IDE + Delete Chat buttons (no workspace) --}}
-            <div class="chat-header-actions">
+
+            {{-- Right: Actions + Providers --}}
+            <div class="flex items-center gap-1.5">
+                {{-- Quick actions --}}
                 <a
                     href="{{ \App\Filament\Resources\Tasks\Pages\TaskIde::getUrl(['record' => $task->uuid]) }}"
-                    class="chat-header-action-btn"
+                    class="btn btn-xs btn-ghost"
                     title="Open in IDE"
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="chat-header-action-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-3.5">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M17.25 6.75L22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3l-4.5 16.5" />
                     </svg>
-                    <span>IDE</span>
                 </a>
-                <button
-                    wire:click="deleteTask"
-                    wire:confirm="Are you sure you want to delete this chat and all its messages? This cannot be undone."
-                    class="chat-header-action-btn chat-header-action-btn-danger"
-                >
-                    <x-heroicon-o-trash class="chat-header-action-icon" />
-                    <span>Delete Chat</span>
-                </button>
+
+                @if($task->isInWorkspace())
+                    <button wire:click="openDeployModal" class="btn btn-xs btn-ghost text-success" title="Deploy">
+                        <x-heroicon-o-cloud-arrow-up class="size-3.5" />
+                    </button>
+                @endif
+
+                {{-- More menu --}}
+                <div x-data="{ open: false }" class="dropdown dropdown-end">
+                    <button @click="open = !open" class="btn btn-xs btn-ghost" title="More actions">
+                        <x-heroicon-o-ellipsis-vertical class="size-3.5" />
+                    </button>
+                    <ul x-show="open" @click.away="open = false" x-transition class="dropdown-content menu bg-base-200 rounded-box z-50 w-48 p-1.5 shadow-lg border border-base-300 mt-1">
+                        @if($this->chatMessages->isNotEmpty() && $task->repository)
+                            <li>
+                                <button wire:click="triggerPrdToIssues" wire:loading.attr="disabled" wire:target="triggerPrdToIssues" @click="open = false">
+                                    <span wire:loading.remove wire:target="triggerPrdToIssues">PRD to Issues</span>
+                                    <span wire:loading wire:target="triggerPrdToIssues">Processing...</span>
+                                </button>
+                            </li>
+                            @if(!$task->ralph_enabled)
+                                <li>
+                                    <button wire:click="startRalphLoop" wire:loading.attr="disabled" wire:target="startRalphLoop" @click="open = false">
+                                        <span wire:loading.remove wire:target="startRalphLoop">Start Ralph</span>
+                                        <span wire:loading wire:target="startRalphLoop">Starting...</span>
+                                    </button>
+                                </li>
+                            @endif
+                        @endif
+                        @if($task->isInWorkspace())
+                            @if($this->hasEnvConfigs)
+                                <li>
+                                    <button wire:click="copyEnvConfig" @click="open = false">Copy .env</button>
+                                </li>
+                                @if($this->envConfigs->count() > 1)
+                                    @foreach($this->envConfigs as $config)
+                                        <li>
+                                            <button wire:click="copyEnvConfig({{ $config->id }})" @click="open = false" class="pl-6 text-xs">
+                                                @if($config->is_default)<x-heroicon-o-star class="size-3 text-warning" />@endif
+                                                {{ $config->name }}
+                                            </button>
+                                        </li>
+                                    @endforeach
+                                @endif
+                            @endif
+                            <div class="divider my-0.5"></div>
+                            <li>
+                                <button
+                                    wire:click="deleteWorkspace"
+                                    wire:confirm="Are you sure you want to delete this workspace? This cannot be undone."
+                                    @click="open = false"
+                                    class="text-error"
+                                >
+                                    <x-heroicon-o-trash class="size-3.5" /> Delete Workspace
+                                </button>
+                            </li>
+                        @endif
+                        <li>
+                            <button
+                                wire:click="deleteTask"
+                                wire:confirm="Are you sure you want to delete this chat and all its messages? This cannot be undone."
+                                @click="open = false"
+                                class="text-error"
+                            >
+                                <x-heroicon-o-trash class="size-3.5" /> Delete Chat
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+
+                {{-- Separator --}}
+                <span class="text-base-content/20">|</span>
+
+                {{-- Provider selector --}}
+                <div class="flex items-center gap-0.5">
+                    @foreach($this->availableProviders as $provider)
+                        <button
+                            wire:click="setProvider({{ $provider->id }})"
+                            class="btn btn-xs {{ $this->currentProvider?->id === $provider->id ? 'btn-primary' : 'btn-ghost' }}"
+                            @disabled($this->isRunning)
+                        >
+                            {{ $provider->display_name }}
+                        </button>
+                    @endforeach
+                </div>
             </div>
-        @endif
+        </div>
     </div>
 
     {{-- Chat Area --}}
-    <div class="chat-area"
+    <div class="flex flex-col flex-1 min-h-0"
         x-data="{
             polling: @entangle('waitingForResponse').live,
             isNearBottom: true,
@@ -581,12 +540,12 @@
 
                 container.innerHTML = cached.map((m) => {
                     const isUser = m.role === 'user';
-                    const outerClass = isUser ? 'chat-message chat-message-user' : 'chat-message chat-message-assistant';
-                    const bubbleClass = isUser ? 'chat-bubble chat-bubble-user' : 'chat-bubble chat-bubble-assistant';
+                    const chatClass = isUser ? 'chat chat-end chat-message chat-message-user' : 'chat chat-start chat-message chat-message-assistant';
+                    const bubbleClass = isUser ? 'chat-bubble chat-bubble-primary' : 'chat-bubble';
                     return `
-                        <div class='${outerClass}'>
+                        <div class='${chatClass}'>
                             <div class='${bubbleClass}'>
-                                <div class='chat-bubble-content'>${escapeHtml(m.text || '')}</div>
+                                <div class='chat-bubble-content prose prose-sm max-w-none'>${escapeHtml(m.text || '')}</div>
                             </div>
                         </div>
                     `;
@@ -710,7 +669,7 @@
     >
         {{-- Messages --}}
         <div
-            class="chat-messages"
+            class="flex-1 overflow-y-auto p-4 space-y-1"
             x-ref="messages"
             wire:init="loadMessages"
             @if($this->shouldPoll) wire:poll.2s.visible="checkPolling" @endif
@@ -732,8 +691,7 @@
                 @endphp
 
                 @if($showDateSeparator)
-                    <div class="chat-date-separator">
-                        <span class="chat-date-separator-text">
+                    <div class="divider text-xs text-base-content/50 my-4">
                             @if($message->created_at->isToday())
                                 Today
                             @elseif($message->created_at->isYesterday())
@@ -743,20 +701,19 @@
                             @else
                                 {{ $message->created_at->format('M j, Y') }}
                             @endif
-                        </span>
                     </div>
                 @endif
                 @if($shouldRenderFirstBubble)
-                <div wire:key="message-{{ $message->id }}" class="chat-message {{ $message->isFromUser() ? 'chat-message-user' : 'chat-message-assistant' }} {{ $isRalphMessage ? 'chat-message-ralph' : '' }}">
-                    <div class="chat-bubble {{ $message->isFromUser() ? 'chat-bubble-user' : 'chat-bubble-assistant' }} {{ $isRalphMessage ? 'chat-bubble-ralph' : '' }}">
+                <div wire:key="message-{{ $message->id }}" class="chat {{ $message->isFromUser() ? 'chat-end' : 'chat-start' }} chat-message {{ $message->isFromUser() ? 'chat-message-user' : 'chat-message-assistant' }} {{ $isRalphMessage ? 'chat-message-ralph' : '' }}">
+                    <div class="chat-bubble {{ $message->isFromUser() ? 'chat-bubble-primary' : '' }} {{ $isRalphMessage ? 'chat-bubble-accent' : '' }} max-w-[85%] lg:max-w-[70%]">
                         @if($message->isFromUser())
                             @if($message->images && count($message->images) > 0)
-                                <div class="chat-message-images">
+                                <div class="flex flex-wrap gap-2 mb-2">
                                     @foreach($message->images as $imageIndex => $image)
                                         <img
                                             src="{{ $image['data'] }}"
                                             alt="{{ $image['name'] ?? 'Image' }}"
-                                            class="chat-message-image-thumb"
+                                            class="w-20 h-20 rounded-lg object-cover cursor-pointer hover:opacity-80 transition-opacity"
                                             @click="$dispatch('open-image-modal', { src: '{{ $image['data'] }}', alt: '{{ $image['name'] ?? 'Image' }}' })"
                                         >
                                     @endforeach
@@ -765,24 +722,26 @@
                             @if($message->content)
                                 <p style="white-space: pre-wrap; margin: 0;">{!! $message->linkifyContent() !!}</p>
                             @endif
-                            <span class="chat-message-time chat-message-time-user">{{ $message->created_at->timezone(config('app.timezone'))->format('H:i') }}</span>
+                            <div class="chat-footer opacity-50 text-xs mt-1">
+                                {{ $message->created_at->timezone(config('app.timezone'))->format('H:i') }}
+                            </div>
                         @else
                             @if($firstBlockIsText)
                                 {{-- Render first text block (using cached markdown) --}}
-                                <div class="chat-bubble-content">
+                                <div class="chat-bubble-content prose prose-sm max-w-none dark:prose-invert">
                                     {!! $message->getFirstTextBlockHtml() !!}
                                 </div>
 
-                                <div class="chat-message-meta">
+                                <div class="flex items-center gap-2 mt-1">
                                     @php
                                         $firstBlockTimestamp = isset($message->content_blocks[0]['timestamp'])
                                             ? \Carbon\Carbon::parse($message->content_blocks[0]['timestamp'])->timezone(config('app.timezone'))->format('H:i')
                                             : $message->created_at->timezone(config('app.timezone'))->format('H:i');
                                     @endphp
-                                    <span class="chat-message-time">{{ $firstBlockTimestamp }}</span>
+                                    <span class="text-xs opacity-50">{{ $firstBlockTimestamp }}</span>
                                     {{-- Only show tokens on the last bubble --}}
                                     @if(count($message->content_blocks) <= 1 && ($message->tokens_in || $message->tokens_out))
-                                        <span class="chat-tokens">
+                                        <span class="badge badge-ghost badge-xs">
                                             {{ number_format($message->tokens_in ?? 0) }} in /
                                             {{ number_format($message->tokens_out ?? 0) }} out
                                             @if($message->cost_usd)
@@ -797,9 +756,9 @@
                                     <button
                                         type="button"
                                         wire:click="sendCompactCommand"
-                                        class="chat-compact-action"
+                                        class="btn btn-ghost btn-xs mt-2 gap-1"
                                     >
-                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25" />
                                         </svg>
                                         Click to compact context
@@ -807,35 +766,38 @@
                                 @endif
                             @elseif($hasNoContentBlocks)
                                 {{-- Fallback for old messages without content_blocks --}}
-                                <div class="chat-bubble-content">
+                                <div class="chat-bubble-content prose prose-sm max-w-none dark:prose-invert">
                                     {!! Str::markdown($message->content ?? '') !!}
                                 </div>
 
                                 @if($message->tool_calls && count($message->tool_calls) > 0)
-                                    <div x-data="{ showTools: false }" class="chat-tool-calls-container">
+                                    <div x-data="{ showTools: false }" class="mt-2">
                                         <button
                                             type="button"
                                             @click="showTools = !showTools"
-                                            class="chat-tool-toggle"
+                                            class="btn btn-ghost btn-xs gap-1"
                                         >
-                                            <span x-text="showTools ? '▼' : '▶'" class="chat-tool-toggle-icon"></span>
+                                            <span x-text="showTools ? '▼' : '▶'" class="text-xs"></span>
                                             <span>{{ count($message->tool_calls) }} tool {{ Str::plural('call', count($message->tool_calls)) }}</span>
                                         </button>
-                                        <div x-show="showTools" x-collapse class="chat-tool-calls">
+                                        <div x-show="showTools" x-collapse class="mt-1 space-y-1">
                                             @foreach($message->tool_calls as $tool)
-                                                <details class="chat-tool-call">
-                                                    <summary>{{ $tool['name'] ?? 'Tool' }}</summary>
-                                                    <pre>{{ json_encode($tool['input'] ?? [], JSON_PRETTY_PRINT) }}</pre>
-                                                </details>
+                                                <div class="collapse collapse-arrow bg-base-200/50 rounded-lg">
+                                                    <input type="checkbox">
+                                                    <div class="collapse-title text-xs font-medium py-1 min-h-0">{{ $tool['name'] ?? 'Tool' }}</div>
+                                                    <div class="collapse-content">
+                                                        <pre class="text-xs overflow-x-auto">{{ json_encode($tool['input'] ?? [], JSON_PRETTY_PRINT) }}</pre>
+                                                    </div>
+                                                </div>
                                             @endforeach
                                         </div>
                                     </div>
                                 @endif
 
-                                <div class="chat-message-meta">
-                                    <span class="chat-message-time">{{ $message->created_at->timezone(config('app.timezone'))->format('H:i') }}</span>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <span class="text-xs opacity-50">{{ $message->created_at->timezone(config('app.timezone'))->format('H:i') }}</span>
                                     @if($message->tokens_in || $message->tokens_out)
-                                        <span class="chat-tokens">
+                                        <span class="badge badge-ghost badge-xs">
                                             {{ number_format($message->tokens_in ?? 0) }} in /
                                             {{ number_format($message->tokens_out ?? 0) }} out
                                             @if($message->cost_usd)
@@ -850,9 +812,9 @@
                                     <button
                                         type="button"
                                         wire:click="sendCompactCommand"
-                                        class="chat-compact-action"
+                                        class="btn btn-ghost btn-xs mt-2 gap-1"
                                     >
-                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25" />
                                         </svg>
                                         Click to compact context
@@ -885,13 +847,13 @@
 
                     {{-- Show truncation notice if blocks were limited (with expand option) --}}
                     @if($truncated)
-                        <div wire:key="message-{{ $message->id }}-truncated" class="chat-message chat-message-assistant">
-                            <div class="chat-bubble chat-bubble-tool">
-                                <span class="chat-tool-block-notice chat-tool-block-notice-warning">
+                        <div wire:key="message-{{ $message->id }}-truncated" class="chat chat-start chat-message chat-message-assistant">
+                            <div class="chat-bubble chat-bubble-warning max-w-[85%] lg:max-w-[70%]">
+                                <span class="text-xs flex items-center gap-1 flex-wrap">
                                     ⚠️ Showing last {{ count($groupedBlocks) }} of {{ $totalBlockCount }} blocks ({{ $totalBlockCount - count($groupedBlocks) }} hidden for performance)
                                     <button
                                         wire:click="toggleExpandMessage({{ $message->id }})"
-                                        class="chat-tool-block-link"
+                                        class="link link-hover font-semibold"
                                     >
                                         Show all blocks
                                     </button>
@@ -900,13 +862,13 @@
                         </div>
                     @elseif($isExpanded && $totalBlockCount > \App\Models\Message::MAX_RENDERED_BLOCKS)
                         {{-- Show collapse option when expanded --}}
-                        <div wire:key="message-{{ $message->id }}-expanded" class="chat-message chat-message-assistant">
-                            <div class="chat-bubble chat-bubble-tool">
-                                <span class="chat-tool-block-notice chat-tool-block-notice-success">
+                        <div wire:key="message-{{ $message->id }}-expanded" class="chat chat-start chat-message chat-message-assistant">
+                            <div class="chat-bubble chat-bubble-success max-w-[85%] lg:max-w-[70%]">
+                                <span class="text-xs flex items-center gap-1 flex-wrap">
                                     Showing all {{ $totalBlockCount }} blocks
                                     <button
                                         wire:click="toggleExpandMessage({{ $message->id }})"
-                                        class="chat-tool-block-link"
+                                        class="link link-hover font-semibold"
                                     >
                                         Collapse
                                     </button>
@@ -928,15 +890,15 @@
                         @endphp
                         @if(($block['type'] ?? '') === 'text' && !empty($block['text']))
                             <div wire:key="message-{{ $message->id }}-grouped-{{ $blockIndex }}"
-                                 class="chat-message chat-message-assistant">
-                                <div class="chat-bubble chat-bubble-assistant">
-                                    <div class="chat-bubble-content">
+                                 class="chat chat-start chat-message chat-message-assistant">
+                                <div class="chat-bubble max-w-[85%] lg:max-w-[70%]">
+                                    <div class="chat-bubble-content prose prose-sm max-w-none dark:prose-invert">
                                         {!! $message->renderMarkdown($block['text']) !!}
                                     </div>
-                                    <div class="chat-message-meta">
-                                        <span class="chat-message-time">{{ $blockTimestamp }}</span>
+                                    <div class="flex items-center gap-2 mt-1">
+                                        <span class="text-xs opacity-50">{{ $blockTimestamp }}</span>
                                         @if($isLastBlock && ($message->tokens_in || $message->tokens_out))
-                                            <span class="chat-tokens">
+                                            <span class="badge badge-ghost badge-xs">
                                                 {{ number_format($message->tokens_in ?? 0) }} in /
                                                 {{ number_format($message->tokens_out ?? 0) }} out
                                                 @if($message->cost_usd)
@@ -950,24 +912,24 @@
                         @elseif(($block['type'] ?? '') === 'collapsed_text')
                             {{-- Collapsed short text blocks (stuck loop display) --}}
                             <div wire:key="message-{{ $message->id }}-grouped-{{ $blockIndex }}"
-                                 class="chat-message chat-message-assistant">
-                                <div class="chat-bubble chat-bubble-collapsed">
-                                    <span class="chat-collapsed-text">{{ $block['text'] }}</span>
-                                    <span class="chat-collapsed-count">{{ $block['count'] }}</span>
+                                 class="chat chat-start chat-message chat-message-assistant">
+                                <div class="chat-bubble bg-base-200 text-base-content max-w-[85%] lg:max-w-[70%]">
+                                    <span class="text-xs text-base-content/70 italic">{{ $block['text'] }}</span>
+                                    <span class="badge badge-sm badge-neutral ml-1">{{ $block['count'] }}</span>
                                 </div>
                             </div>
                         @elseif(($block['type'] ?? '') === 'tool_group')
                             <div wire:key="message-{{ $message->id }}-grouped-{{ $blockIndex }}"
-                                 class="chat-message chat-message-assistant">
-                                <div class="chat-bubble chat-bubble-tool">
+                                 class="chat chat-start chat-message chat-message-assistant">
+                                <div class="chat-bubble bg-base-200 text-base-content max-w-[85%] lg:max-w-[70%]">
                                     @if(count($block['tools']) === 1)
                                         @php
                                             $toolCommand = $block['tools'][0]['tool']['input']['command'] ?? null;
                                         @endphp
-                                        <div class="chat-tool-use">
-                                            <span class="chat-tool-use-icon">⚙</span>
+                                        <div class="flex items-center gap-1.5 text-xs">
+                                            <span class="opacity-60">⚙</span>
                                             <span
-                                                class="chat-tool-use-name"
+                                                class="font-mono text-xs opacity-80"
                                                 @if($toolCommand)
                                                     title="{{ $toolCommand }}"
                                                 @endif
@@ -976,24 +938,24 @@
                                             </span>
                                         </div>
                                     @else
-                                        <div x-data="{ showTools: false }" class="chat-tool-calls-container">
+                                        <div x-data="{ showTools: false }">
                                             <button
                                                 type="button"
                                                 @click="showTools = !showTools"
-                                                class="chat-tool-toggle"
+                                                class="btn btn-ghost btn-xs gap-1 -ml-1"
                                             >
-                                                <span x-text="showTools ? '▼' : '▶'" class="chat-tool-toggle-icon"></span>
+                                                <span x-text="showTools ? '▼' : '▶'" class="text-xs"></span>
                                                 <span>{{ count($block['tools']) }} tool {{ Str::plural('call', count($block['tools'])) }}</span>
                                             </button>
-                                            <div x-show="showTools" x-collapse class="chat-tool-calls">
+                                            <div x-show="showTools" x-collapse class="mt-1 space-y-1">
                                             @foreach($block['tools'] as $tool)
                                                 @php
                                                     $toolCommand = $tool['tool']['input']['command'] ?? null;
                                                 @endphp
-                                                <div class="chat-tool-use" style="margin-bottom: 0.25rem;">
-                                                    <span class="chat-tool-use-icon">⚙</span>
+                                                <div class="flex items-center gap-1.5 text-xs mb-1">
+                                                    <span class="opacity-60">⚙</span>
                                                     <span
-                                                        class="chat-tool-use-name"
+                                                        class="font-mono text-xs opacity-80"
                                                         @if($toolCommand)
                                                             title="{{ $toolCommand }}"
                                                         @endif
@@ -1005,10 +967,10 @@
                                         </div>
                                     </div>
                                     @endif
-                                    <div class="chat-message-meta">
-                                        <span class="chat-message-time">{{ $blockTimestamp }}</span>
+                                    <div class="flex items-center gap-2 mt-1">
+                                        <span class="text-xs opacity-50">{{ $blockTimestamp }}</span>
                                         @if($isLastBlock && ($message->tokens_in || $message->tokens_out))
-                                            <span class="chat-tokens">
+                                            <span class="badge badge-ghost badge-xs">
                                                 {{ number_format($message->tokens_in ?? 0) }} in /
                                                 {{ number_format($message->tokens_out ?? 0) }} out
                                                 @if($message->cost_usd)
@@ -1027,7 +989,7 @@
                                 $existingResponse = $this->getQuestionResponse($message->id, $toolId);
                             @endphp
                             <div wire:key="message-{{ $message->id }}-question-{{ $blockIndex }}"
-                                 class="chat-message chat-message-assistant"
+                                 class="chat chat-start chat-message chat-message-assistant"
                                  x-data="{
                                     responses: @js($existingResponse ?? []),
                                     submitted: {{ $existingResponse ? 'true' : 'false' }},
@@ -1079,92 +1041,92 @@
                                             });
                                     }
                                  }">
-                                <div class="chat-bubble chat-bubble-question">
-                                    <div class="chat-question-header">
-                                        <span class="chat-question-icon">❓</span>
-                                        <span class="chat-question-title">{{ $this->providerLabel }} needs your input</span>
+                                <div class="chat-bubble chat-bubble-info max-w-[85%] lg:max-w-[70%]">
+                                    <div class="flex items-center gap-2 font-semibold text-sm mb-2">
+                                        <span>❓</span>
+                                        <span>{{ $this->providerLabel }} needs your input</span>
                                     </div>
 
-                                    <div class="chat-questions-list">
+                                    <div class="space-y-4">
                                         @foreach($questions as $qIndex => $question)
-                                            <div class="chat-question-item">
+                                            <div class="space-y-2">
                                                 @if(!empty($question['header']))
-                                                    <span class="chat-question-chip">{{ $question['header'] }}</span>
+                                                    <span class="badge badge-outline badge-sm">{{ $question['header'] }}</span>
                                                 @endif
-                                                <p class="chat-question-text">{{ $question['question'] ?? 'Please select an option:' }}</p>
+                                                <p class="text-sm font-medium">{{ $question['question'] ?? 'Please select an option:' }}</p>
 
-                                                <div class="chat-question-options">
+                                                <div class="space-y-1.5">
                                                     @foreach($question['options'] ?? [] as $oIndex => $option)
                                                         @php $optionLabel = $option['label'] ?? $option['description'] ?? "Option " . ($oIndex + 1); @endphp
                                                         @if($question['multiSelect'] ?? false)
                                                             {{-- Multi-select: checkboxes --}}
-                                                            <label class="chat-question-option"
-                                                                   :class="{ 'selected': isMultiSelected({{ $qIndex }}, '{{ addslashes($optionLabel) }}'), 'disabled': submitted }">
+                                                            <label class="flex items-center gap-2 p-2 rounded-lg border border-base-300 cursor-pointer hover:bg-base-200 transition-colors"
+                                                                   :class="{ 'border-primary bg-primary/10': isMultiSelected({{ $qIndex }}, '{{ addslashes($optionLabel) }}'), 'opacity-50 pointer-events-none': submitted }">
                                                                 <input type="checkbox"
                                                                        :disabled="submitted"
                                                                        @change="toggleMultiSelect({{ $qIndex }}, '{{ addslashes($optionLabel) }}')"
                                                                        :checked="isMultiSelected({{ $qIndex }}, '{{ addslashes($optionLabel) }}')"
-                                                                       class="sr-only">
-                                                                <span class="chat-option-label">{{ $optionLabel }}</span>
+                                                                       class="checkbox checkbox-sm checkbox-primary">
+                                                                <span class="text-sm">{{ $optionLabel }}</span>
                                                                 @if(!empty($option['description']) && isset($option['label']))
-                                                                    <span class="chat-option-desc">{{ $option['description'] }}</span>
+                                                                    <span class="text-xs opacity-60">{{ $option['description'] }}</span>
                                                                 @endif
                                                             </label>
                                                         @else
                                                             {{-- Single select: radio buttons --}}
-                                                            <label class="chat-question-option"
-                                                                   :class="{ 'selected': responses[{{ $qIndex }}] === '{{ addslashes($optionLabel) }}', 'disabled': submitted }">
+                                                            <label class="flex items-center gap-2 p-2 rounded-lg border border-base-300 cursor-pointer hover:bg-base-200 transition-colors"
+                                                                   :class="{ 'border-primary bg-primary/10': responses[{{ $qIndex }}] === '{{ addslashes($optionLabel) }}', 'opacity-50 pointer-events-none': submitted }">
                                                                 <input type="radio"
                                                                        name="question-{{ $message->id }}-{{ $qIndex }}"
                                                                        value="{{ $optionLabel }}"
                                                                        :disabled="submitted"
                                                                        x-model="responses[{{ $qIndex }}]"
-                                                                       class="sr-only">
-                                                                <span class="chat-option-label">{{ $optionLabel }}</span>
+                                                                       class="radio radio-sm radio-primary">
+                                                                <span class="text-sm">{{ $optionLabel }}</span>
                                                                 @if(!empty($option['description']) && isset($option['label']))
-                                                                    <span class="chat-option-desc">{{ $option['description'] }}</span>
+                                                                    <span class="text-xs opacity-60">{{ $option['description'] }}</span>
                                                                 @endif
                                                             </label>
                                                         @endif
                                                     @endforeach
 
                                                     {{-- "Other" option with text input --}}
-                                                    <label class="chat-question-option chat-question-option-other"
-                                                           :class="{ 'selected': responses[{{ $qIndex }}] === '__other__', 'disabled': submitted }">
+                                                    <label class="flex items-center gap-2 p-2 rounded-lg border border-base-300 cursor-pointer hover:bg-base-200 transition-colors"
+                                                           :class="{ 'border-primary bg-primary/10': responses[{{ $qIndex }}] === '__other__', 'opacity-50 pointer-events-none': submitted }">
                                                         <input type="radio"
                                                                name="question-{{ $message->id }}-{{ $qIndex }}"
                                                                value="__other__"
                                                                :disabled="submitted"
                                                                x-model="responses[{{ $qIndex }}]"
-                                                               class="sr-only">
-                                                        <span class="chat-option-label">Other</span>
+                                                               class="radio radio-sm radio-primary">
+                                                        <span class="text-sm">Other</span>
                                                     </label>
                                                     <div x-show="responses[{{ $qIndex }}] === '__other__'" x-collapse>
                                                         <input type="text"
                                                                x-model="otherText[{{ $qIndex }}]"
                                                                :disabled="submitted"
                                                                placeholder="Enter your response..."
-                                                               class="chat-question-other-input">
+                                                               class="input input-bordered input-sm w-full mt-1">
                                                     </div>
                                                 </div>
                                             </div>
                                         @endforeach
                                     </div>
 
-                                    <div class="chat-question-actions">
+                                    <div class="mt-3">
                                         <button type="button"
                                                 @click="submit()"
                                                 :disabled="submitting || submitted || Object.keys(responses).length !== {{ count($questions) }}"
-                                                class="chat-question-submit"
-                                                :class="{ 'submitted': submitted }">
+                                                class="btn btn-sm btn-primary"
+                                                :class="{ 'btn-success': submitted }">
                                             <span x-show="!submitting && !submitted">Submit Response</span>
                                             <span x-show="submitting">Sending...</span>
                                             <span x-show="submitted">✓ Response Sent</span>
                                         </button>
                                     </div>
 
-                                    <div class="chat-message-meta">
-                                        <span class="chat-message-time">{{ $blockTimestamp }}</span>
+                                    <div class="flex items-center gap-2 mt-1">
+                                        <span class="text-xs opacity-50">{{ $blockTimestamp }}</span>
                                     </div>
                                 </div>
                             </div>
@@ -1174,12 +1136,12 @@
                 @endif
             @empty
                 @if(! $this->messagesLoaded && $this->lastMessageCount > 0)
-                    <div class="chat-empty">
-                        <p>Loading messages…</p>
+                    <div class="flex items-center justify-center h-full">
+                        <p class="text-base-content/50">Loading messages…</p>
                     </div>
                 @else
-                    <div class="chat-empty">
-                        <p>Start a conversation with {{ $this->providerLabel }}</p>
+                    <div class="flex items-center justify-center h-full">
+                        <p class="text-base-content/50">Start a conversation with {{ $this->providerLabel }}</p>
                     </div>
                 @endif
             @endforelse
@@ -1192,11 +1154,11 @@
                 $activityEvents = $latestAssistantMessage?->getActivityEvents() ?? [];
                 $showActivity = $this->currentProvider?->isCodex() && count($activityEvents) > 0;
             @endphp
-            <div class="chat-thinking">
-                <div class="chat-thinking-bubble">
-                    <div class="chat-thinking-content">
-                        <div class="chat-thinking-dot"></div>
-                        <span class="chat-thinking-text">
+            <div class="chat chat-start">
+                <div class="chat-bubble bg-base-200 text-base-content max-w-[85%] lg:max-w-[70%]">
+                    <div class="flex items-center gap-2">
+                        <span class="loading loading-dots loading-sm"></span>
+                        <span class="text-sm opacity-70">
                             @if($this->hasActiveSubagents && !$this->isRunning)
                                 Subagents working...
                             @else
@@ -1205,18 +1167,18 @@
                         </span>
                     </div>
                     @if($showActivity)
-                        <div x-data="{ showActivity: false }" class="chat-activity">
+                        <div x-data="{ showActivity: false }" class="mt-2">
                             <button
                                 type="button"
                                 @click="showActivity = !showActivity"
-                                class="chat-activity-toggle"
+                                class="btn btn-ghost btn-xs gap-1 -ml-1"
                             >
                                 <span x-text="showActivity ? '▼' : '▶'"></span>
                                 <span>Activity ({{ count($activityEvents) }})</span>
                             </button>
-                            <div x-show="showActivity" x-collapse class="chat-activity-log">
+                            <div x-show="showActivity" x-collapse class="mt-1 space-y-0.5">
                                 @foreach($activityEvents as $event)
-                                    <div class="chat-activity-line">{{ $event }}</div>
+                                    <div class="text-xs opacity-60 font-mono">{{ $event }}</div>
                                 @endforeach
                             </div>
                         </div>
@@ -1225,10 +1187,10 @@
                         type="button"
                         wire:click="stopRunning"
                         wire:loading.attr="disabled"
-                        class="chat-stop-btn"
+                        class="btn btn-error btn-xs mt-2 gap-1"
                         title="Stop {{ $this->providerLabel }}"
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1rem; height: 1rem;">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4">
                             <path fill-rule="evenodd" d="M4.5 7.5a3 3 0 013-3h9a3 3 0 013 3v9a3 3 0 01-3 3h-9a3 3 0 01-3-3v-9z" clip-rule="evenodd" />
                         </svg>
                         <span wire:loading.remove wire:target="stopRunning">Stop</span>
@@ -1241,32 +1203,32 @@
 
         {{-- Queued Messages (stacked above input) --}}
         @if($this->queuedMessages->isNotEmpty())
-            <div class="chat-queued-messages">
+            <div class="border-t border-base-300 bg-base-200/50 px-4 py-2 space-y-1.5">
                 @foreach($this->queuedMessages as $queuedMessage)
-                    <div wire:key="queued-{{ $queuedMessage->id }}" class="chat-queued-message">
-                        <div class="chat-queued-message-content">
+                    <div wire:key="queued-{{ $queuedMessage->id }}" class="flex items-center justify-between gap-2 bg-base-100 rounded-lg px-3 py-1.5 text-sm">
+                        <div class="flex items-center gap-2 min-w-0 flex-1">
                             @if($queuedMessage->images && count($queuedMessage->images) > 0)
-                                <span class="chat-queued-message-images">
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 1rem; height: 1rem;">
+                                <span class="flex items-center gap-1 text-base-content/60 shrink-0">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
                                     </svg>
                                     {{ count($queuedMessage->images) }}
                                 </span>
                             @endif
                             @if($queuedMessage->content)
-                                <span class="chat-queued-message-text">{{ Str::limit($queuedMessage->content, 100) }}</span>
+                                <span class="truncate text-base-content/80">{{ Str::limit($queuedMessage->content, 100) }}</span>
                             @endif
                         </div>
                         <button
                             type="button"
                             wire:click="deleteQueuedMessage({{ $queuedMessage->id }})"
-                            class="chat-queued-message-remove"
+                            class="btn btn-ghost btn-xs btn-circle"
                             title="Remove from queue"
                         >&times;</button>
                     </div>
                 @endforeach
-                <div class="chat-queued-label">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" style="width: 0.875rem; height: 0.875rem;">
+                <div class="flex items-center gap-1.5 text-xs text-base-content/50">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                     </svg>
                     {{ $this->queuedMessages->count() }} {{ Str::plural('message', $this->queuedMessages->count()) }} queued - will send when {{ $this->providerLabel }} finishes
@@ -1275,7 +1237,7 @@
         @endif
 
 {{-- Input --}}
-        <div class="chat-input-area"
+        <div class="shrink-0 border-t border-base-300 bg-base-100 p-3"
             x-data="{
                 prompt: '',
                 images: @entangle('images'),
@@ -1721,7 +1683,7 @@
                 @change="handleFileSelect($event)"
                 accept="image/*"
                 multiple
-                class="chat-file-input"
+                class="hidden"
             >
 
             {{-- Hidden file input fallback for audio selection --}}
@@ -1730,18 +1692,18 @@
                 x-ref="audioInput"
                 @change="handleAudioSelect($event)"
                 accept="audio/*"
-                class="chat-file-input"
+                class="hidden"
             >
 
-            <form @submit.prevent="submit()" class="chat-form">
+            <form @submit.prevent="submit()" class="flex items-end gap-2">
                 {{-- Attachment button (primarily for mobile) --}}
                 <button
                     type="button"
                     @click="openFilePicker()"
-                    class="chat-attach-btn"
+                    class="btn btn-ghost btn-sm btn-circle shrink-0"
                     title="Attach image"
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z" />
                         <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z" />
                     </svg>
@@ -1751,46 +1713,46 @@
                 <button
                     type="button"
                     @click="toggleRecording()"
-                    class="chat-voice-btn"
-                    :class="{ 'is-recording': isRecording, 'is-busy': isTranscribing }"
+                    class="btn btn-ghost btn-sm btn-circle shrink-0"
+                    :class="{ 'btn-error text-error-content': isRecording, 'btn-disabled opacity-50': isTranscribing }"
                     :disabled="isTranscribing"
                     :title="isRecording ? 'Stop recording' : 'Record voice message'"
                 >
                     <template x-if="!isRecording && !isTranscribing">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
                             <path d="M8.25 12a3.75 3.75 0 1 0 7.5 0V6a3.75 3.75 0 1 0-7.5 0v6Z" />
                             <path d="M6 10.5a.75.75 0 0 1 .75.75V12a5.25 5.25 0 0 0 10.5 0v-.75a.75.75 0 0 1 1.5 0V12a6.75 6.75 0 0 1-6 6.708V21a.75.75 0 0 1-1.5 0v-2.292A6.75 6.75 0 0 1 5.25 12v-.75A.75.75 0 0 1 6 10.5Z" />
                         </svg>
                     </template>
                     <template x-if="isRecording">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
                             <path fill-rule="evenodd" d="M4.5 7.5A3 3 0 0 1 7.5 4.5h9a3 3 0 0 1 3 3v9a3 3 0 0 1-3 3h-9a3 3 0 0 1-3-3v-9Z" clip-rule="evenodd" />
                         </svg>
                     </template>
                     <template x-if="isTranscribing">
-                        <span class="chat-voice-spinner" aria-hidden="true"></span>
+                        <span class="loading loading-spinner loading-xs" aria-hidden="true"></span>
                     </template>
                 </button>
 
-                <div class="chat-input-wrapper">
+                <div class="flex-1 min-w-0">
                     <template x-if="voiceError">
-                        <div class="chat-voice-error" x-text="voiceError"></div>
+                        <div class="text-error text-xs mb-1 px-1" x-text="voiceError"></div>
                     </template>
 
                     <template x-if="isRecording">
-                        <div class="chat-voice-recording">
-                            <span class="chat-voice-dot" aria-hidden="true"></span>
+                        <div class="flex items-center gap-2 text-sm text-error px-1 mb-1">
+                            <span class="w-2 h-2 rounded-full bg-error animate-pulse" aria-hidden="true"></span>
                             Recording <span x-text="recordingLabel"></span>
                         </div>
                     </template>
 
                     {{-- Image previews --}}
                     <template x-if="images.length > 0">
-                        <div class="chat-image-preview">
+                        <div class="flex flex-wrap gap-2 mb-2">
                             <template x-for="(image, index) in images" :key="index">
-                                <div class="chat-image-preview-item">
-                                    <img :src="image.data" :alt="image.name">
-                                    <button type="button" class="chat-image-preview-remove" @click="removeImage(index)">&times;</button>
+                                <div class="relative">
+                                    <img :src="image.data" :alt="image.name" class="w-16 h-16 rounded-lg object-cover">
+                                    <button type="button" class="btn btn-circle btn-xs btn-error absolute -top-1 -right-1" @click="removeImage(index)">&times;</button>
                                 </div>
                             </template>
                         </div>
@@ -1798,10 +1760,10 @@
 
                     {{-- Mode selector - only visible on first message --}}
                     @if($this->totalMessageCount === 0)
-                    <div class="chat-mode-selector">
+                    <div class="mb-2">
                         <select
                             wire:model="chatMode"
-                            class="chat-mode-select"
+                            class="select select-bordered select-xs w-full max-w-xs"
                         >
                             <option value="prd">Write PRD</option>
                             <option value="brainstorm">Brainstorm</option>
@@ -1818,25 +1780,25 @@
                         x-model="prompt"
                         placeholder="{{ $this->totalMessageCount === 0 ? $this->getModePlaceholder() : 'Type a message...' }}"
                         rows="1"
-                        class="chat-textarea chat-textarea-resizable"
+                        class="textarea textarea-bordered w-full min-h-[2.5rem] max-h-40 resize-none leading-snug"
                         @paste="handlePaste($event)"
                         @keydown.enter.prevent="if (!$event.shiftKey) submit()"
                     ></textarea>
                 </div>
                 <button
                     type="submit"
-                    class="chat-submit {{ $this->isRunning ? 'chat-submit-queue' : '' }}"
+                    class="btn btn-primary btn-circle shrink-0 {{ $this->isRunning ? 'btn-warning' : '' }}"
                     :disabled="!canSend"
                     title="{{ $this->isRunning ? 'Add to queue' : 'Send message' }}"
                 >
                     @if($this->isRunning)
                         {{-- Clock icon when queueing --}}
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.25rem; height: 1.25rem;">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
                             <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25ZM12.75 6a.75.75 0 0 0-1.5 0v6c0 .414.336.75.75.75h4.5a.75.75 0 0 0 0-1.5h-3.75V6Z" clip-rule="evenodd" />
                         </svg>
                     @else
                         {{-- Send icon normally --}}
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 1.25rem; height: 1.25rem;">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
                             <path d="M3.478 2.404a.75.75 0 0 0-.926.941l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.404Z" />
                         </svg>
                     @endif
@@ -1847,35 +1809,34 @@
 
     {{-- Deploy Modal --}}
     @if($showDeployModal)
-    <div class="file-preview-overlay">
-        <div class="file-preview-modal" style="max-width: 28rem;">
-            <div class="file-preview-header">
-                <h3 class="file-preview-title" style="font-family: inherit; font-size: 1.125rem; font-weight: 600;">Deploy to Site</h3>
-                <button wire:click="closeDeployModal" class="file-preview-close">
-                    <svg xmlns="http://www.w3.org/2000/svg" style="width: 1.25rem; height: 1.25rem;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <div class="modal modal-open">
+        <div class="modal-box max-w-md">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold">Deploy to Site</h3>
+                <button wire:click="closeDeployModal" class="btn btn-sm btn-circle btn-ghost">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                 </button>
             </div>
 
-            <div class="file-preview-content" style="padding: 1.5rem;">
-                <div style="margin-bottom: 1rem;">
-                    <label style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.25rem;">Subdomain</label>
-                    <div style="display: flex;">
+            <div class="space-y-4">
+                <div>
+                    <label class="label text-sm font-medium">Subdomain</label>
+                    <div class="flex">
                         <input
                             type="text"
                             wire:model="deploySubdomain"
-                            class="chat-textarea"
-                            style="border-radius: 0.5rem 0 0 0.5rem; flex: 1;"
+                            class="input input-bordered flex-1 rounded-r-none"
                             placeholder="my-feature"
                         >
-                        <span class="chat-deploy-domain-suffix">.marin.sh</span>
+                        <span class="inline-flex items-center rounded-r-lg border border-l-0 border-base-300 bg-base-200 px-3 text-sm text-base-content/70">.marin.sh</span>
                     </div>
                 </div>
 
-                <div class="chat-deploy-preview">
-                    <p style="margin: 0 0 0.5rem 0;">Preview:</p>
-                    <ul style="margin: 0; padding-left: 1.5rem;">
+                <div class="rounded-lg bg-base-200 p-3 text-sm">
+                    <p class="mb-2">Preview:</p>
+                    <ul class="list-disc pl-6">
                         <li>Branch: {{ $deploySubdomain ?: 'subdomain' }}</li>
                         <li>PHP: {{ $deployPhpVersion }}</li>
                         <li>Web directory: {{ $deployWebDirectory }}</li>
@@ -1885,48 +1846,49 @@
                 <button
                     type="button"
                     wire:click="$toggle('showAdvancedOptions')"
-                    class="chat-deploy-advanced-toggle"
+                    class="btn btn-ghost btn-sm px-0"
                 >
                     {{ $showAdvancedOptions ? '▼' : '▶' }} Advanced Options
                 </button>
 
                 @if($showAdvancedOptions)
-                    <div class="chat-deploy-advanced">
-                        <div style="margin-bottom: 0.75rem;">
-                            <label style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.25rem;">PHP Version</label>
-                            <select wire:model="deployPhpVersion" class="chat-textarea" style="width: 100%;">
+                    <div class="space-y-3">
+                        <div>
+                            <label class="label text-sm font-medium">PHP Version</label>
+                            <select wire:model="deployPhpVersion" class="select select-bordered w-full">
                                 <option value="8.4">8.4</option>
                                 <option value="8.3">8.3</option>
                                 <option value="8.2">8.2</option>
                             </select>
                         </div>
-                        <div style="margin-bottom: 0.75rem;">
-                            <label style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.25rem;">Web Directory</label>
-                            <input type="text" wire:model="deployWebDirectory" class="chat-textarea" style="width: 100%;">
+                        <div>
+                            <label class="label text-sm font-medium">Web Directory</label>
+                            <input type="text" wire:model="deployWebDirectory" class="input input-bordered w-full">
                         </div>
                         <div>
-                            <label style="display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.25rem;">Database Name (optional)</label>
-                            <input type="text" wire:model="deployDatabaseName" class="chat-textarea" style="width: 100%;">
+                            <label class="label text-sm font-medium">Database Name (optional)</label>
+                            <input type="text" wire:model="deployDatabaseName" class="input input-bordered w-full">
                         </div>
                     </div>
                 @endif
             </div>
 
-            <div class="chat-deploy-footer">
+            <div class="modal-action">
                 <button
                     wire:click="closeDeployModal"
-                    class="chat-deploy-cancel-btn"
+                    class="btn btn-ghost"
                 >
                     Cancel
                 </button>
                 <button
                     wire:click="deployToSite"
-                    class="chat-deploy-confirm-btn"
+                    class="btn btn-primary"
                 >
                     Deploy
                 </button>
             </div>
         </div>
+        <div class="modal-backdrop" wire:click="closeDeployModal"></div>
     </div>
     @endif
 
@@ -1937,14 +1899,12 @@
         @keydown.escape.window="open = false"
     >
         <template x-if="open">
-            <div
-                class="chat-image-lightbox-overlay"
-                @click.self="open = false"
-            >
-                <div class="chat-image-lightbox">
-                    <button class="chat-image-lightbox-close" @click="open = false">&times;</button>
-                    <img :src="src" :alt="alt" class="chat-image-lightbox-img">
+            <div class="modal modal-open">
+                <div class="modal-box max-w-4xl p-2">
+                    <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2 z-10" @click="open = false">&times;</button>
+                    <img :src="src" :alt="alt" class="w-full rounded">
                 </div>
+                <div class="modal-backdrop" @click="open = false"></div>
             </div>
         </template>
     </div>

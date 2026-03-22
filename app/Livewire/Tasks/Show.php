@@ -6,12 +6,13 @@ use App\Models\Task;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
-#[Layout('components.layouts.app')]
+#[Layout('layouts.chat')]
 class Show extends Component
 {
     public Task $task;
 
-    public string $activePanel = 'session-info';
+    /** @var array<string> */
+    public array $openPanels = [];
 
     public function mount(string $uuid): void
     {
@@ -24,11 +25,17 @@ class Show extends Component
         if (! $ownedViaRepository && ! $ownedDirectly) {
             abort(403);
         }
+
+        $this->openPanels = $user->setting('sidebar_panels', ['session-info']);
     }
 
-    public function setActivePanel(string $panel): void
+    public function togglePanel(string $panel): void
     {
-        $this->activePanel = $panel;
+        if (in_array($panel, $this->openPanels)) {
+            $this->openPanels = array_values(array_diff($this->openPanels, [$panel]));
+        } else {
+            $this->openPanels[] = $panel;
+        }
     }
 
     public function render(): \Illuminate\View\View
