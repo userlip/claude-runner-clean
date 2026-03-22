@@ -203,7 +203,7 @@
             "title": "[\/app] Wire task panels into task view: SessionInfoSidebar, FileBrowser, SnippetBrowser, TodoLists, RalphControlPanel",
             "githubIssue": 48,
             "priority": 12,
-            "passes": false,
+            "passes": true,
             "acceptanceCriteria": [
                 "All six panels render correctly inside `\/app\/tasks\/{task}` layout",
                 "`SessionInfoSidebar` has no `wire:poll` \u2014 updates arrive via `TaskStatusUpdated` broadcast event",
@@ -220,7 +220,7 @@
             "title": "[\/app] Move TaskChat to \/app\/tasks\/{task}, replace polling with Reverb",
             "githubIssue": 47,
             "priority": 13,
-            "passes": false,
+            "passes": true,
             "acceptanceCriteria": [
                 "`GET \/app\/tasks\/{task}` returns 200 for task owner, 403 for non-owner",
                 "`TaskChat` component renders correctly inside the `\/app` layout (not Filament shell)",
@@ -241,7 +241,7 @@
             "title": "[\/app] Move RecentChats to sidebar, replace polling with Reverb",
             "githubIssue": 46,
             "priority": 14,
-            "passes": false,
+            "passes": true,
             "acceptanceCriteria": [
                 "`\/app` sidebar shows the recent chats list for authenticated users",
                 "No `wire:poll` attribute exists on the RecentChats component root element",
@@ -260,7 +260,7 @@
             "title": "[\/app] Real-time: Install Laravel Reverb + Echo, define broadcast channels",
             "githubIssue": 45,
             "priority": 15,
-            "passes": false,
+            "passes": true,
             "acceptanceCriteria": [
                 "`php artisan reverb:start` runs without errors",
                 "`BROADCAST_CONNECTION=reverb` is set and Laravel recognises Reverb as the driver",
@@ -278,7 +278,7 @@
             "title": "[\/app] Foundation: shell layout, Mary UI, routing, auth",
             "githubIssue": 44,
             "priority": 16,
-            "passes": false,
+            "passes": true,
             "acceptanceCriteria": [
                 "Mary UI is installed and its components are usable in Blade views",
                 "`GET \/app` returns 200 for authenticated users and redirects to login for guests",

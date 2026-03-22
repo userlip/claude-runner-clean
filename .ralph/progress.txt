@@ -220,3 +220,91 @@ STORY-10 complete. All 26 tests pass.
   - For unique email validation on edit, append `,{id}` to the rule: `'unique:users,email,{$this->user->id}'`
   - `same:passwordConfirmation` rule works against Livewire public properties by camelCase name
 ---
+
+
+Let me look at existing similar CRUD implementations to follow the same patterns.
+I have all the context needed. Now I'll implement STORY-11.
+All 16 tests pass. Now commit.
+Now update the PRD and progress log.
+STORY-11 complete. All 16 tests pass.
+
+**What was implemented:**
+- `App\Livewire\Users\Index` — `/app/users` list with pagination, sorting, search by name or email
+- `App\Livewire\Users\Form` — create/edit; leaving password blank on edit preserves existing hash
+- Routes added under `role:admin` middleware
+- 16 feature tests covering access control (403 for non-admin), list, search, create, edit, password preservation, and delete
+
+## 2026-03-22 - STORY-12
+- Created `App\Events\TaskStatusUpdated` — ShouldBroadcast event on `PrivateChannel('tasks.{uuid}')`
+- Updated `App\Livewire\SessionInfoSidebar` — added `#[On('task-status-updated')]` to `refresh()`, removed `wire:poll` from the blade
+- Created `App\Livewire\Tasks\Show` — full-page Livewire component at `/app/tasks/{uuid}` (auth-gated, not admin-only); all 6 panels embedded as lazy-loaded sub-components
+- Created `resources/views/livewire/tasks/show.blade.php` — Alpine.js tabs for panel toggling + Livewire `lazy` attribute on each panel component
+- Added route `GET /app/tasks/{uuid}` using `Tasks\Show` — before the admin-only `tasks` group
+- 6 feature tests in `TaskViewTest`: login redirect, 200 for auth, panel tabs rendered, toggle works, no `wire:poll`, `task-status-updated` event causes refresh
+- Files changed: `app/Events/TaskStatusUpdated.php`, `app/Livewire/SessionInfoSidebar.php`, `app/Livewire/Tasks/Show.php`, `resources/views/livewire/session-info-sidebar.blade.php`, `resources/views/livewire/tasks/show.blade.php`, `routes/web.php`, `tests/Feature/Livewire/TaskViewTest.php`
+- **Learnings for future iterations:**
+  - `#[On('event-name')]` attribute on a Livewire method registers it as an event listener — works with `$component->dispatch('event-name')` in tests
+  - `TaskStatusUpdated` is broadcast on `PrivateChannel('tasks.{uuid}')` — needs Reverb (STORY-15) to actually broadcast; for now Livewire events handle refresh in tests
+  - The route `/app/tasks/{uuid}` is NOT admin-only — any authenticated user can access it (owner check will be added in STORY-13)
+  - Unauthenticated access to `/app/tasks/{uuid}` redirects to `/admin/login` (Filament override), not `/login`
+  - Lazy-loaded Livewire sub-components show placeholders in initial render; `html()` won't contain sub-component names — test tab button text instead
+---
+
+
+Now let me look at the existing tests and the task view:
+Let me check the Task model's user relationship and look at the existing task tests:
+Now I have enough context. Let me implement STORY-12:
+**Step 1: Create the `TaskStatusUpdated` event**
+**Step 2: Update `SessionInfoSidebar` — add `#[On]` listener:**
+**Step 3: Remove `wire:poll` from session-info-sidebar blade:**
+**Step 4: Create `Tasks\Show` Livewire component:**
+**Step 5: Create the show blade view:**
+**Step 6: Add the route:**
+**Step 7: Write feature tests:**
+Let me also check that `RalphControlPanel` can render in tests by looking at its view:
+Let me update the test to be more robust — the lazy loading means sub-components won't appear in the initial HTML:
+The redirect goes to `/admin/login` (Filament's login), not `/login`. Fixing the test:
+All 6 tests pass. Let me verify the existing panel tests still pass:
+No existing tests for TodoList/TodoMobile — those are implicitly passing. Let me run pint and commit:
+Now update the PRD and progress log:
+
+
+STORY-13 is the highest priority incomplete story. Let me explore the current state.
+Now let me look at the task show view and the TaskChat blade to understand what's already there.
+Let me look at the task show view and understand what needs to change.
+Now I have a full picture. Let me implement the changes:
+Now let me update the `tasks/show.blade.php` to embed TaskChat:
+Let me add a test to RecentChatsTest to verify URLs are correct, then run pint and tests:
+All tests pass. Let me also run the other related tests:
+The failing test is pre-existing (unrelated CSS palette check). All STORY-13 tests pass. Let me commit:
+Now let me update the PRD and progress log:
+
+
+Now let me explore the current state of the relevant files.
+Now I have a clear picture. Let me check how tasks are created/updated to know where to fire the event:
+Now I have everything I need. Let me implement STORY-14:
+Now update the `RecentChats` component:
+Now remove `wire:poll` from the blade:
+Now remove the Filament SIDEBAR_FOOTER renderHook:
+Now update the tests:
+My `TaskObserver` breaks all task-creating tests. The fix: add `BROADCAST_CONNECTION=log` to phpunit.xml so events don't try to use Pusher in tests.
+Now fix the route name issue — let me check what the `/app` route is named:
+The `/app` route is named `app.home`, not `app`. Fix the test:
+The `/app.home` route view is missing `<livewire:recent-chats />`. I need to add it to the app view and include Livewire scripts:
+
+
+Let me explore the existing codebase to understand what broadcast events exist and the current setup.
+Now let me update the channels.php with private channel auth and create the third event:
+Now create the third broadcast event:
+Now initialize Echo in bootstrap.js:
+Now create the channel authorization tests:
+
+## 2026-03-22 - STORY-16
+- Added sidebar nav items to `resources/views/app.blade.php` — `<ul id="app-nav-items">` with links to `/app/tasks`, `/app/repositories`, `/app/personas`, `/app/playbooks`, `/app/snippets`, `/app/proposals`, `/app/sites`, `/app/schedules`
+- Moved admin link inside `@auth` block with role check (same logic, cleaner structure)
+- Created `tests/Feature/AppShellTest.php` with 6 tests covering all STORY-16 criteria
+- Files changed: `resources/views/app.blade.php`, `tests/Feature/AppShellTest.php`
+- **Learnings for future iterations:**
+  - STORY-16 was largely already done by earlier stories — most criteria (Mary UI, auth, routing) were already met; only the sidebar nav items were missing
+  - All existing tests (AdminNavLinkTest, HomeRedirectTest) continued passing with no changes
+---
