@@ -2,6 +2,10 @@
 
 use App\Http\Controllers\GitHubAuthController;
 use App\Livewire\MajorUpgradeRuns\Index as MajorUpgradeRunsIndex;
+use App\Livewire\PromotionDirectories\Form as PromotionDirectoryForm;
+use App\Livewire\PromotionDirectories\Index as PromotionDirectoriesIndex;
+use App\Livewire\Proposals\Form as ProposalForm;
+use App\Livewire\Proposals\Index as ProposalsIndex;
 use App\Livewire\ResearchReports\Index as ResearchReportsIndex;
 use App\Livewire\ResearchReports\Show as ResearchReportShow;
 use App\Livewire\ScrappApis\Form as ScrappApiForm;
@@ -35,6 +39,18 @@ Route::middleware(['auth'])->prefix('app')->group(function () {
 
     Route::middleware(['role:admin'])->prefix('security-runs')->group(function () {
         Route::get('/', SecurityRunsIndex::class)->name('app.security-runs.index');
+    });
+
+    Route::middleware(['role:admin'])->prefix('proposals')->group(function () {
+        Route::get('/', ProposalsIndex::class)->name('app.proposals.index');
+        Route::get('/create', ProposalForm::class)->name('app.proposals.create');
+        Route::get('/{uuid}/edit', ProposalForm::class)->name('app.proposals.edit');
+    });
+
+    Route::middleware(['role:admin'])->prefix('promotion-directories')->group(function () {
+        Route::get('/', PromotionDirectoriesIndex::class)->name('app.promotion-directories.index');
+        Route::get('/create', PromotionDirectoryForm::class)->name('app.promotion-directories.create');
+        Route::get('/{uuid}/edit', PromotionDirectoryForm::class)->name('app.promotion-directories.edit');
     });
 });
 
