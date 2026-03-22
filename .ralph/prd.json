@@ -185,7 +185,7 @@
             "title": "[\/app] CRUD: Users \u2014 Livewire list + create\/edit with Mary UI",
             "githubIssue": 49,
             "priority": 11,
-            "passes": false,
+            "passes": true,
             "acceptanceCriteria": [
                 "`\/app\/users` lists all users in a paginated, sortable Mary UI table",
                 "Search filters the table in real-time",

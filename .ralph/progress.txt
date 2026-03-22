@@ -181,3 +181,42 @@ Now update PRD and progress:
   - `AiProviderFactory` always creates name='claude' with unique constraint — when multiple TaskSchedules are created in the same test, share a single AiProvider to avoid UniqueConstraintViolationException
   - Inline toggle pattern: `wire:click="toggleActive({{ $model->id }})"` + `<x-toggle :checked="$model->is_active" />` inside `@scope('cell_is_active', $model)` in the table
 ---
+
+
+Now let me check the existing factories and related tests:
+Now I have all the context. Let me implement STORY-10.
+Now the Schedules Form:
+Now let me add routes:
+Now let me write the feature tests:
+Now run pint and tests:
+Two failures to fix. Let me check the migration:
+Two issues to fix:
+1. `repository_id` is NOT NULL in DB - need to make it required in the form
+2. AiProvider factory creates unique name "claude" which conflicts on second factory call
+
+Fix the Form validation and tests:
+Now fix the tests:
+Also update the validation test to include `repositoryId`:
+All 26 tests pass. Let me commit:
+Now update `prd.json` and `progress.txt`:
+STORY-10 complete. All 26 tests pass.
+
+**What was implemented:**
+- `App\Livewire\Tasks\Index` + `Form` — `/app/tasks` CRUD with searchable, sortable Mary UI table
+- `App\Livewire\Schedules\Index` + `Form` — `/app/schedules` CRUD with inline `toggleActive()` for the `is_active` toggle
+- Routes added under `role:admin` middleware for both resources
+- 26 feature tests covering access control, list, create, edit, delete, and the active toggle
+
+**Key gotcha:** `task_schedules.repository_id` is NOT NULL in the DB (required), and `AiProviderFactory` hardcodes name='claude' with a unique constraint — tests sharing multiple factory-created TaskSchedules need to share a single AiProvider instance.
+
+## 2026-03-22 - STORY-11
+- Created `App\Livewire\Users\Index` — `/app/users` paginated, sortable, searchable (name or email) Mary UI table with delete
+- Created `App\Livewire\Users\Form` — create/edit form; leaving password blank on edit does NOT reset password (uses `filled()` guard)
+- Added routes under `role:admin` middleware: index, create, `/{id}/edit`
+- 16 feature tests covering access control (403 for non-admin), list, search, create, edit, delete, password preservation
+- Files changed: `app/Livewire/Users/Index.php`, `app/Livewire/Users/Form.php`, `resources/views/livewire/users/index.blade.php`, `resources/views/livewire/users/form.blade.php`, `routes/web.php`, `tests/Feature/Livewire/UsersTest.php`
+- **Learnings for future iterations:**
+  - Use `filled()` (not `!empty()`) to check whether a nullable string field was provided — handles empty string correctly
+  - For unique email validation on edit, append `,{id}` to the rule: `'unique:users,email,{$this->user->id}'`
+  - `same:passwordConfirmation` rule works against Livewire public properties by camelCase name
+---
