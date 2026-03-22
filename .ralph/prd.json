@@ -39,7 +39,7 @@
             "title": "[\/app] PWA: web manifest, service worker, installable on desktop + mobile",
             "githubIssue": 58,
             "priority": 2,
-            "passes": false,
+            "passes": true,
             "acceptanceCriteria": [
                 "`\/app-manifest.json` returns valid JSON with correct `start_url`, `display`, `icons`",
                 "`\/app` layout includes `<link rel=\"manifest\">` and theme-color meta tag",
@@ -57,7 +57,7 @@
             "title": "[\/app] Admin nav link + role gating in sidebar",
             "githubIssue": 57,
             "priority": 3,
-            "passes": false,
+            "passes": true,
             "acceptanceCriteria": [
                 "Admin role users see an \"Admin\" link in the `\/app` sidebar",
                 "Non-admin users do not see the Admin link",

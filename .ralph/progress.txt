@@ -21,3 +21,25 @@ Started: 2026-03-22 12:07:30
   - Factory users get 200 on `/admin` without any role setup
   - The `/app` view stub just needs to exist; content is built in STORY-16
 ---
+
+## 2026-03-22 - STORY-2
+- Added `/app-manifest.json` route in `routes/web.php` returning JSON with `start_url: /app`, `display: standalone`, and icon entries
+- Updated `resources/views/app.blade.php` with `<link rel="manifest">`, `<meta name="theme-color">`, and service worker registration script
+- Created `tests/Feature/AppManifestTest.php` with 7 tests covering manifest JSON shape and layout meta tags
+- Files changed: `routes/web.php`, `resources/views/app.blade.php`, `tests/Feature/AppManifestTest.php`
+- **Learnings for future iterations:**
+  - `tomatophp/filament-pwa` registers `/manifest.json` (for Filament/admin), we added a separate `/app-manifest.json` for the `/app` shell
+  - Content-Type for web manifests should be `application/manifest+json`
+  - Service worker at `/public/serviceworker.js` already existed — registration is wired in the Blade layout
+---
+
+## 2026-03-22 - STORY-3
+- Added sidebar nav to `resources/views/app.blade.php` with Admin link conditionally rendered via `auth()->user()->hasRole('admin')` (Spatie Permission)
+- Admin link has `id="admin-nav-link"` and `href="/admin"`
+- Created `tests/Feature/AdminNavLinkTest.php` with 2 tests: admin sees link, non-admin does not
+- Files changed: `resources/views/app.blade.php`, `tests/Feature/AdminNavLinkTest.php`
+- **Learnings for future iterations:**
+  - Use `Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web'])` in tests to ensure the role exists before assigning
+  - `assertSee`/`assertDontSee` second arg `false` disables HTML escaping — use this to check raw HTML attributes like `id="..."`
+  - The roles table is empty in production; roles are created on demand in tests
+---
