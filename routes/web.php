@@ -10,11 +10,15 @@ use App\Livewire\PromotionDirectories\Form as PromotionDirectoryForm;
 use App\Livewire\PromotionDirectories\Index as PromotionDirectoriesIndex;
 use App\Livewire\Proposals\Form as ProposalForm;
 use App\Livewire\Proposals\Index as ProposalsIndex;
+use App\Livewire\Repositories\Form as RepositoryForm;
+use App\Livewire\Repositories\Index as RepositoriesIndex;
 use App\Livewire\ResearchReports\Index as ResearchReportsIndex;
 use App\Livewire\ResearchReports\Show as ResearchReportShow;
 use App\Livewire\ScrappApis\Form as ScrappApiForm;
 use App\Livewire\ScrappApis\Index as ScrappApiIndex;
 use App\Livewire\SecurityRuns\Index as SecurityRunsIndex;
+use App\Livewire\Sites\Form as SiteForm;
+use App\Livewire\Sites\Index as SitesIndex;
 use App\Livewire\Snippets\Form as SnippetForm;
 use App\Livewire\Snippets\Index as SnippetsIndex;
 use Illuminate\Support\Facades\Route;
@@ -75,6 +79,18 @@ Route::middleware(['auth'])->prefix('app')->group(function () {
         Route::get('/', SnippetsIndex::class)->name('app.snippets.index');
         Route::get('/create', SnippetForm::class)->name('app.snippets.create');
         Route::get('/{id}/edit', SnippetForm::class)->name('app.snippets.edit');
+    });
+
+    Route::middleware(['role:admin'])->prefix('sites')->group(function () {
+        Route::get('/', SitesIndex::class)->name('app.sites.index');
+        Route::get('/create', SiteForm::class)->name('app.sites.create');
+        Route::get('/{id}/edit', SiteForm::class)->name('app.sites.edit');
+    });
+
+    Route::middleware(['role:admin'])->prefix('repositories')->group(function () {
+        Route::get('/', RepositoriesIndex::class)->name('app.repositories.index');
+        Route::get('/create', RepositoryForm::class)->name('app.repositories.create');
+        Route::get('/{id}/edit', RepositoryForm::class)->name('app.repositories.edit');
     });
 });
 
