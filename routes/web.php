@@ -14,6 +14,8 @@ use App\Livewire\Repositories\Form as RepositoryForm;
 use App\Livewire\Repositories\Index as RepositoriesIndex;
 use App\Livewire\ResearchReports\Index as ResearchReportsIndex;
 use App\Livewire\ResearchReports\Show as ResearchReportShow;
+use App\Livewire\Schedules\Form as ScheduleForm;
+use App\Livewire\Schedules\Index as SchedulesIndex;
 use App\Livewire\ScrappApis\Form as ScrappApiForm;
 use App\Livewire\ScrappApis\Index as ScrappApiIndex;
 use App\Livewire\SecurityRuns\Index as SecurityRunsIndex;
@@ -21,6 +23,8 @@ use App\Livewire\Sites\Form as SiteForm;
 use App\Livewire\Sites\Index as SitesIndex;
 use App\Livewire\Snippets\Form as SnippetForm;
 use App\Livewire\Snippets\Index as SnippetsIndex;
+use App\Livewire\Tasks\Form as TaskForm;
+use App\Livewire\Tasks\Index as TasksIndex;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -91,6 +95,18 @@ Route::middleware(['auth'])->prefix('app')->group(function () {
         Route::get('/', RepositoriesIndex::class)->name('app.repositories.index');
         Route::get('/create', RepositoryForm::class)->name('app.repositories.create');
         Route::get('/{id}/edit', RepositoryForm::class)->name('app.repositories.edit');
+    });
+
+    Route::middleware(['role:admin'])->prefix('tasks')->group(function () {
+        Route::get('/', TasksIndex::class)->name('app.tasks.index');
+        Route::get('/create', TaskForm::class)->name('app.tasks.create');
+        Route::get('/{id}/edit', TaskForm::class)->name('app.tasks.edit');
+    });
+
+    Route::middleware(['role:admin'])->prefix('schedules')->group(function () {
+        Route::get('/', SchedulesIndex::class)->name('app.schedules.index');
+        Route::get('/create', ScheduleForm::class)->name('app.schedules.create');
+        Route::get('/{id}/edit', ScheduleForm::class)->name('app.schedules.edit');
     });
 });
 
