@@ -15,6 +15,8 @@ use App\Livewire\ResearchReports\Show as ResearchReportShow;
 use App\Livewire\ScrappApis\Form as ScrappApiForm;
 use App\Livewire\ScrappApis\Index as ScrappApiIndex;
 use App\Livewire\SecurityRuns\Index as SecurityRunsIndex;
+use App\Livewire\Snippets\Form as SnippetForm;
+use App\Livewire\Snippets\Index as SnippetsIndex;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -67,6 +69,12 @@ Route::middleware(['auth'])->prefix('app')->group(function () {
         Route::get('/', PlaybooksIndex::class)->name('app.playbooks.index');
         Route::get('/create', PlaybookForm::class)->name('app.playbooks.create');
         Route::get('/{id}/edit', PlaybookForm::class)->name('app.playbooks.edit');
+    });
+
+    Route::middleware(['role:admin'])->prefix('snippets')->group(function () {
+        Route::get('/', SnippetsIndex::class)->name('app.snippets.index');
+        Route::get('/create', SnippetForm::class)->name('app.snippets.create');
+        Route::get('/{id}/edit', SnippetForm::class)->name('app.snippets.edit');
     });
 });
 
