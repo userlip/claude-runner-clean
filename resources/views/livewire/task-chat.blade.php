@@ -43,9 +43,9 @@
 }">
     {{-- Mobile Header (shown only on mobile) --}}
     <div class="chat-mobile-header navbar bg-base-100 border-b border-base-300 px-2 py-1 lg:hidden sticky top-0 z-50">
-        <div class="navbar-start w-auto">
+        <div class="navbar-start w-auto shrink-0">
             <a
-                href="{{ route('filament.admin.resources.tasks.index') }}"
+                href="{{ route('workbench.tasks.index') }}"
                 class="btn btn-ghost btn-sm btn-circle"
                 wire:navigate
             >
@@ -54,7 +54,7 @@
                 </svg>
             </a>
         </div>
-        <div class="navbar-center flex-1 min-w-0 px-2">
+        <div class="navbar-center flex-1 min-w-0 px-2 overflow-hidden">
             <div class="flex flex-col items-center min-w-0 w-full">
                 <h1 class="text-sm font-semibold text-base-content truncate max-w-full">{{ $task->title ?? ($task->repository?->name ?? 'Chat') }}</h1>
                 @if($task->taskSchedule)
@@ -87,7 +87,7 @@
                 </p>
             </div>
         </div>
-        <div class="navbar-end w-auto flex items-center gap-1">
+        <div class="navbar-end w-auto shrink-0 flex items-center gap-1 relative z-[60]">
             {{-- Context indicator --}}
             <div class="flex items-center gap-1" title="{{ $task->is_compacting ? 'Compacting conversation...' : number_format($this->contextUsed) . ' / ' . number_format($this->contextLimit) . ' tokens' }}">
                 @if($task->is_compacting)
@@ -106,13 +106,13 @@
                 @endif
             </div>
             {{-- Menu button --}}
-            <div class="dropdown dropdown-end">
-                <button @click="mobileMenuOpen = !mobileMenuOpen" tabindex="0" class="btn btn-ghost btn-sm btn-circle">
+            <div class="relative">
+                <button @click.stop="mobileMenuOpen = !mobileMenuOpen" type="button" class="btn btn-ghost btn-sm btn-circle">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 12.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 18.75a.75.75 0 110-1.5.75.75 0 010 1.5z" />
                     </svg>
                 </button>
-                {{-- Mobile Dropdown Menu --}}
+                {{-- Mobile Dropdown Menu (fixed position to avoid overflow clipping) --}}
                 <div
                     x-show="mobileMenuOpen"
                     @click.away="mobileMenuOpen = false"
@@ -122,7 +122,7 @@
                     x-transition:leave="transition ease-in duration-75"
                     x-transition:leave-start="opacity-100 scale-100"
                     x-transition:leave-end="opacity-0 scale-95"
-                    class="dropdown-content menu bg-base-200 rounded-box z-50 w-64 p-2 shadow-lg border border-base-300 mt-2"
+                    class="fixed right-2 top-14 menu bg-base-200 rounded-box z-[100] w-64 p-2 shadow-lg border border-base-300 max-h-[80vh] overflow-y-auto"
                     x-cloak
                 >
                     {{-- Provider selector --}}
