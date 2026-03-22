@@ -13,6 +13,32 @@ Route::middleware(['auth'])->prefix('app')->group(function () {
     })->name('app.home');
 });
 
+Route::get('/app-manifest.json', function () {
+    return response()->json([
+        'name' => config('app.name'),
+        'short_name' => config('app.name'),
+        'start_url' => '/app',
+        'display' => 'standalone',
+        'background_color' => '#ffffff',
+        'theme_color' => '#000000',
+        'orientation' => 'portrait',
+        'icons' => [
+            [
+                'src' => '/images/icons/icon-192x192.png',
+                'sizes' => '192x192',
+                'type' => 'image/png',
+                'purpose' => 'any maskable',
+            ],
+            [
+                'src' => '/images/icons/icon-512x512.png',
+                'sizes' => '512x512',
+                'type' => 'image/png',
+                'purpose' => 'any maskable',
+            ],
+        ],
+    ])->header('Content-Type', 'application/manifest+json');
+})->name('app.manifest');
+
 Route::get('/ide-auth-check', function () {
     return auth()->check() ? response('OK') : response('Unauthorized', 401);
 })->middleware('web')->name('ide.auth-check');
