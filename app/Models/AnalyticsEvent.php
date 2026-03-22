@@ -61,7 +61,7 @@ class AnalyticsEvent extends Model
 
         $agentSeconds = 0;
         if ($task->started_at && $task->completed_at) {
-            $agentSeconds = $task->completed_at->diffInSeconds($task->started_at);
+            $agentSeconds = max(0, (int) abs($task->completed_at->diffInSeconds($task->started_at)));
         }
 
         return self::create([

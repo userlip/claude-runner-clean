@@ -18,7 +18,7 @@ return new class extends Migration
             $table->unsignedBigInteger('tokens_in')->default(0);
             $table->unsignedBigInteger('tokens_out')->default(0);
             $table->decimal('cost_usd', 10, 6)->default(0);
-            $table->unsignedInteger('agent_seconds')->default(0);
+            $table->integer('agent_seconds')->default(0);
             $table->unsignedInteger('compaction_count')->default(0);
             $table->unsignedInteger('ralph_iterations')->default(0);
             $table->json('tool_usage')->nullable();
