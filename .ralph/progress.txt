@@ -142,3 +142,42 @@ Also add the Persona slug pattern to the Codebase Patterns section:
   - `user_id` defaults to `auth()->id()` on create (admin creates snippets owned by themselves)
   - Livewire property `sortOrder` maps to DB column `sort_order` — use `array_merge($data, ['sort_order' => $validated['sortOrder']])` to map correctly
 ---
+
+
+Now let me check an existing Livewire CRUD pair to follow the established pattern:
+Now I have everything I need. Snippet uses `id` (no uuid/slug). Let me implement STORY-8:
+Good. Now let me create everything:
+All 19 tests pass. Now run pint:
+Now update prd.json and progress.txt:
+STORY-8 is complete. 19 tests pass (12 new + 7 existing `SnippetBrowserTest` unaffected).
+
+**Summary:**
+- `App\Livewire\Snippets\Index` — paginated, sortable, searchable table
+- `App\Livewire\Snippets\Form` — create/edit with validation, `user_id` defaults to `auth()->id()`
+- Routes under `role:admin` at `/app/snippets` using plain `id` (same pattern as Playbooks)
+- Blade views with Mary UI components
+- Feature tests: access control, list, search, delete, create, edit
+
+
+Now let me look at an existing CRUD implementation (Snippets) as the pattern to follow, and check factories:
+Now I have everything I need. Let me check the ValueTier enum and then implement everything:
+Now create the Repositories components:
+Now update routes and write tests:
+Now write the feature tests:
+`github_id` is NOT NULL. I'll add it to the form as an optional field with a generated placeholder:
+Several fields are NOT NULL: `clone_url`, `ssh_url`. I'll generate these from the `full_name`:
+All 26 tests pass. Run pint and commit:
+Now update PRD and progress:
+
+## 2026-03-22 - STORY-10
+- Created `App\Livewire\Tasks\Index` + `Form` Livewire components for `/app/tasks`
+- Created `App\Livewire\Schedules\Index` + `Form` Livewire components for `/app/schedules`
+- Schedules Index has inline `toggleActive($id)` method for the `is_active` toggle
+- Added routes under `role:admin` middleware for both resources (index, create, `/{id}/edit`)
+- Created Blade views using Mary UI `<x-table>`, `<x-form>`, `<x-toggle>`, `<x-textarea>`
+- Files changed: `app/Livewire/Tasks/{Index,Form}.php`, `app/Livewire/Schedules/{Index,Form}.php`, `resources/views/livewire/tasks/{index,form}.blade.php`, `resources/views/livewire/schedules/{index,form}.blade.php`, `routes/web.php`, `tests/Feature/Livewire/{Tasks,Schedules}Test.php`
+- **Learnings for future iterations:**
+  - `task_schedules.repository_id` is NOT NULL in DB — make it required in form validation
+  - `AiProviderFactory` always creates name='claude' with unique constraint — when multiple TaskSchedules are created in the same test, share a single AiProvider to avoid UniqueConstraintViolationException
+  - Inline toggle pattern: `wire:click="toggleActive({{ $model->id }})"` + `<x-toggle :checked="$model->is_active" />` inside `@scope('cell_is_active', $model)` in the table
+---
