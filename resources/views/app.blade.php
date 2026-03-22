@@ -9,8 +9,15 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 </head>
 <body>
-    <div id="app">
-        @yield('content')
+    <div id="app" class="flex">
+        <nav id="app-sidebar">
+            @if(auth()->check() && auth()->user()->hasRole('admin'))
+                <a href="/admin" id="admin-nav-link">Admin</a>
+            @endif
+        </nav>
+        <main>
+            @yield('content')
+        </main>
     </div>
 
     <script>
