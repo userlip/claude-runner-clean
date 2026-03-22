@@ -5,6 +5,7 @@ namespace App\Livewire;
 use App\Models\Task;
 use Illuminate\Support\Facades\Process;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 class SessionInfoSidebar extends Component
@@ -94,8 +95,9 @@ class SessionInfoSidebar extends Component
     }
 
     /**
-     * Refresh task on each poll to get latest metadata.
+     * Refresh task data when a TaskStatusUpdated event is received.
      */
+    #[On('task-status-updated')]
     public function refresh(): void
     {
         $this->task->refresh();

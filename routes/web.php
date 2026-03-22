@@ -25,6 +25,7 @@ use App\Livewire\Snippets\Form as SnippetForm;
 use App\Livewire\Snippets\Index as SnippetsIndex;
 use App\Livewire\Tasks\Form as TaskForm;
 use App\Livewire\Tasks\Index as TasksIndex;
+use App\Livewire\Tasks\Show as TaskShow;
 use App\Livewire\Users\Form as UserForm;
 use App\Livewire\Users\Index as UsersIndex;
 use Illuminate\Support\Facades\Route;
@@ -98,6 +99,8 @@ Route::middleware(['auth'])->prefix('app')->group(function () {
         Route::get('/create', RepositoryForm::class)->name('app.repositories.create');
         Route::get('/{id}/edit', RepositoryForm::class)->name('app.repositories.edit');
     });
+
+    Route::get('/tasks/{uuid}', TaskShow::class)->name('app.tasks.show');
 
     Route::middleware(['role:admin'])->prefix('tasks')->group(function () {
         Route::get('/', TasksIndex::class)->name('app.tasks.index');
