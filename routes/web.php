@@ -25,6 +25,8 @@ use App\Livewire\Snippets\Form as SnippetForm;
 use App\Livewire\Snippets\Index as SnippetsIndex;
 use App\Livewire\Tasks\Form as TaskForm;
 use App\Livewire\Tasks\Index as TasksIndex;
+use App\Livewire\Users\Form as UserForm;
+use App\Livewire\Users\Index as UsersIndex;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -107,6 +109,12 @@ Route::middleware(['auth'])->prefix('app')->group(function () {
         Route::get('/', SchedulesIndex::class)->name('app.schedules.index');
         Route::get('/create', ScheduleForm::class)->name('app.schedules.create');
         Route::get('/{id}/edit', ScheduleForm::class)->name('app.schedules.edit');
+    });
+
+    Route::middleware(['role:admin'])->prefix('users')->group(function () {
+        Route::get('/', UsersIndex::class)->name('app.users.index');
+        Route::get('/create', UserForm::class)->name('app.users.create');
+        Route::get('/{id}/edit', UserForm::class)->name('app.users.edit');
     });
 });
 
