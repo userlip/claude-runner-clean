@@ -4,7 +4,13 @@ use App\Http\Controllers\GitHubAuthController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return redirect('/admin');
+    return redirect('/app');
+});
+
+Route::middleware(['auth'])->prefix('app')->group(function () {
+    Route::get('/', function () {
+        return view('app');
+    })->name('app.home');
 });
 
 Route::get('/ide-auth-check', function () {
