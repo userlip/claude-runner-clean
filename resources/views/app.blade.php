@@ -7,13 +7,27 @@
     <title>{{ config('app.name') }}</title>
     <link rel="manifest" href="{{ route('app.manifest') }}">
     <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    @livewireStyles
 </head>
 <body>
     <div id="app" class="flex">
         <nav id="app-sidebar">
-            @if(auth()->check() && auth()->user()->hasRole('admin'))
-                <a href="/admin" id="admin-nav-link">Admin</a>
-            @endif
+            @auth
+                <ul id="app-nav-items">
+                    <li><a href="{{ route('app.tasks.index') }}">Tasks</a></li>
+                    <li><a href="{{ route('app.repositories.index') }}">Repositories</a></li>
+                    <li><a href="{{ route('app.personas.index') }}">Personas</a></li>
+                    <li><a href="{{ route('app.playbooks.index') }}">Playbooks</a></li>
+                    <li><a href="{{ route('app.snippets.index') }}">Snippets</a></li>
+                    <li><a href="{{ route('app.proposals.index') }}">Proposals</a></li>
+                    <li><a href="{{ route('app.sites.index') }}">Sites</a></li>
+                    <li><a href="{{ route('app.schedules.index') }}">Schedules</a></li>
+                </ul>
+                @if(auth()->user()->hasRole('admin'))
+                    <a href="/admin" id="admin-nav-link">Admin</a>
+                @endif
+                <livewire:recent-chats />
+            @endauth
         </nav>
         <main>
             @yield('content')
@@ -27,5 +41,6 @@
             });
         }
     </script>
+    @livewireScripts
 </body>
 </html>
