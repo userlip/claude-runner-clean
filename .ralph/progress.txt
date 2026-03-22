@@ -9,6 +9,8 @@ Started: 2026-03-22 12:07:30
 - Spatie Permission role middleware registered in `bootstrap/app.php` with alias `role` — use `middleware(['role:admin'])` on routes
 - Livewire full-page components use `resources/views/components/layouts/app.blade.php` (with `{{ $slot }}`) as default layout
 - Mary UI table uses `headers` array + `rows` (paginator or collection) + `:sort-by` binding with `with-pagination` prop for built-in pagination
+- Mary UI `<x-select>` expects options as array of `['id' => value, 'name' => label]` — use `->map(fn($case) => ['id' => $case->value, 'name' => $case->label()])` for enums
+- For models with `uuid` route key, pass `uuid` as mount param and load via `Model::where('uuid', $uuid)->firstOrFail()`
 
 ## Iteration History
 
@@ -74,4 +76,23 @@ Started: 2026-03-22 12:07:30
   - Mary UI does NOT have `<x-stat>` or `<x-divider>` components — use plain HTML for those
   - For "view only" list pages (no create/edit), only need Index + optional Show Livewire components
   - ResearchReport model calls `saveToFile()` on `::created` hook — factory creation writes files to filesystem during tests (works fine in test env)
+---
+
+## Verification Failed
+
+```
+
+```
+
+## 2026-03-22 - STORY-6
+- Created `App\Livewire\Proposals\Index` + `Form` Livewire components with Mary UI table, search, sort, pagination, delete
+- Created `App\Livewire\PromotionDirectories\Index` + `Form` Livewire components with same pattern
+- Created `database/factories/PromotionDirectoryFactory.php` (no factory existed)
+- Added routes under `role:admin` middleware for `/app/proposals` and `/app/promotion-directories` (index, create, edit)
+- Created blade views using Mary UI `<x-table>`, `<x-form>`, `<x-select>`, `<x-input>`, `<x-textarea>`
+- Files changed: `app/Livewire/Proposals/{Index,Form}.php`, `app/Livewire/PromotionDirectories/{Index,Form}.php`, `database/factories/PromotionDirectoryFactory.php`, `resources/views/livewire/proposals/{index,form}.blade.php`, `resources/views/livewire/promotion-directories/{index,form}.blade.php`, `routes/web.php`, `tests/Feature/Livewire/{Proposals,PromotionDirectories}Test.php`
+- **Learnings for future iterations:**
+  - Mary UI `<x-select>` expects options as `[['id' => value, 'name' => label]]` format — use `.map()` on enum cases
+  - Models using `uuid` route key need the mount method to accept `?string $uuid` and load with `Model::where('uuid', $uuid)->firstOrFail()`
+  - For enum columns in tables, use `@scope('cell_column', $model)` + `$model->enum->label()` to render label values
 ---

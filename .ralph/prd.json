@@ -105,7 +105,7 @@
             "title": "[\/app] CRUD: Proposals + PromotionDirectory \u2014 Livewire list + create\/edit with Mary UI",
             "githubIssue": 54,
             "priority": 6,
-            "passes": false,
+            "passes": true,
             "acceptanceCriteria": [
                 "Both resources have working list, create, edit, and delete flows",
                 "Tables are searchable, sortable, paginated",
