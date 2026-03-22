@@ -73,7 +73,7 @@
             "title": "[\/app] CRUD: ScrappApis \u2014 Livewire list + create\/edit with Mary UI",
             "githubIssue": 56,
             "priority": 4,
-            "passes": false,
+            "passes": true,
             "acceptanceCriteria": [
                 "`\/app\/scrapp-apis` renders a paginated, sortable, searchable Mary UI table",
                 "Create and edit forms save correctly",
@@ -89,7 +89,7 @@
             "title": "[\/app] CRUD: ResearchReports, MajorUpgradeRuns, SecurityRuns \u2014 Livewire list views with Mary UI",
             "githubIssue": 55,
             "priority": 5,
-            "passes": false,
+            "passes": true,
             "acceptanceCriteria": [
                 "All three list views render with paginated, sortable Mary UI tables",
                 "View pages (where applicable) display record details",

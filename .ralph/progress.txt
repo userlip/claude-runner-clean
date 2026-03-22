@@ -6,6 +6,9 @@ Started: 2026-03-22 12:07:30
 - Auth login redirect for Filament panel is `/admin/login` (not `/login`)
 - Factory users can access `/admin` (returns 200) — no role required by default
 - `/app` route lives in `routes/web.php` under `middleware(['auth'])->prefix('app')` group
+- Spatie Permission role middleware registered in `bootstrap/app.php` with alias `role` — use `middleware(['role:admin'])` on routes
+- Livewire full-page components use `resources/views/components/layouts/app.blade.php` (with `{{ $slot }}`) as default layout
+- Mary UI table uses `headers` array + `rows` (paginator or collection) + `:sort-by` binding with `with-pagination` prop for built-in pagination
 
 ## Iteration History
 
@@ -42,4 +45,33 @@ Started: 2026-03-22 12:07:30
   - Use `Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web'])` in tests to ensure the role exists before assigning
   - `assertSee`/`assertDontSee` second arg `false` disables HTML escaping — use this to check raw HTML attributes like `id="..."`
   - The roles table is empty in production; roles are created on demand in tests
+---
+
+## 2026-03-22 - STORY-4
+- Installed `robsontenorio/mary` (Mary UI) via composer
+- Registered Spatie Permission role/permission middleware aliases in `bootstrap/app.php`
+- Added `/app/scrapp-apis` route group behind `role:admin` middleware with index, create, edit routes
+- Created `App\Livewire\ScrappApis\Index` with pagination, sorting, search using Mary UI `<x-table>`
+- Created `App\Livewire\ScrappApis\Form` for create/edit with Livewire validation
+- Created `resources/views/components/layouts/app.blade.php` for Livewire full-page component layout
+- Files changed: `bootstrap/app.php`, `routes/web.php`, `app/Livewire/ScrappApis/Index.php`, `app/Livewire/ScrappApis/Form.php`, `resources/views/livewire/scrapp-apis/index.blade.php`, `resources/views/livewire/scrapp-apis/form.blade.php`, `resources/views/components/layouts/app.blade.php`, `tests/Feature/Livewire/ScrappApisTest.php`
+- **Learnings for future iterations:**
+  - Spatie Permission `role` middleware must be registered in `bootstrap/app.php` — not auto-registered
+  - Livewire 3 full-page components use `config/livewire.php` `layout` key (default: `components.layouts.app`)
+  - Mary UI `<x-table>` takes `headers` array, `rows` (paginator or collection), `:sort-by` binding, `with-pagination` prop
+  - DaisyUI not required for tests to pass — only needed for visual rendering
+---
+
+## 2026-03-22 - STORY-5
+- Created Livewire Index components for ResearchReports, MajorUpgradeRuns, SecurityRuns
+- Created Livewire Show component for ResearchReports (displays title, module, findings, proposals, content)
+- Created factories: ResearchReportFactory, MajorUpgradeRunFactory, SecurityRunFactory
+- Added `HasFactory` trait to MajorUpgradeRun model (was missing)
+- Added routes under `role:admin` middleware in web.php for all three resources
+- Created Blade views using Mary UI `<x-table>` with sort-by and pagination
+- Files changed: `app/Models/MajorUpgradeRun.php`, `app/Livewire/ResearchReports/Index.php`, `app/Livewire/ResearchReports/Show.php`, `app/Livewire/MajorUpgradeRuns/Index.php`, `app/Livewire/SecurityRuns/Index.php`, `database/factories/ResearchReportFactory.php`, `database/factories/MajorUpgradeRunFactory.php`, `database/factories/SecurityRunFactory.php`, `routes/web.php`, plus 4 blade views, 3 test files
+- **Learnings for future iterations:**
+  - Mary UI does NOT have `<x-stat>` or `<x-divider>` components — use plain HTML for those
+  - For "view only" list pages (no create/edit), only need Index + optional Show Livewire components
+  - ResearchReport model calls `saveToFile()` on `::created` hook — factory creation writes files to filesystem during tests (works fine in test env)
 ---
