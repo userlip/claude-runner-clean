@@ -1,20 +1,20 @@
 {
-    "branchName": "ralph\/04e415cd-27fb-43cf-acd6-d75c65150b16",
+    "branchName": "ralph/04e415cd-27fb-43cf-acd6-d75c65150b16",
     "verificationCommand": "php artisan test",
     "parentIssue": 43,
     "userStories": [
         {
             "id": "STORY-1",
-            "title": "[\/app] Final: swap \/ redirect from \/admin to \/app",
+            "title": "[/app] Final: swap / redirect from /admin to /app",
             "githubIssue": 59,
             "priority": 1,
             "passes": true,
             "acceptanceCriteria": [
-                "`GET \/` redirects authenticated users to `\/app`",
-                "`GET \/` redirects unauthenticated users to login (via `\/app` \u2192 auth middleware)",
-                "`GET \/admin` still works for all existing Filament users",
+                "`GET /` redirects authenticated users to `/app`",
+                "`GET /` redirects unauthenticated users to login (via `/app` \u2192 auth middleware)",
+                "`GET /admin` still works for all existing Filament users",
                 "All affected tests pass with the updated redirect",
-                "Feature test: `GET \/` returns redirect to `\/app`"
+                "Feature test: `GET /` returns redirect to `/app`"
             ],
             "blockedBy": [
                 "44",
@@ -36,17 +36,17 @@
         },
         {
             "id": "STORY-2",
-            "title": "[\/app] PWA: web manifest, service worker, installable on desktop + mobile",
+            "title": "[/app] PWA: web manifest, service worker, installable on desktop + mobile",
             "githubIssue": 58,
             "priority": 2,
             "passes": true,
             "acceptanceCriteria": [
-                "`\/app-manifest.json` returns valid JSON with correct `start_url`, `display`, `icons`",
-                "`\/app` layout includes `<link rel=\"manifest\">` and theme-color meta tag",
+                "`/app-manifest.json` returns valid JSON with correct `start_url`, `display`, `icons`",
+                "`/app` layout includes `<link rel=\"manifest\">` and theme-color meta tag",
                 "Service worker is registered and caches the app shell",
                 "App is installable in Chrome (\"Add to Home Screen\" prompt appears)",
                 "App is installable on iOS Safari (\"Add to Home Screen\" works)",
-                "Feature tests: manifest route returns 200 with correct JSON, meta tags present in \/app layout"
+                "Feature tests: manifest route returns 200 with correct JSON, meta tags present in /app layout"
             ],
             "blockedBy": [
                 "44"
@@ -54,14 +54,14 @@
         },
         {
             "id": "STORY-3",
-            "title": "[\/app] Admin nav link + role gating in sidebar",
+            "title": "[/app] Admin nav link + role gating in sidebar",
             "githubIssue": 57,
             "priority": 3,
             "passes": true,
             "acceptanceCriteria": [
-                "Admin role users see an \"Admin\" link in the `\/app` sidebar",
+                "Admin role users see an \"Admin\" link in the `/app` sidebar",
                 "Non-admin users do not see the Admin link",
-                "Clicking the link navigates to `\/admin`",
+                "Clicking the link navigates to `/admin`",
                 "Feature test: admin user sees link, regular user does not"
             ],
             "blockedBy": [
@@ -70,15 +70,15 @@
         },
         {
             "id": "STORY-4",
-            "title": "[\/app] CRUD: ScrappApis \u2014 Livewire list + create\/edit with Mary UI",
+            "title": "[/app] CRUD: ScrappApis \u2014 Livewire list + create/edit with Mary UI",
             "githubIssue": 56,
             "priority": 4,
             "passes": true,
             "acceptanceCriteria": [
-                "`\/app\/scrapp-apis` renders a paginated, sortable, searchable Mary UI table",
+                "`/app/scrapp-apis` renders a paginated, sortable, searchable Mary UI table",
                 "Create and edit forms save correctly",
                 "Admin-only access enforced",
-                "Feature test covering list and create\/edit"
+                "Feature test covering list and create/edit"
             ],
             "blockedBy": [
                 "44"
@@ -86,7 +86,7 @@
         },
         {
             "id": "STORY-5",
-            "title": "[\/app] CRUD: ResearchReports, MajorUpgradeRuns, SecurityRuns \u2014 Livewire list views with Mary UI",
+            "title": "[/app] CRUD: ResearchReports, MajorUpgradeRuns, SecurityRuns \u2014 Livewire list views with Mary UI",
             "githubIssue": 55,
             "priority": 5,
             "passes": true,
@@ -102,14 +102,14 @@
         },
         {
             "id": "STORY-6",
-            "title": "[\/app] CRUD: Proposals + PromotionDirectory \u2014 Livewire list + create\/edit with Mary UI",
+            "title": "[/app] CRUD: Proposals + PromotionDirectory \u2014 Livewire list + create/edit with Mary UI",
             "githubIssue": 54,
             "priority": 6,
             "passes": true,
             "acceptanceCriteria": [
                 "Both resources have working list, create, edit, and delete flows",
                 "Tables are searchable, sortable, paginated",
-                "Feature tests for list and create\/edit"
+                "Feature tests for list and create/edit"
             ],
             "blockedBy": [
                 "44"
@@ -117,12 +117,12 @@
         },
         {
             "id": "STORY-7",
-            "title": "[\/app] CRUD: Personas + Playbooks \u2014 Livewire list + create\/edit with Mary UI",
+            "title": "[/app] CRUD: Personas + Playbooks \u2014 Livewire list + create/edit with Mary UI",
             "githubIssue": 53,
             "priority": 7,
-            "passes": false,
+            "passes": true,
             "acceptanceCriteria": [
-                "`\/app\/personas` and `\/app\/playbooks` render with full Mary UI tables",
+                "`/app/personas` and `/app/playbooks` render with full Mary UI tables",
                 "Persona edit includes the proposals sub-table or relation tab",
                 "Create, edit, delete all work correctly",
                 "Feature tests for both resources"
@@ -133,12 +133,12 @@
         },
         {
             "id": "STORY-8",
-            "title": "[\/app] CRUD: Snippets \u2014 Livewire list + create\/edit with Mary UI",
+            "title": "[/app] CRUD: Snippets \u2014 Livewire list + create/edit with Mary UI",
             "githubIssue": 52,
             "priority": 8,
-            "passes": false,
+            "passes": true,
             "acceptanceCriteria": [
-                "`\/app\/snippets` lists snippets in a paginated, sortable, searchable Mary UI table",
+                "`/app/snippets` lists snippets in a paginated, sortable, searchable Mary UI table",
                 "Create and edit forms save correctly to DB",
                 "Delete removes the record",
                 "Existing `SnippetBrowserTest` is unaffected",
@@ -150,12 +150,12 @@
         },
         {
             "id": "STORY-9",
-            "title": "[\/app] CRUD: Sites + Repositories \u2014 Livewire list + create\/edit with Mary UI",
+            "title": "[/app] CRUD: Sites + Repositories \u2014 Livewire list + create/edit with Mary UI",
             "githubIssue": 51,
             "priority": 9,
             "passes": false,
             "acceptanceCriteria": [
-                "`\/app\/sites` and `\/app\/repositories` render paginated, sortable, searchable Mary UI tables",
+                "`/app/sites` and `/app/repositories` render paginated, sortable, searchable Mary UI tables",
                 "Create, edit, delete all persist correctly to DB",
                 "Feature tests for both resources covering list, create, edit"
             ],
@@ -165,16 +165,16 @@
         },
         {
             "id": "STORY-10",
-            "title": "[\/app] CRUD: Tasks + TaskSchedules \u2014 Livewire list + create\/edit with Mary UI",
+            "title": "[/app] CRUD: Tasks + TaskSchedules \u2014 Livewire list + create/edit with Mary UI",
             "githubIssue": 50,
             "priority": 10,
             "passes": false,
             "acceptanceCriteria": [
-                "`\/app\/tasks` lists tasks (not to be confused with `\/app\/tasks\/{task}` which is the chat view)",
-                "`\/app\/schedules` lists task schedules with sortable, searchable Mary UI table",
+                "`/app/tasks` lists tasks (not to be confused with `/app/tasks/{task}` which is the chat view)",
+                "`/app/schedules` lists task schedules with sortable, searchable Mary UI table",
                 "Create, edit, delete work and persist to DB",
                 "Active toggle on schedules works inline",
-                "Feature tests for both list and create\/edit flows"
+                "Feature tests for both list and create/edit flows"
             ],
             "blockedBy": [
                 "44"
@@ -182,16 +182,16 @@
         },
         {
             "id": "STORY-11",
-            "title": "[\/app] CRUD: Users \u2014 Livewire list + create\/edit with Mary UI",
+            "title": "[/app] CRUD: Users \u2014 Livewire list + create/edit with Mary UI",
             "githubIssue": 49,
             "priority": 11,
             "passes": false,
             "acceptanceCriteria": [
-                "`\/app\/users` lists all users in a paginated, sortable Mary UI table",
+                "`/app/users` lists all users in a paginated, sortable Mary UI table",
                 "Search filters the table in real-time",
                 "Creating a user saves to DB and redirects to list with success notification",
                 "Editing a user updates DB correctly; leaving password blank does not reset it",
-                "Non-admin users get 403 on all `\/app\/users` routes",
+                "Non-admin users get 403 on all `/app/users` routes",
                 "Feature tests: list renders, search works, create saves, edit saves, delete removes record"
             ],
             "blockedBy": [
@@ -200,12 +200,12 @@
         },
         {
             "id": "STORY-12",
-            "title": "[\/app] Wire task panels into task view: SessionInfoSidebar, FileBrowser, SnippetBrowser, TodoLists, RalphControlPanel",
+            "title": "[/app] Wire task panels into task view: SessionInfoSidebar, FileBrowser, SnippetBrowser, TodoLists, RalphControlPanel",
             "githubIssue": 48,
             "priority": 12,
             "passes": false,
             "acceptanceCriteria": [
-                "All six panels render correctly inside `\/app\/tasks\/{task}` layout",
+                "All six panels render correctly inside `/app/tasks/{task}` layout",
                 "`SessionInfoSidebar` has no `wire:poll` \u2014 updates arrive via `TaskStatusUpdated` broadcast event",
                 "Panels are toggleable or lazy-loaded so initial page load is not blocked",
                 "`FileBrowser`, `SnippetBrowser`, `TaskTodoList`, `TaskTodoMobile` pass their existing feature tests",
@@ -217,18 +217,18 @@
         },
         {
             "id": "STORY-13",
-            "title": "[\/app] Move TaskChat to \/app\/tasks\/{task}, replace polling with Reverb",
+            "title": "[/app] Move TaskChat to /app/tasks/{task}, replace polling with Reverb",
             "githubIssue": 47,
             "priority": 13,
             "passes": false,
             "acceptanceCriteria": [
-                "`GET \/app\/tasks\/{task}` returns 200 for task owner, 403 for non-owner",
-                "`TaskChat` component renders correctly inside the `\/app` layout (not Filament shell)",
+                "`GET /app/tasks/{task}` returns 200 for task owner, 403 for non-owner",
+                "`TaskChat` component renders correctly inside the `/app` layout (not Filament shell)",
                 "No unconditional `wire:poll` on the chat root; updates arrive via Echo broadcast",
                 "AI response chunks appear in real-time in the chat window",
                 "Clicking a recent chat in the sidebar navigates to the correct task URL",
                 "Existing `TaskChatTest` and `TaskChatProviderTest` pass or are updated",
-                "Feature test: unauthenticated `GET \/app\/tasks\/{task}` redirects to login"
+                "Feature test: unauthenticated `GET /app/tasks/{task}` redirects to login"
             ],
             "blockedBy": [
                 "44",
@@ -238,12 +238,12 @@
         },
         {
             "id": "STORY-14",
-            "title": "[\/app] Move RecentChats to sidebar, replace polling with Reverb",
+            "title": "[/app] Move RecentChats to sidebar, replace polling with Reverb",
             "githubIssue": 46,
             "priority": 14,
             "passes": false,
             "acceptanceCriteria": [
-                "`\/app` sidebar shows the recent chats list for authenticated users",
+                "`/app` sidebar shows the recent chats list for authenticated users",
                 "No `wire:poll` attribute exists on the RecentChats component root element",
                 "Creating or updating a Task causes the sidebar list to update in real-time without a page reload",
                 "Filament sidebar footer no longer renders the recent chats component (Filament unaffected otherwise)",
@@ -257,7 +257,7 @@
         },
         {
             "id": "STORY-15",
-            "title": "[\/app] Real-time: Install Laravel Reverb + Echo, define broadcast channels",
+            "title": "[/app] Real-time: Install Laravel Reverb + Echo, define broadcast channels",
             "githubIssue": 45,
             "priority": 15,
             "passes": false,
@@ -275,18 +275,18 @@
         },
         {
             "id": "STORY-16",
-            "title": "[\/app] Foundation: shell layout, Mary UI, routing, auth",
+            "title": "[/app] Foundation: shell layout, Mary UI, routing, auth",
             "githubIssue": 44,
             "priority": 16,
             "passes": false,
             "acceptanceCriteria": [
                 "Mary UI is installed and its components are usable in Blade views",
-                "`GET \/app` returns 200 for authenticated users and redirects to login for guests",
+                "`GET /app` returns 200 for authenticated users and redirects to login for guests",
                 "The app layout renders: sidebar on the left, main content area on the right",
-                "Sidebar nav items are visible and link to their respective `\/app\/{resource}` paths (even if those pages don't exist yet)",
-                "Existing `\/admin` routes are completely unaffected",
-                "Feature test: unauthenticated `GET \/app` returns redirect to login",
-                "Feature test: authenticated `GET \/app` returns 200 with layout"
+                "Sidebar nav items are visible and link to their respective `/app/{resource}` paths (even if those pages don't exist yet)",
+                "Existing `/admin` routes are completely unaffected",
+                "Feature test: unauthenticated `GET /app` returns redirect to login",
+                "Feature test: authenticated `GET /app` returns 200 with layout"
             ],
             "blockedBy": []
         }

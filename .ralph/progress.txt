@@ -96,3 +96,49 @@ Started: 2026-03-22 12:07:30
   - Models using `uuid` route key need the mount method to accept `?string $uuid` and load with `Model::where('uuid', $uuid)->firstOrFail()`
   - For enum columns in tables, use `@scope('cell_column', $model)` + `$model->enum->label()` to render label values
 ---
+
+## Verification Failed
+
+```
+
+```
+## 2026-03-22 - STORY-7
+- Created `App\Livewire\Personas\Index` + `Form` Livewire components with Mary UI table, search, sort, pagination, delete
+- Created `App\Livewire\Playbooks\Index` + `Form` Livewire components with same pattern
+- Created `database/factories/PlaybookFactory.php` (no factory existed)
+- Persona form includes repository_id select and proposals sub-table on edit page
+- Added routes under `role:admin` middleware for `/app/personas` and `/app/playbooks` (index, create, edit)
+- Files changed: `app/Livewire/Personas/{Index,Form}.php`, `app/Livewire/Playbooks/{Index,Form}.php`, `database/factories/PlaybookFactory.php`, `resources/views/livewire/personas/{index,form}.blade.php`, `resources/views/livewire/playbooks/{index,form}.blade.php`, `routes/web.php`, `tests/Feature/Livewire/{Personas,Playbooks}Test.php`
+- **Learnings for future iterations:**
+  - Persona uses `slug` as unique route key (not uuid) — mount with `?string $slug` and load via `Persona::where('slug', $slug)->firstOrFail()`
+  - Persona has NOT NULL `user_id` and `repository_id` constraints — set `user_id` from `auth()->id()` and add `repository_id` select in create form
+  - `master_prompt` is NOT NULL longText but defaults to empty string in form — empty string satisfies NOT NULL constraint
+  - Playbook uses plain `id` for routing (no uuid/slug)
+---
+
+
+Now let me explore the Persona and Playbook models and existing patterns.
+Now I have enough context. Let me look at the Proposal model briefly to check uuid pattern, then start implementing.
+Now I have everything I need. Let me implement STORY-7.
+Now create the blade views:
+Now create the PlaybookFactory and add routes:
+Now write the feature tests:
+The `repository_id` and `user_id` are NOT NULL. I need to handle these in the form. Let me update the Form component and test:
+Now update the test to create a repository for the create test:
+All 24 tests pass. Run pint one more time to confirm:
+Now commit:
+Now update `prd.json` and `progress.txt`:
+Also add the Persona slug pattern to the Codebase Patterns section:
+
+## 2026-03-22 - STORY-8
+- Created `App\Livewire\Snippets\Index` with pagination, sorting, search using Mary UI `<x-table>`
+- Created `App\Livewire\Snippets\Form` for create/edit with Livewire validation
+- Added routes under `role:admin` middleware for `/app/snippets` (index, create, edit) using plain `id` for routing
+- Created blade views using Mary UI `<x-header>`, `<x-table>`, `<x-form>`, `<x-input>`, `<x-textarea>`
+- SnippetBrowserTest (existing) remains fully unaffected (all 7 tests still pass)
+- Files changed: `app/Livewire/Snippets/{Index,Form}.php`, `resources/views/livewire/snippets/{index,form}.blade.php`, `routes/web.php`, `tests/Feature/Livewire/SnippetsTest.php`
+- **Learnings for future iterations:**
+  - Snippet uses plain `id` for routing (no uuid/slug) — same as Playbook pattern
+  - `user_id` defaults to `auth()->id()` on create (admin creates snippets owned by themselves)
+  - Livewire property `sortOrder` maps to DB column `sort_order` — use `array_merge($data, ['sort_order' => $validated['sortOrder']])` to map correctly
+---
