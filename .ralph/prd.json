@@ -1,177 +1,292 @@
 {
-    "branchName": "ralph\/52b9d0f2-5783-4c6c-a82a-e1e187e75c6e",
+    "branchName": "ralph\/04e415cd-27fb-43cf-acd6-d75c65150b16",
     "verificationCommand": "php artisan test",
-    "parentIssue": 35,
+    "parentIssue": 43,
     "userStories": [
         {
             "id": "STORY-1",
-            "title": "Slice 7: Persona Run History + Dashboard Polish",
-            "githubIssue": 42,
+            "title": "[\/app] Final: swap \/ redirect from \/admin to \/app",
+            "githubIssue": 59,
             "priority": 1,
             "passes": true,
             "acceptanceCriteria": [
-                "PersonaResource edit page shows ProposalsRelationManager with all linked proposals",
-                "ProposalsRelationManager shows: title, status badge, priority, created_at, execution_success, subtask progress",
-                "Edit page top section shows stats: Total Runs, Total Proposals, Approval Rate, Last Run",
-                "\"View Storage\" action opens modal with rendered directory tree and file contents",
-                "Context.md section renders current context as markdown on edit page",
-                "\"Edit Context\" action allows manual editing of context.md via modal textarea",
-                "Run history section reads `history\/` directory files and displays as collapsible cards (newest first)",
-                "Feature test: edit page renders with proposals relation manager",
-                "Feature test: storage viewer reads and displays files correctly",
-                "`vendor\/bin\/pint --dirty` passes on all new\/modified files"
+                "`GET \/` redirects authenticated users to `\/app`",
+                "`GET \/` redirects unauthenticated users to login (via `\/app` \u2192 auth middleware)",
+                "`GET \/admin` still works for all existing Filament users",
+                "All affected tests pass with the updated redirect",
+                "Feature test: `GET \/` returns redirect to `\/app`"
             ],
             "blockedBy": [
-                "41"
+                "44",
+                "45",
+                "46",
+                "47",
+                "48",
+                "49",
+                "50",
+                "51",
+                "52",
+                "53",
+                "54",
+                "55",
+                "56",
+                "57",
+                "58"
             ]
         },
         {
             "id": "STORY-2",
-            "title": "Slice 6: Subtask Execution \u2014 RunPersonaSubtaskJob + Failure Handling + Completion Logging",
-            "githubIssue": 41,
+            "title": "[\/app] PWA: web manifest, service worker, installable on desktop + mobile",
+            "githubIssue": 58,
             "priority": 2,
-            "passes": true,
+            "passes": false,
             "acceptanceCriteria": [
-                "`PersonaCycleService::startSubtaskExecution()` creates a Task, clones repo workspace, dispatches first `RunPersonaSubtaskJob`",
-                "`RunPersonaSubtaskJob` reads current subtask from proposal, builds prompt with subtask instructions + persona context + previous results",
-                "`RunPersonaSubtaskJob` executes Claude via proc_open with all MCPs, streams output to Task messages",
-                "On success: subtask status updated to \"completed\", `current_subtask_index` advanced, next job dispatched",
-                "On all subtasks complete: `completeExecution()` called \u2014 logs to completed-plans, updates context.md, marks proposal complete",
-                "On failure: subtask status set to \"failed\", Task marked WaitingForInput, Telegram failure notification sent",
-                "On failure: no auto-retry, no auto-skip \u2014 execution stops and waits for human input",
-                "\"Resume Subtask\" Filament action retries the failed subtask",
-                "\"Skip Subtask\" Filament action marks subtask as skipped and advances to next",
-                "Completed plan logged to `storage\/personas\/{slug}\/completed-plans\/{date}-{slug}.md` with full summary",
-                "Persona `context.md` updated with key learnings after completion",
-                "Telegram completion notification sent when all subtasks done",
-                "Feature test: sequential subtask execution completes all subtasks in order",
-                "Feature test: subtask failure pauses execution and sends notification",
-                "Feature test: resume action retries failed subtask",
-                "Feature test: completion logging writes correct files",
-                "`vendor\/bin\/pint --dirty` passes on all new\/modified files"
+                "`\/app-manifest.json` returns valid JSON with correct `start_url`, `display`, `icons`",
+                "`\/app` layout includes `<link rel=\"manifest\">` and theme-color meta tag",
+                "Service worker is registered and caches the app shell",
+                "App is installable in Chrome (\"Add to Home Screen\" prompt appears)",
+                "App is installable on iOS Safari (\"Add to Home Screen\" works)",
+                "Feature tests: manifest route returns 200 with correct JSON, meta tags present in \/app layout"
             ],
             "blockedBy": [
-                "40"
+                "44"
             ]
         },
         {
             "id": "STORY-3",
-            "title": "Slice 5: Subtask Generation + Double Approval Gate",
-            "githubIssue": 40,
+            "title": "[\/app] Admin nav link + role gating in sidebar",
+            "githubIssue": 57,
             "priority": 3,
-            "passes": true,
+            "passes": false,
             "acceptanceCriteria": [
-                "`ProposalExecutionService::execute()` forks to subtask generation (not direct execution) when `persona_id` is present",
-                "`GeneratePersonaSubtasksJob` creates workspace, builds prompt, executes Claude, parses subtasks",
-                "Generated subtasks stored as JSON array on `proposal.subtasks` with `index`, `title`, `description`, `status` (all \"pending\")",
-                "Telegram notification sent after subtask generation with formatted subtask list and \"Approve Subtasks\" \/ \"Reject\" buttons",
-                "Telegram \"Approve Subtasks\" callback sets `subtasks_approved_at` on the proposal",
-                "Filament \"Approve Subtasks\" action shows modal with subtask list and sets `subtasks_approved_at` on confirm",
-                "Subtask generation prompt includes proposal description, data appendix, and persona context",
-                "Feature test: approving a persona proposal triggers subtask generation (not direct task execution)",
-                "Feature test: generated subtasks are valid JSON with correct structure",
-                "Feature test: approving subtasks via Filament action sets `subtasks_approved_at`",
-                "`vendor\/bin\/pint --dirty` passes on all new\/modified files"
+                "Admin role users see an \"Admin\" link in the `\/app` sidebar",
+                "Non-admin users do not see the Admin link",
+                "Clicking the link navigates to `\/admin`",
+                "Feature test: admin user sees link, regular user does not"
             ],
             "blockedBy": [
-                "38"
+                "44"
             ]
         },
         {
             "id": "STORY-4",
-            "title": "Slice 4: Telegram Integration for Persona Proposals",
-            "githubIssue": 39,
+            "title": "[\/app] CRUD: ScrappApis \u2014 Livewire list + create\/edit with Mary UI",
+            "githubIssue": 56,
             "priority": 4,
-            "passes": true,
+            "passes": false,
             "acceptanceCriteria": [
-                "`Proposal::formatForTelegram()` includes persona name and uses \"Persona Proposal\" header when `persona_id` is set",
-                "Telegram notification for persona proposals shows executive summary from `description` field",
-                "Approve\/Reject\/Details inline buttons work for persona proposals (same callback pattern)",
-                "`TelegramWebhookController::approveProposal()` uses `Proposal::approve()` instead of direct Task creation (fixes legacy path)",
-                "`TelegramService::sendPersonaCycleNotification()` sends informational start\/complete messages",
-                "Feature test: persona proposal formats correctly for Telegram with persona name",
-                "Feature test: approving a persona proposal via Telegram callback triggers the correct service flow",
-                "`vendor\/bin\/pint --dirty` passes on all new\/modified files"
+                "`\/app\/scrapp-apis` renders a paginated, sortable, searchable Mary UI table",
+                "Create and edit forms save correctly",
+                "Admin-only access enforced",
+                "Feature test covering list and create\/edit"
             ],
             "blockedBy": [
-                "38"
+                "44"
             ]
         },
         {
             "id": "STORY-5",
-            "title": "Slice 3: Analysis Cycle \u2014 PersonaCycleService + RunPersonaCycleJob + Schedule Integration",
-            "githubIssue": 38,
+            "title": "[\/app] CRUD: ResearchReports, MajorUpgradeRuns, SecurityRuns \u2014 Livewire list views with Mary UI",
+            "githubIssue": 55,
             "priority": 5,
-            "passes": true,
+            "passes": false,
             "acceptanceCriteria": [
-                "`PersonaCycleService` reads persistent state files (context.md, history\/, completed-plans\/) and builds structured context",
-                "`PersonaCycleService` builds analysis prompt combining master prompt, state context, MCP guidance, and output format instructions",
-                "`PersonaCycleService` executes Claude via proc_open with all MCPs available (uses full `.mcp.json`)",
-                "`PersonaCycleService` parses Claude output into executive summary (`description`) and detailed report (`data_appendix`)",
-                "`PersonaCycleService` creates a Proposal with `persona_id` set, type `SeoImprovement` (or appropriate), and status `Pending`",
-                "`PersonaCycleService` logs cycle to `storage\/personas\/{slug}\/history\/{date}-cycle-{n}.md`",
-                "`RunPersonaCycleJob` creates workspace, clones repo, runs analysis, cleans up workspace on completion",
-                "`RunPersonaCycleJob` updates persona `last_run_at`, `total_runs`, `total_proposals`, `last_proposal_id`",
-                "`RunPersonaCycleJob` has 3-hour timeout",
-                "`RunTaskSchedulesCommand` dispatches `RunPersonaCycleJob` when schedule has `persona_id`",
-                "\"Run Now\" action on PersonaResource dispatches job manually",
-                "\"Run Now\" action disabled when persona is inactive or already running",
-                "Feature test: full analysis cycle with mocked Claude process produces valid Proposal",
-                "Feature test: schedule integration dispatches correct job type for persona schedules",
-                "`vendor\/bin\/pint --dirty` passes on all new\/modified files"
+                "All three list views render with paginated, sortable Mary UI tables",
+                "View pages (where applicable) display record details",
+                "Admin-only access enforced (403 for non-admins)",
+                "Feature tests for list rendering and admin gating"
             ],
             "blockedBy": [
-                "37"
+                "44"
             ]
         },
         {
             "id": "STORY-6",
-            "title": "Slice 2: Proposal Model Extensions + Filament Updates for Personas",
-            "githubIssue": 37,
+            "title": "[\/app] CRUD: Proposals + PromotionDirectory \u2014 Livewire list + create\/edit with Mary UI",
+            "githubIssue": 54,
             "priority": 6,
-            "passes": true,
+            "passes": false,
             "acceptanceCriteria": [
-                "Migration adds `persona_id`, `data_appendix`, `subtasks`, `subtasks_approved_at`, `current_subtask_index` to `proposals` table",
-                "Migration adds `persona_id` to `task_schedules` table",
-                "`Proposal` model has `persona()` BelongsTo relationship",
-                "`Proposal` model has `hasSubtasksPendingApproval()`, `areSubtasksApproved()`, `getCurrentSubtask()`, `advanceSubtaskIndex()` helper methods",
-                "`Proposal` casts include `subtasks` as array, `subtasks_approved_at` as datetime",
-                "`TaskSchedule` model has `persona()` BelongsTo relationship",
-                "`Persona` model has `proposals()` hasMany and `taskSchedule()` hasOne relationships",
-                "`ProposalResource` table shows persona name column (filterable)",
-                "`ProposalResource` View page renders `data_appendix` as collapsible markdown section",
-                "`ProposalResource` View page displays subtask list with status badges (pending\/running\/completed\/failed)",
-                "\"Approve Subtasks\" action visible only when conditions met, sets `subtasks_approved_at`",
-                "`formatForTelegram()` includes persona name when `persona_id` is present",
-                "Feature test verifies persona filtering on proposals list",
-                "Feature test verifies \"Approve Subtasks\" action sets timestamp correctly",
-                "`vendor\/bin\/pint --dirty` passes on all new\/modified files"
+                "Both resources have working list, create, edit, and delete flows",
+                "Tables are searchable, sortable, paginated",
+                "Feature tests for list and create\/edit"
             ],
             "blockedBy": [
-                "36"
+                "44"
             ]
         },
         {
             "id": "STORY-7",
-            "title": "Slice 1: Persona Model + Filament CRUD + Storage Skeleton",
-            "githubIssue": 36,
+            "title": "[\/app] CRUD: Personas + Playbooks \u2014 Livewire list + create\/edit with Mary UI",
+            "githubIssue": 53,
             "priority": 7,
-            "passes": true,
+            "passes": false,
             "acceptanceCriteria": [
-                "Migration creates `personas` table with all specified columns and foreign keys",
-                "`Persona` model has relationships: `belongsTo(User)`, `belongsTo(Repository)`, `belongsTo(AiProvider)`, `belongsTo(Proposal, 'last_proposal_id')`",
-                "`PersonaFactory` creates valid test personas with realistic data",
-                "`PersonaStatus` enum exists with Active, Paused, Running, AwaitingApproval cases (with label, color, icon methods)",
-                "`PersonaStorageService` initializes the full directory structure with template files on persona creation",
-                "`PersonaStorageService` syncs `master_prompt` to `prompt.md` on persona save",
-                "`PersonaResource` List page shows: name, repository name, is_active toggle, last_run_at, total_runs, total_proposals",
-                "`PersonaResource` Create\/Edit forms include: name, description (textarea), master_prompt (textarea), repository select, AI provider select, mcp_guidance (textarea), is_active toggle",
-                "Activate\/Deactivate toggle action works on list page and edit page",
-                "Filament resource appears in \"Automation\" navigation group",
-                "Feature test covers creating a persona via Filament and verifies storage directory + prompt.md created",
-                "Feature test covers editing master_prompt and verifies prompt.md updated",
-                "Feature test covers activate\/deactivate toggle",
-                "`vendor\/bin\/pint --dirty` passes on all new\/modified files"
+                "`\/app\/personas` and `\/app\/playbooks` render with full Mary UI tables",
+                "Persona edit includes the proposals sub-table or relation tab",
+                "Create, edit, delete all work correctly",
+                "Feature tests for both resources"
+            ],
+            "blockedBy": [
+                "44"
+            ]
+        },
+        {
+            "id": "STORY-8",
+            "title": "[\/app] CRUD: Snippets \u2014 Livewire list + create\/edit with Mary UI",
+            "githubIssue": 52,
+            "priority": 8,
+            "passes": false,
+            "acceptanceCriteria": [
+                "`\/app\/snippets` lists snippets in a paginated, sortable, searchable Mary UI table",
+                "Create and edit forms save correctly to DB",
+                "Delete removes the record",
+                "Existing `SnippetBrowserTest` is unaffected",
+                "Feature tests for list, create, edit"
+            ],
+            "blockedBy": [
+                "44"
+            ]
+        },
+        {
+            "id": "STORY-9",
+            "title": "[\/app] CRUD: Sites + Repositories \u2014 Livewire list + create\/edit with Mary UI",
+            "githubIssue": 51,
+            "priority": 9,
+            "passes": false,
+            "acceptanceCriteria": [
+                "`\/app\/sites` and `\/app\/repositories` render paginated, sortable, searchable Mary UI tables",
+                "Create, edit, delete all persist correctly to DB",
+                "Feature tests for both resources covering list, create, edit"
+            ],
+            "blockedBy": [
+                "44"
+            ]
+        },
+        {
+            "id": "STORY-10",
+            "title": "[\/app] CRUD: Tasks + TaskSchedules \u2014 Livewire list + create\/edit with Mary UI",
+            "githubIssue": 50,
+            "priority": 10,
+            "passes": false,
+            "acceptanceCriteria": [
+                "`\/app\/tasks` lists tasks (not to be confused with `\/app\/tasks\/{task}` which is the chat view)",
+                "`\/app\/schedules` lists task schedules with sortable, searchable Mary UI table",
+                "Create, edit, delete work and persist to DB",
+                "Active toggle on schedules works inline",
+                "Feature tests for both list and create\/edit flows"
+            ],
+            "blockedBy": [
+                "44"
+            ]
+        },
+        {
+            "id": "STORY-11",
+            "title": "[\/app] CRUD: Users \u2014 Livewire list + create\/edit with Mary UI",
+            "githubIssue": 49,
+            "priority": 11,
+            "passes": false,
+            "acceptanceCriteria": [
+                "`\/app\/users` lists all users in a paginated, sortable Mary UI table",
+                "Search filters the table in real-time",
+                "Creating a user saves to DB and redirects to list with success notification",
+                "Editing a user updates DB correctly; leaving password blank does not reset it",
+                "Non-admin users get 403 on all `\/app\/users` routes",
+                "Feature tests: list renders, search works, create saves, edit saves, delete removes record"
+            ],
+            "blockedBy": [
+                "44"
+            ]
+        },
+        {
+            "id": "STORY-12",
+            "title": "[\/app] Wire task panels into task view: SessionInfoSidebar, FileBrowser, SnippetBrowser, TodoLists, RalphControlPanel",
+            "githubIssue": 48,
+            "priority": 12,
+            "passes": false,
+            "acceptanceCriteria": [
+                "All six panels render correctly inside `\/app\/tasks\/{task}` layout",
+                "`SessionInfoSidebar` has no `wire:poll` \u2014 updates arrive via `TaskStatusUpdated` broadcast event",
+                "Panels are toggleable or lazy-loaded so initial page load is not blocked",
+                "`FileBrowser`, `SnippetBrowser`, `TaskTodoList`, `TaskTodoMobile` pass their existing feature tests",
+                "Feature test: `TaskStatusUpdated` event causes `SessionInfoSidebar` to refresh its data"
+            ],
+            "blockedBy": [
+                "47"
+            ]
+        },
+        {
+            "id": "STORY-13",
+            "title": "[\/app] Move TaskChat to \/app\/tasks\/{task}, replace polling with Reverb",
+            "githubIssue": 47,
+            "priority": 13,
+            "passes": false,
+            "acceptanceCriteria": [
+                "`GET \/app\/tasks\/{task}` returns 200 for task owner, 403 for non-owner",
+                "`TaskChat` component renders correctly inside the `\/app` layout (not Filament shell)",
+                "No unconditional `wire:poll` on the chat root; updates arrive via Echo broadcast",
+                "AI response chunks appear in real-time in the chat window",
+                "Clicking a recent chat in the sidebar navigates to the correct task URL",
+                "Existing `TaskChatTest` and `TaskChatProviderTest` pass or are updated",
+                "Feature test: unauthenticated `GET \/app\/tasks\/{task}` redirects to login"
+            ],
+            "blockedBy": [
+                "44",
+                "45",
+                "46"
+            ]
+        },
+        {
+            "id": "STORY-14",
+            "title": "[\/app] Move RecentChats to sidebar, replace polling with Reverb",
+            "githubIssue": 46,
+            "priority": 14,
+            "passes": false,
+            "acceptanceCriteria": [
+                "`\/app` sidebar shows the recent chats list for authenticated users",
+                "No `wire:poll` attribute exists on the RecentChats component root element",
+                "Creating or updating a Task causes the sidebar list to update in real-time without a page reload",
+                "Filament sidebar footer no longer renders the recent chats component (Filament unaffected otherwise)",
+                "Existing `RecentChatsTest` passes or is updated to reflect new wiring",
+                "Feature test: `RecentChatsUpdated` event causes component to refresh"
+            ],
+            "blockedBy": [
+                "44",
+                "45"
+            ]
+        },
+        {
+            "id": "STORY-15",
+            "title": "[\/app] Real-time: Install Laravel Reverb + Echo, define broadcast channels",
+            "githubIssue": 45,
+            "priority": 15,
+            "passes": false,
+            "acceptanceCriteria": [
+                "`php artisan reverb:start` runs without errors",
+                "`BROADCAST_CONNECTION=reverb` is set and Laravel recognises Reverb as the driver",
+                "Echo is initialised in `app.js` and connects to Reverb in browser (visible in network tab as WS connection)",
+                "Private channels are defined and authorised for authenticated users only",
+                "All three broadcast event classes exist with correct channel and payload",
+                "Feature test: channel authorisation returns 200 for correct user, 403 for wrong user"
+            ],
+            "blockedBy": [
+                "44"
+            ]
+        },
+        {
+            "id": "STORY-16",
+            "title": "[\/app] Foundation: shell layout, Mary UI, routing, auth",
+            "githubIssue": 44,
+            "priority": 16,
+            "passes": false,
+            "acceptanceCriteria": [
+                "Mary UI is installed and its components are usable in Blade views",
+                "`GET \/app` returns 200 for authenticated users and redirects to login for guests",
+                "The app layout renders: sidebar on the left, main content area on the right",
+                "Sidebar nav items are visible and link to their respective `\/app\/{resource}` paths (even if those pages don't exist yet)",
+                "Existing `\/admin` routes are completely unaffected",
+                "Feature test: unauthenticated `GET \/app` returns redirect to login",
+                "Feature test: authenticated `GET \/app` returns 200 with layout"
             ],
             "blockedBy": []
         }
