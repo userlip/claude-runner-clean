@@ -2,6 +2,10 @@
 
 use App\Http\Controllers\GitHubAuthController;
 use App\Livewire\MajorUpgradeRuns\Index as MajorUpgradeRunsIndex;
+use App\Livewire\Personas\Form as PersonaForm;
+use App\Livewire\Personas\Index as PersonasIndex;
+use App\Livewire\Playbooks\Form as PlaybookForm;
+use App\Livewire\Playbooks\Index as PlaybooksIndex;
 use App\Livewire\PromotionDirectories\Form as PromotionDirectoryForm;
 use App\Livewire\PromotionDirectories\Index as PromotionDirectoriesIndex;
 use App\Livewire\Proposals\Form as ProposalForm;
@@ -51,6 +55,18 @@ Route::middleware(['auth'])->prefix('app')->group(function () {
         Route::get('/', PromotionDirectoriesIndex::class)->name('app.promotion-directories.index');
         Route::get('/create', PromotionDirectoryForm::class)->name('app.promotion-directories.create');
         Route::get('/{uuid}/edit', PromotionDirectoryForm::class)->name('app.promotion-directories.edit');
+    });
+
+    Route::middleware(['role:admin'])->prefix('personas')->group(function () {
+        Route::get('/', PersonasIndex::class)->name('app.personas.index');
+        Route::get('/create', PersonaForm::class)->name('app.personas.create');
+        Route::get('/{slug}/edit', PersonaForm::class)->name('app.personas.edit');
+    });
+
+    Route::middleware(['role:admin'])->prefix('playbooks')->group(function () {
+        Route::get('/', PlaybooksIndex::class)->name('app.playbooks.index');
+        Route::get('/create', PlaybookForm::class)->name('app.playbooks.create');
+        Route::get('/{id}/edit', PlaybookForm::class)->name('app.playbooks.edit');
     });
 });
 
