@@ -17,6 +17,7 @@
         "laravel/telescope": "^5.1",
         "laravel/tinker": "^2.9",
         "minishlink/web-push": "^10.0",
+        "robsontenorio/mary": "^2.8",
         "sentry/sentry-laravel": "^4.20",
         "spatie/laravel-permission": "^6.9",
         "spatie/laravel-query-builder": "^6.2",
@@ -78,7 +79,9 @@
     },
     "extra": {
         "laravel": {
-            "dont-discover": []
+            "dont-discover": [
+                "laravel/boost"
+            ]
         }
     },
     "config": {

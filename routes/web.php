@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\GitHubAuthController;
+use App\Livewire\ScrappApis\Form as ScrappApiForm;
+use App\Livewire\ScrappApis\Index as ScrappApiIndex;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -11,6 +13,12 @@ Route::middleware(['auth'])->prefix('app')->group(function () {
     Route::get('/', function () {
         return view('app');
     })->name('app.home');
+
+    Route::middleware(['role:admin'])->prefix('scrapp-apis')->group(function () {
+        Route::get('/', ScrappApiIndex::class)->name('app.scrapp-apis.index');
+        Route::get('/create', ScrappApiForm::class)->name('app.scrapp-apis.create');
+        Route::get('/{id}/edit', ScrappApiForm::class)->name('app.scrapp-apis.edit');
+    });
 });
 
 Route::get('/app-manifest.json', function () {
