@@ -885,6 +885,10 @@ class TaskChat extends Component
                 if (! empty($prd['parent_issue']['number'])) {
                     return (int) $prd['parent_issue']['number'];
                 }
+
+                if (! empty($prd['parent_prd']['issue_number'])) {
+                    return (int) $prd['parent_prd']['issue_number'];
+                }
             }
         }
 
@@ -1206,7 +1210,7 @@ PROMPT,
         $this->task->delete();
 
         // Redirect to the tasks list
-        $this->redirect(route('filament.admin.resources.tasks.index'));
+        $this->redirect(route('app.home'));
     }
 
     public function openDeployModal(): void

@@ -4,7 +4,6 @@ namespace App\Livewire;
 
 use App\Enums\MessageRole;
 use App\Enums\TaskStatus;
-use App\Filament\Resources\Tasks\TaskResource;
 use App\Models\SecurityRun;
 use App\Models\Task;
 use Illuminate\Support\Collection;
@@ -136,7 +135,7 @@ class RecentChats extends Component
 
     public function getChatUrl(array $chat): string
     {
-        return TaskResource::getUrl('chat', ['record' => $chat['model']->uuid]);
+        return route('app.tasks.show', ['uuid' => $chat['model']->uuid]);
     }
 
     public function getChatTitle(array $chat): string

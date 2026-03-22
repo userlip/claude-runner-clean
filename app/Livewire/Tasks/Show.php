@@ -16,6 +16,14 @@ class Show extends Component
     public function mount(string $uuid): void
     {
         $this->task = Task::where('uuid', $uuid)->firstOrFail();
+
+        $user = auth()->user();
+        $ownedViaRepository = $this->task->repository && $this->task->repository->user_id === $user->id;
+        $ownedDirectly = $this->task->user_id === $user->id;
+
+        if (! $ownedViaRepository && ! $ownedDirectly) {
+            abort(403);
+        }
     }
 
     public function setActivePanel(string $panel): void

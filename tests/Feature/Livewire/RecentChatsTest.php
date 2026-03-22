@@ -11,6 +11,17 @@ beforeEach(function () {
     $this->actingAs($this->user);
 });
 
+test('recent chat links use the app tasks show route', function () {
+    $repository = Repository::factory()->create(['user_id' => $this->user->id]);
+    $task = Task::factory()->create([
+        'repository_id' => $repository->id,
+        'title' => 'My Task',
+    ]);
+
+    Livewire::test(RecentChats::class)
+        ->assertSeeHtml("/app/tasks/{$task->uuid}");
+});
+
 test('completed ralph chats use the completed status indicator in recent chats', function () {
     $repository = Repository::factory()->create(['user_id' => $this->user->id]);
 

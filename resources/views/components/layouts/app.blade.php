@@ -14,6 +14,9 @@
             @if(auth()->check() && auth()->user()->hasRole('admin'))
                 <a href="/admin" id="admin-nav-link">Admin</a>
             @endif
+            @auth
+                <livewire:recent-chats />
+            @endauth
         </nav>
         <main>
             {{ $slot }}
