@@ -1,7 +1,9 @@
 <?php
 
 use App\Http\Controllers\GitHubAuthController;
+use App\Livewire\AiProviders\Index as AiProvidersIndex;
 use App\Livewire\Analytics\Index as AnalyticsIndex;
+use App\Livewire\Home\Index as HomeIndex;
 use App\Livewire\MajorUpgradeRuns\Index as MajorUpgradeRunsIndex;
 use App\Livewire\Personas\Form as PersonaForm;
 use App\Livewire\Personas\Index as PersonasIndex;
@@ -17,8 +19,6 @@ use App\Livewire\ResearchReports\Index as ResearchReportsIndex;
 use App\Livewire\ResearchReports\Show as ResearchReportShow;
 use App\Livewire\Schedules\Form as ScheduleForm;
 use App\Livewire\Schedules\Index as SchedulesIndex;
-use App\Livewire\ScrappApis\Form as ScrappApiForm;
-use App\Livewire\ScrappApis\Index as ScrappApiIndex;
 use App\Livewire\SecurityRuns\Index as SecurityRunsIndex;
 use App\Livewire\Settings\Index as SettingsIndex;
 use App\Livewire\Sites\Form as SiteForm;
@@ -37,15 +37,7 @@ Route::get('/', function () {
 });
 
 Route::middleware(['auth'])->prefix('workbench')->group(function () {
-    Route::get('/', function () {
-        return view('workbench');
-    })->name('workbench.home');
-
-    Route::middleware(['role:admin'])->prefix('scrapp-apis')->group(function () {
-        Route::get('/', ScrappApiIndex::class)->name('workbench.scrapp-apis.index');
-        Route::get('/create', ScrappApiForm::class)->name('workbench.scrapp-apis.create');
-        Route::get('/{id}/edit', ScrappApiForm::class)->name('workbench.scrapp-apis.edit');
-    });
+    Route::get('/', HomeIndex::class)->name('workbench.home');
 
     Route::middleware(['role:admin'])->prefix('research-reports')->group(function () {
         Route::get('/', ResearchReportsIndex::class)->name('workbench.research-reports.index');
@@ -111,6 +103,7 @@ Route::middleware(['auth'])->prefix('workbench')->group(function () {
     Route::get('/tasks/{uuid}', TaskShow::class)->name('workbench.tasks.show');
 
     Route::get('/settings', SettingsIndex::class)->name('workbench.settings.index');
+    Route::get('/settings/ai-providers', AiProvidersIndex::class)->name('workbench.ai-providers.index');
     Route::get('/analytics', AnalyticsIndex::class)->name('workbench.analytics.index');
 
     Route::middleware(['role:admin'])->prefix('schedules')->group(function () {

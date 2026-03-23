@@ -3,7 +3,9 @@
 namespace App\Livewire\Repositories;
 
 use App\Models\Repository;
+use App\Services\GitHubService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -22,6 +24,22 @@ class Index extends Component
     public function updatedSearch(): void
     {
         $this->resetPage();
+    }
+
+    public function syncRepositories(): void
+    {
+        $connection = Auth::user()->githubConnection;
+
+        if (! $connection) {
+            $this->error('GitHub not connected. Please connect your GitHub account first.');
+
+            return;
+        }
+
+        $service = new GitHubService($connection);
+        $count = $service->syncRepositories();
+
+        $this->success("Synced {$count} repositories from GitHub.");
     }
 
     public function delete(int $id): void
