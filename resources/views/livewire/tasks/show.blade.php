@@ -1,5 +1,5 @@
 <div
-    x-data="{ openPanels: @entangle('openPanels') }"
+    x-data="{ activePanel: $wire.entangle('activePanel') }"
     class="flex"
     style="height: calc(100vh - 65px);"
 >
@@ -11,21 +11,21 @@
     {{-- Side Panels (hidden on mobile) --}}
     <div class="hidden lg:flex w-80 border-l border-base-300 flex-col bg-base-100 shrink-0">
         {{-- Panel Toggle Tabs --}}
-        <div class="flex flex-wrap gap-1 p-2 border-b border-base-300">
+        <div class="flex gap-1 p-2 border-b border-base-300 overflow-x-auto shrink-0 scrollbar-none">
             @foreach(\App\Livewire\Settings\Index::AVAILABLE_PANELS as $panelKey => $panel)
                 <button
-                    wire:click="togglePanel('{{ $panelKey }}')"
-                    class="btn btn-xs"
-                    :class="openPanels.includes('{{ $panelKey }}') ? 'btn-primary' : 'btn-ghost'"
+                    @click="activePanel = activePanel === '{{ $panelKey }}' ? null : '{{ $panelKey }}'"
+                    class="btn btn-xs shrink-0"
+                    :class="activePanel === '{{ $panelKey }}' ? 'btn-primary' : 'btn-ghost'"
                 >
                     {{ $panel['title'] }}
                 </button>
             @endforeach
         </div>
 
-        {{-- Panels: rendered in the order they appear in openPanels --}}
+        {{-- Single active panel --}}
         <div class="flex-1 flex flex-col min-h-0">
-            <template x-if="openPanels.length === 0">
+            <template x-if="activePanel === null">
                 <div class="flex-1 flex items-center justify-center text-base-content/40 text-sm">
                     Click a tab to open a panel
                 </div>
@@ -33,10 +33,9 @@
 
             @foreach(\App\Livewire\Settings\Index::AVAILABLE_PANELS as $panelKey => $panel)
                 <div
-                    x-show="openPanels.includes('{{ $panelKey }}')"
+                    x-show="activePanel === '{{ $panelKey }}'"
                     x-cloak
-                    class="overflow-auto p-2 border-b border-base-300 last:border-b-0"
-                    :style="`flex: 1 1 0%; min-height: 0; order: ${openPanels.indexOf('{{ $panelKey }}')}`"
+                    class="flex-1 overflow-auto p-2"
                 >
                     @switch($panelKey)
                         @case('session-info')

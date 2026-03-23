@@ -15,12 +15,12 @@ beforeEach(function () {
 test('unauthenticated user is redirected to login', function () {
     auth()->logout();
 
-    $this->get(route('app.tasks.show', $this->task->uuid))
+    $this->get(route('workbench.tasks.show', $this->task->uuid))
         ->assertRedirect('/admin/login');
 });
 
 test('authenticated user can view task', function () {
-    $this->get(route('app.tasks.show', $this->task->uuid))
+    $this->get(route('workbench.tasks.show', $this->task->uuid))
         ->assertStatus(200);
 });
 
@@ -30,7 +30,7 @@ test('task view component renders all six panel tab buttons', function () {
         ->html();
 
     // Each panel has a corresponding toggle button
-    expect($html)->toContain('Session Info')
+    expect($html)->toContain('Session')
         ->and($html)->toContain('Files')
         ->and($html)->toContain('Snippets')
         ->and($html)->toContain('To-Do')
@@ -41,6 +41,13 @@ test('task view panel can be toggled', function () {
     Livewire::test(Show::class, ['uuid' => $this->task->uuid])
         ->assertSet('activePanel', 'session-info')
         ->call('setActivePanel', 'file-browser')
+        ->assertSet('activePanel', 'file-browser');
+});
+
+test('task view uses the first configured sidebar panel from legacy multi-panel settings', function () {
+    $this->user->setSetting('sidebar_panels', ['file-browser', 'session-info', 'ralph']);
+
+    Livewire::test(Show::class, ['uuid' => $this->task->uuid])
         ->assertSet('activePanel', 'file-browser');
 });
 

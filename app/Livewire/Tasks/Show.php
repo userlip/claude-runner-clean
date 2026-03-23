@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Tasks;
 
+use App\Livewire\Settings\Index as SettingsIndex;
 use App\Models\Task;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
@@ -11,8 +12,7 @@ class Show extends Component
 {
     public Task $task;
 
-    /** @var array<string> */
-    public array $openPanels = [];
+    public ?string $activePanel = null;
 
     public function mount(string $uuid): void
     {
@@ -26,16 +26,28 @@ class Show extends Component
             abort(403);
         }
 
-        $this->openPanels = $user->setting('sidebar_panels', ['session-info']);
+        $configuredPanels = $user->setting('sidebar_panels', ['session-info']);
+
+        if (is_string($configuredPanels) && array_key_exists($configuredPanels, SettingsIndex::AVAILABLE_PANELS)) {
+            $this->activePanel = $configuredPanels;
+
+            return;
+        }
+
+        $configuredPanels = is_array($configuredPanels) ? $configuredPanels : [];
+
+        $this->activePanel = collect($configuredPanels)
+            ->first(fn (mixed $panel): bool => is_string($panel) && array_key_exists($panel, SettingsIndex::AVAILABLE_PANELS))
+            ?? 'session-info';
     }
 
-    public function togglePanel(string $panel): void
+    public function setActivePanel(string $panel): void
     {
-        if (in_array($panel, $this->openPanels)) {
-            $this->openPanels = array_values(array_diff($this->openPanels, [$panel]));
-        } else {
-            $this->openPanels[] = $panel;
+        if (! array_key_exists($panel, SettingsIndex::AVAILABLE_PANELS)) {
+            return;
         }
+
+        $this->activePanel = $this->activePanel === $panel ? null : $panel;
     }
 
     public function render(): \Illuminate\View\View
