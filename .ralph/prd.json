@@ -106,7 +106,7 @@
             "title": "Task slide-over panel with edit and delete",
             "githubIssue": 63,
             "priority": 6,
-            "passes": false,
+            "passes": true,
             "acceptanceCriteria": [
                 "Clicking a task card opens a slide-over panel from the right",
                 "Panel displays all task details: title, description, assignee, due date, section, tags, subtasks, comments",

@@ -1215,3 +1215,319 @@ it('sets drop target for visual feedback', function () {
         ->call('setDropTarget', null)
         ->assertSet('dropTargetSection', null);
 });
+
+// --- Task Edit and Delete (STORY-6) ---
+
+it('enters edit mode with task data pre-filled', function () {
+    $user = User::factory()->create();
+
+    Connection::factory()->asana()->create([
+        'user_id' => $user->id,
+        'credentials' => 'test_pat_token',
+    ]);
+
+    Http::fake([
+        'app.asana.com/api/1.0/workspaces' => Http::response(['data' => []], 200),
+        'app.asana.com/api/1.0/workspaces/ws_123/users*' => Http::response([
+            'data' => [
+                ['gid' => 'user_1', 'name' => 'John Doe'],
+            ],
+        ], 200),
+    ]);
+
+    Livewire::actingAs($user)
+        ->test(AsanaBoard::class)
+        ->set('selectedWorkspaceId', 'ws_123')
+        ->set('selectedTask', [
+            'gid' => 'task_123',
+            'name' => 'Test Task',
+            'notes' => 'Task description',
+            'completed' => false,
+            'assignee' => ['gid' => 'user_1', 'name' => 'John Doe'],
+            'due_on' => '2026-03-30',
+            'section' => ['gid' => 'sec_1', 'name' => 'To Do'],
+        ])
+        ->call('startEditMode')
+        ->assertSet('isEditingTask', true)
+        ->assertSet('editTaskTitle', 'Test Task')
+        ->assertSet('editTaskDescription', 'Task description')
+        ->assertSet('editTaskAssignee', 'user_1')
+        ->assertSet('editTaskDueDate', '2026-03-30')
+        ->assertSet('editTaskSectionId', 'sec_1');
+});
+
+it('cancels edit mode and clears edit fields', function () {
+    $user = User::factory()->create();
+
+    Connection::factory()->asana()->create([
+        'user_id' => $user->id,
+        'credentials' => 'test_pat_token',
+    ]);
+
+    Http::fake([
+        'app.asana.com/api/1.0/workspaces' => Http::response(['data' => []], 200),
+    ]);
+
+    Livewire::actingAs($user)
+        ->test(AsanaBoard::class)
+        ->set('isEditingTask', true)
+        ->set('editTaskTitle', 'Edited Title')
+        ->set('editTaskDescription', 'Edited Description')
+        ->set('editTaskAssignee', 'user_1')
+        ->set('editTaskDueDate', '2026-04-01')
+        ->set('editTaskSectionId', 'sec_2')
+        ->call('cancelEdit')
+        ->assertSet('isEditingTask', false)
+        ->assertSet('editTaskTitle', '')
+        ->assertSet('editTaskDescription', '')
+        ->assertSet('editTaskAssignee', null)
+        ->assertSet('editTaskDueDate', null)
+        ->assertSet('editTaskSectionId', null);
+});
+
+it('saves task changes to asana', function () {
+    $user = User::factory()->create();
+
+    Connection::factory()->asana()->create([
+        'user_id' => $user->id,
+        'credentials' => 'test_pat_token',
+    ]);
+
+    Http::fake([
+        'app.asana.com/api/1.0/workspaces' => Http::response(['data' => []], 200),
+        'app.asana.com/api/1.0/tasks/task_123' => Http::response([
+            'data' => [
+                'gid' => 'task_123',
+                'name' => 'Updated Task',
+                'notes' => 'Updated description',
+                'completed' => false,
+                'assignee' => ['gid' => 'user_2', 'name' => 'Jane Smith'],
+                'due_on' => '2026-04-15',
+                'section' => ['gid' => 'sec_1', 'name' => 'To Do'],
+            ],
+        ], 200),
+    ]);
+
+    Livewire::actingAs($user)
+        ->test(AsanaBoard::class)
+        ->set('selectedProjectId', 'proj_123')
+        ->set('selectedTaskId', 'task_123')
+        ->set('selectedTask', [
+            'gid' => 'task_123',
+            'name' => 'Original Task',
+            'notes' => 'Original description',
+            'completed' => false,
+            'section' => ['gid' => 'sec_1', 'name' => 'To Do'],
+        ])
+        ->set('isEditingTask', true)
+        ->set('editTaskTitle', 'Updated Task')
+        ->set('editTaskDescription', 'Updated description')
+        ->set('editTaskAssignee', 'user_2')
+        ->set('editTaskDueDate', '2026-04-15')
+        ->set('editTaskSectionId', 'sec_1')
+        ->call('saveTaskChanges')
+        ->assertSet('isEditingTask', false);
+
+    Http::assertSent(function ($request) {
+        return str_contains($request->url(), 'tasks/task_123')
+            && $request->method() === 'PUT'
+            && $request->data()['data']['name'] === 'Updated Task'
+            && $request->data()['data']['notes'] === 'Updated description'
+            && $request->data()['data']['assignee'] === 'user_2'
+            && $request->data()['data']['due_on'] === '2026-04-15';
+    });
+});
+
+it('moves task to different section when section changed in edit', function () {
+    $user = User::factory()->create();
+
+    Connection::factory()->asana()->create([
+        'user_id' => $user->id,
+        'credentials' => 'test_pat_token',
+    ]);
+
+    Http::fake([
+        'app.asana.com/api/1.0/workspaces' => Http::response(['data' => []], 200),
+        'app.asana.com/api/1.0/sections/sec_2/addTask' => Http::response([
+            'data' => ['gid' => 'task_123'],
+        ], 200),
+        'app.asana.com/api/1.0/tasks/task_123' => Http::response([
+            'data' => [
+                'gid' => 'task_123',
+                'name' => 'Updated Task',
+                'notes' => '',
+                'completed' => false,
+                'section' => ['gid' => 'sec_2', 'name' => 'Done'],
+            ],
+        ], 200),
+    ]);
+
+    Livewire::actingAs($user)
+        ->test(AsanaBoard::class)
+        ->set('selectedProjectId', 'proj_123')
+        ->set('selectedTaskId', 'task_123')
+        ->set('selectedTask', [
+            'gid' => 'task_123',
+            'name' => 'Task',
+            'notes' => '',
+            'completed' => false,
+            'section' => ['gid' => 'sec_1', 'name' => 'To Do'],
+        ])
+        ->set('sections', [
+            'sec_1' => ['gid' => 'sec_1', 'name' => 'To Do', 'tasks' => []],
+            'sec_2' => ['gid' => 'sec_2', 'name' => 'Done', 'tasks' => []],
+        ])
+        ->set('isEditingTask', true)
+        ->set('editTaskTitle', 'Updated Task')
+        ->set('editTaskSectionId', 'sec_2')
+        ->call('saveTaskChanges');
+
+    Http::assertSent(function ($request) {
+        return str_contains($request->url(), 'sections/sec_2/addTask')
+            && $request->data()['data']['task'] === 'task_123';
+    });
+});
+
+it('validates title is required when saving task changes', function () {
+    $user = User::factory()->create();
+
+    Connection::factory()->asana()->create([
+        'user_id' => $user->id,
+        'credentials' => 'test_pat_token',
+    ]);
+
+    Http::fake([
+        'app.asana.com/api/1.0/workspaces' => Http::response(['data' => []], 200),
+    ]);
+
+    Livewire::actingAs($user)
+        ->test(AsanaBoard::class)
+        ->set('selectedTaskId', 'task_123')
+        ->set('selectedTask', [
+            'gid' => 'task_123',
+            'name' => 'Task',
+            'completed' => false,
+        ])
+        ->set('isEditingTask', true)
+        ->set('editTaskTitle', '')
+        ->call('saveTaskChanges')
+        ->assertHasErrors(['editTaskTitle' => 'required']);
+});
+
+it('validates due date format when saving task changes', function () {
+    $user = User::factory()->create();
+
+    Connection::factory()->asana()->create([
+        'user_id' => $user->id,
+        'credentials' => 'test_pat_token',
+    ]);
+
+    Http::fake([
+        'app.asana.com/api/1.0/workspaces' => Http::response(['data' => []], 200),
+    ]);
+
+    Livewire::actingAs($user)
+        ->test(AsanaBoard::class)
+        ->set('selectedTaskId', 'task_123')
+        ->set('selectedTask', [
+            'gid' => 'task_123',
+            'name' => 'Task',
+            'completed' => false,
+        ])
+        ->set('isEditingTask', true)
+        ->set('editTaskTitle', 'Valid Title')
+        ->set('editTaskDueDate', 'invalid-date')
+        ->call('saveTaskChanges')
+        ->assertHasErrors(['editTaskDueDate' => 'date_format']);
+});
+
+it('shows delete confirmation dialog', function () {
+    $user = User::factory()->create();
+
+    Connection::factory()->asana()->create([
+        'user_id' => $user->id,
+        'credentials' => 'test_pat_token',
+    ]);
+
+    Http::fake([
+        'app.asana.com/api/1.0/workspaces' => Http::response(['data' => []], 200),
+    ]);
+
+    Livewire::actingAs($user)
+        ->test(AsanaBoard::class)
+        ->call('confirmDelete')
+        ->assertSet('showDeleteConfirm', true);
+});
+
+it('cancels delete and hides confirmation', function () {
+    $user = User::factory()->create();
+
+    Connection::factory()->asana()->create([
+        'user_id' => $user->id,
+        'credentials' => 'test_pat_token',
+    ]);
+
+    Http::fake([
+        'app.asana.com/api/1.0/workspaces' => Http::response(['data' => []], 200),
+    ]);
+
+    Livewire::actingAs($user)
+        ->test(AsanaBoard::class)
+        ->set('showDeleteConfirm', true)
+        ->call('cancelDelete')
+        ->assertSet('showDeleteConfirm', false);
+});
+
+it('deletes task from asana and closes panel', function () {
+    $user = User::factory()->create();
+
+    Connection::factory()->asana()->create([
+        'user_id' => $user->id,
+        'credentials' => 'test_pat_token',
+    ]);
+
+    Http::fake([
+        'app.asana.com/api/1.0/workspaces' => Http::response(['data' => []], 200),
+        'app.asana.com/api/1.0/tasks/task_123' => Http::response([], 200),
+    ]);
+
+    Livewire::actingAs($user)
+        ->test(AsanaBoard::class)
+        ->set('selectedProjectId', 'proj_123')
+        ->set('selectedTaskId', 'task_123')
+        ->set('showTaskPanel', true)
+        ->set('showDeleteConfirm', true)
+        ->call('deleteTask')
+        ->assertSet('showDeleteConfirm', false)
+        ->assertSet('showTaskPanel', false)
+        ->assertSet('selectedTaskId', null)
+        ->assertSet('selectedTask', null);
+
+    Http::assertSent(function ($request) {
+        return str_contains($request->url(), 'tasks/task_123')
+            && $request->method() === 'DELETE';
+    });
+});
+
+it('shows error when deleting task fails', function () {
+    $user = User::factory()->create();
+
+    Connection::factory()->asana()->create([
+        'user_id' => $user->id,
+        'credentials' => 'test_pat_token',
+    ]);
+
+    Http::fake([
+        'app.asana.com/api/1.0/workspaces' => Http::response(['data' => []], 200),
+        'app.asana.com/api/1.0/tasks/task_123' => Http::response([
+            'errors' => [['message' => 'Task not found']],
+        ], 404),
+    ]);
+
+    Livewire::actingAs($user)
+        ->test(AsanaBoard::class)
+        ->set('selectedTaskId', 'task_123')
+        ->set('showDeleteConfirm', true)
+        ->call('deleteTask')
+        ->assertSet('showDeleteConfirm', true); // Dialog stays open on error
+});
