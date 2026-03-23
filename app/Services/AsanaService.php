@@ -103,23 +103,64 @@ class AsanaService
     }
 
     /**
-     * Find a testing section in a project by name pattern.
-     * Looks for sections with names containing 'test', 'testing', or 'qa'.
+     * Get all projects for a workspace.
      *
-     * @param  string  $projectId  The Asana project GID
-     * @return string|null The section GID or null if not found
+     * @param  string  $workspaceId  The Asana workspace GID
+     * @return array{data: array<int, array{gid: string, name: string, archived?: bool}>}
      */
-    public function findTestingSection(string $projectId): ?string
+    public function getWorkspaceProjects(string $workspaceId): array
     {
-        $sections = $this->getProjectSections($projectId);
+        $response = Http::withToken($this->personalAccessToken)
+            ->get("{$this->baseUrl}/projects", [
+                'workspace' => $workspaceId,
+                'archived' => false,
+            ]);
 
-        foreach ($sections['data'] ?? [] as $section) {
-            $name = strtolower($section['name'] ?? '');
-            if (str_contains($name, 'test') || str_contains($name, 'testing') || str_contains($name, 'qa')) {
-                return $section['gid'];
-            }
+        if (! $response->successful()) {
+            return ['data' => []];
         }
 
-        return null;
+        return $response->json();
+    }
+
+    /**
+     * Get all tasks for a project.
+     *
+     * @param  string  $projectId  The Asana project GID
+     * @return array{data: array<int, array{gid: string, name: string, completed: bool, assignee?: array{gid: string, name: string}, due_on?: string, section?: array{gid: string, name: string}}>}
+     */
+    public function getProjectTasks(string $projectId): array
+    {
+        $response = Http::withToken($this->personalAccessToken)
+            ->get("{$this->baseUrl}/tasks", [
+                'project' => $projectId,
+                'opt_fields' => 'name,completed,assignee.name,due_on,section.name,section.gid,created_at,modified_at,tags',
+            ]);
+
+        if (! $response->successful()) {
+            return ['data' => []];
+        }
+
+        return $response->json();
+    }
+
+    /**
+     * Get full task details including stories/comments.
+     *
+     * @param  string  $taskId  The Asana task GID
+     * @return array{data: array{gid: string, name: string, notes?: string, completed: bool, assignee?: array{gid: string, name: string}, due_on?: string, section?: array{gid: string, name: string}}}|null
+     */
+    public function getTaskDetails(string $taskId): ?array
+    {
+        $response = Http::withToken($this->personalAccessToken)
+            ->get("{$this->baseUrl}/tasks/{$taskId}", [
+                'opt_fields' => 'name,notes,completed,assignee.name,due_on,section.name,section.gid,created_at,modified_at,tags',
+            ]);
+
+        if (! $response->successful()) {
+            return null;
+        }
+
+        return $response->json();
     }
 }

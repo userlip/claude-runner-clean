@@ -28,7 +28,7 @@
             "title": "Completion sync-back to Asana",
             "githubIssue": 67,
             "priority": 2,
-            "passes": false,
+            "passes": true,
             "acceptanceCriteria": [
                 "`SyncAsanaTaskCompletion` job exists and is queued",
                 "Job dispatched when a CR task with `asana_task_id` completes",

@@ -29,8 +29,31 @@ Started: 2026-03-23 15:20:48
 - SearchConsoleSettings tests: 6 passed - disconnect removes from connections table
 - AsanaSettings tests: 10 passed - PAT validation and workspace fetching
 
+### 2026-03-23 - STORY-2: Completion sync-back to Asana
+**Status**: Completed
+**Tests**: 14 passed, 17 assertions
+
+**Key Implementation Details**:
+- `SyncAsanaTaskCompletion` job dispatched when `Task::markAsCompleted()` called on tasks with `asana_task_id`
+- Job extracts PR link from task title (e.g., "PR #42") or messages containing GitHub PR URLs
+- Job adds formatted comment to Asana task with completion details and PR link
+- Testing section config stored on Repository model (`asana_testing_section_id`)
+- Auto-detection fallback in `AsanaService::findTestingSection()` matches sections named "test"/"testing"/"qa"
+- Job has retry config: `$tries = 3`, `$backoff = 60` - comment failures throw exception for retry, section move failures are graceful
+- Repository View page has "Configure Asana" action with Testing Section dropdown
+
+**Verification**:
+- Job dispatch tests: 2 passed - dispatched when task has `asana_task_id`, not dispatched without
+- Comment creation tests: 3 passed - comment with task title, PR from title, PR from messages
+- Section move tests: 4 passed - configured section, auto-detect testing, auto-detect QA, graceful skip
+- Error handling tests: 5 passed - no user, no connection, retry config, comment failure exception, section move graceful failure
+
 ## Verification Failed
 
 ```
 
 ```
+
+## Execution Failed
+
+Claude process failed with exit code 15
