@@ -711,7 +711,6 @@
         >
             <div class="chat-cached-history" wire:ignore x-ref="cachedHistory"></div>
 
-
             @forelse($this->chatMessages as $index => $message)
                 @php
                     $previousMessage = $index > 0 ? $this->chatMessages[$index - 1] : null;

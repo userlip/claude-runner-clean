@@ -93,8 +93,7 @@ class Repository extends Model
             return $this->clone_url;
         }
 
-        // Get the user's GitHub connection
-        $connection = GitHubConnection::where('user_id', $this->user_id)->first();
+        $connection = $this->user?->githubConnection;
 
         if (! $connection || ! $connection->access_token) {
             return $this->clone_url;

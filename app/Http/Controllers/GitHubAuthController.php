@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\GitHubConnection;
+use App\Enums\ConnectionType;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
 use Laravel\Socialite\Facades\Socialite;
@@ -20,13 +20,17 @@ class GitHubAuthController extends Controller
     {
         $githubUser = Socialite::driver('github')->user();
 
-        GitHubConnection::updateOrCreate(
-            ['user_id' => Auth::id()],
+        Auth::user()->connections()->updateOrCreate(
+            ['type' => ConnectionType::GitHub],
             [
-                'access_token' => $githubUser->token,
-                'github_user_id' => $githubUser->getId(),
-                'github_username' => $githubUser->getNickname(),
-                'scopes' => ['repo'],
+                'name' => 'GitHub',
+                'credentials' => $githubUser->token,
+                'metadata' => [
+                    'github_user_id' => $githubUser->getId(),
+                    'github_username' => $githubUser->getNickname(),
+                    'scopes' => ['repo'],
+                ],
+                'is_active' => true,
             ]
         );
 
@@ -36,7 +40,7 @@ class GitHubAuthController extends Controller
 
     public function disconnect(): RedirectResponse
     {
-        GitHubConnection::where('user_id', Auth::id())->delete();
+        Auth::user()->connections()->where('type', ConnectionType::GitHub)->delete();
 
         return redirect('/admin')
             ->with('success', 'GitHub disconnected.');

@@ -13,7 +13,7 @@
             <x-input label="Delete After (minutes)" wire:model="deleteAfterMinutes" type="number" placeholder="Leave blank to keep forever" />
 
             <x-slot:actions>
-                <x-button label="Cancel" link="{{ route('app.schedules.index') }}" />
+                <x-button label="Cancel" link="{{ route('workbench.schedules.index') }}" />
                 <x-button label="{{ $schedule ? 'Update' : 'Create' }}" type="submit" icon="o-paper-airplane" class="btn-primary" spinner="save" />
             </x-slot:actions>
         </x-form>

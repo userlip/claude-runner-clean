@@ -69,7 +69,7 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
 
     public function githubConnection(): HasOne
     {
-        return $this->hasOne(GitHubConnection::class);
+        return $this->hasOne(Connection::class)->where('type', ConnectionType::GitHub)->where('is_active', true);
     }
 
     public function repositories(): HasMany
@@ -89,12 +89,12 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
 
     public function googleAnalyticsConnections(): HasMany
     {
-        return $this->hasMany(GoogleAnalyticsConnection::class);
+        return $this->hasMany(Connection::class)->where('type', ConnectionType::GoogleAnalytics);
     }
 
     public function searchConsoleConnections(): HasMany
     {
-        return $this->hasMany(SearchConsoleConnection::class);
+        return $this->hasMany(Connection::class)->where('type', ConnectionType::SearchConsole);
     }
 
     public function connections(): HasMany

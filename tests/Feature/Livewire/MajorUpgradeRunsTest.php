@@ -18,15 +18,15 @@ beforeEach(function () {
 // --- Access control ---
 
 it('redirects unauthenticated users to login for major-upgrade-runs index', function () {
-    $this->get('/app/major-upgrade-runs')->assertRedirect('/admin/login');
+    $this->get('/workbench/major-upgrade-runs')->assertRedirect('/admin/login');
 });
 
 it('returns 403 for non-admin users on major-upgrade-runs index', function () {
-    $this->actingAs($this->user)->get('/app/major-upgrade-runs')->assertForbidden();
+    $this->actingAs($this->user)->get('/workbench/major-upgrade-runs')->assertForbidden();
 });
 
 it('returns 200 for admin users on major-upgrade-runs index', function () {
-    $this->actingAs($this->admin)->get('/app/major-upgrade-runs')->assertOk();
+    $this->actingAs($this->admin)->get('/workbench/major-upgrade-runs')->assertOk();
 });
 
 // --- List component ---

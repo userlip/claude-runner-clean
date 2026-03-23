@@ -60,7 +60,7 @@ class Form extends Component
             $this->success('Directory created.');
         }
 
-        $this->redirect(route('app.promotion-directories.index'), navigate: true);
+        $this->redirect(route('workbench.promotion-directories.index'), navigate: true);
     }
 
     /**

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Connection;
 use App\Models\GitHubConnection;
 use App\Models\Repository;
 use Illuminate\Support\Collection;
@@ -15,7 +16,7 @@ class GitHubService
     private array $ignoredCheckKeywords = ['claude'];
 
     public function __construct(
-        private GitHubConnection $connection
+        private GitHubConnection|Connection $connection
     ) {}
 
     /**

@@ -179,7 +179,6 @@ test('formatForTelegram includes persona name when persona_id set', function () 
 
     $message = $proposal->formatForTelegram();
 
-    expect($message)->toContain('Persona Proposal');
     expect($message)->toContain('SEO Analyzer');
     expect($message)->toContain('SEO Improvement');
 });

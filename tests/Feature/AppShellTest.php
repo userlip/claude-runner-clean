@@ -4,35 +4,34 @@ use App\Models\User;
 use Spatie\Permission\Models\Role;
 
 test('unauthenticated GET /app redirects to login', function () {
-    $this->get('/app')->assertRedirect('/admin/login');
+    $this->get('/workbench')->assertRedirect('/admin/login');
 });
 
 test('authenticated GET /app returns 200', function () {
     $user = User::factory()->create();
 
-    $this->actingAs($user)->get('/app')->assertOk();
+    $this->actingAs($user)->get('/workbench')->assertOk();
 });
 
 test('app layout contains sidebar and main content area', function () {
     $user = User::factory()->create();
 
-    $html = $this->actingAs($user)->get('/app')->getContent();
+    $html = $this->actingAs($user)->get('/workbench')->getContent();
 
-    expect($html)->toContain('id="app-sidebar"');
-    expect($html)->toContain('<main');
+    expect($html)->toContain('drawer');
+    expect($html)->toContain('main-drawer');
 });
 
 test('sidebar nav items are visible for authenticated users and link to /app paths', function () {
     $user = User::factory()->create();
 
     $this->actingAs($user)
-        ->get('/app')
+        ->get('/workbench')
         ->assertOk()
-        ->assertSee('id="app-nav-items"', false)
-        ->assertSee('/app/tasks', false)
-        ->assertSee('/app/repositories', false)
-        ->assertSee('/app/personas', false)
-        ->assertSee('/app/snippets', false);
+        ->assertSee('/workbench/tasks', false)
+        ->assertSee('/workbench/repositories', false)
+        ->assertSee('/workbench/personas', false)
+        ->assertSee('/workbench/snippets', false);
 });
 
 test('existing /admin routes are unaffected', function () {
@@ -48,7 +47,7 @@ test('admin user sees admin nav link', function () {
     $admin->assignRole('admin');
 
     $this->actingAs($admin)
-        ->get('/app')
+        ->get('/workbench')
         ->assertOk()
-        ->assertSee('admin-nav-link', false);
+        ->assertSee('/admin', false);
 });

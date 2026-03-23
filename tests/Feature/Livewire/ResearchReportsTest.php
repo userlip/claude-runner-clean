@@ -19,30 +19,30 @@ beforeEach(function () {
 // --- Access control ---
 
 it('redirects unauthenticated users to login for research-reports index', function () {
-    $this->get('/app/research-reports')->assertRedirect('/admin/login');
+    $this->get('/workbench/research-reports')->assertRedirect('/admin/login');
 });
 
 it('returns 403 for non-admin users on research-reports index', function () {
-    $this->actingAs($this->user)->get('/app/research-reports')->assertForbidden();
+    $this->actingAs($this->user)->get('/workbench/research-reports')->assertForbidden();
 });
 
 it('returns 200 for admin users on research-reports index', function () {
-    $this->actingAs($this->admin)->get('/app/research-reports')->assertOk();
+    $this->actingAs($this->admin)->get('/workbench/research-reports')->assertOk();
 });
 
 it('redirects unauthenticated users to login for research-report show', function () {
     $report = ResearchReport::factory()->create();
-    $this->get("/app/research-reports/{$report->uuid}")->assertRedirect('/admin/login');
+    $this->get("/workbench/research-reports/{$report->uuid}")->assertRedirect('/admin/login');
 });
 
 it('returns 403 for non-admin users on research-report show', function () {
     $report = ResearchReport::factory()->create();
-    $this->actingAs($this->user)->get("/app/research-reports/{$report->uuid}")->assertForbidden();
+    $this->actingAs($this->user)->get("/workbench/research-reports/{$report->uuid}")->assertForbidden();
 });
 
 it('returns 200 for admin users on research-report show', function () {
     $report = ResearchReport::factory()->create();
-    $this->actingAs($this->admin)->get("/app/research-reports/{$report->uuid}")->assertOk();
+    $this->actingAs($this->admin)->get("/workbench/research-reports/{$report->uuid}")->assertOk();
 });
 
 // --- List component ---

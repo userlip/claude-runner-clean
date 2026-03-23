@@ -32,7 +32,7 @@
                 "/home/ploi/claude-runner.marin.sh/mcp-servers/google-analytics-mcp/dist/index.js"
             ],
             "env": {
-                "GA_ACCOUNT_MAIN_MARIN_CREDENTIALS_PATH": "/home/ploi/claude-runner.marin.sh/storage/app/private/google-analytics/1.json"
+                "GA_ACCOUNT_GA_PROPERTY___MY_SITE_CREDENTIALS_PATH": "/home/ploi/claude-runner.marin.sh/storage/app/private/google-analytics/1.json"
             }
         },
         "search-console": {
@@ -41,7 +41,7 @@
                 "/home/ploi/claude-runner.marin.sh/mcp-servers/search-console-mcp/dist/index.js"
             ],
             "env": {
-                "GSC_ACCOUNT_MAIN_MARIN_CREDENTIALS_PATH": "/home/ploi/claude-runner.marin.sh/storage/app/private/search-console/1.json"
+                "GSC_ACCOUNT_SC_SITE___EXAMPLE_COM_CREDENTIALS_PATH": "/home/ploi/claude-runner.marin.sh/storage/app/private/search-console/1.json"
             }
         }
     }

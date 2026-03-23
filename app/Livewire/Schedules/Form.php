@@ -117,7 +117,7 @@ class Form extends Component
             $this->success('Schedule created.');
         }
 
-        $this->redirect(route('app.schedules.index'), navigate: true);
+        $this->redirect(route('workbench.schedules.index'), navigate: true);
     }
 
     public function render(): View

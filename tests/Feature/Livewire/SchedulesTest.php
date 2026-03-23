@@ -21,24 +21,24 @@ beforeEach(function () {
 // --- Access control ---
 
 it('redirects unauthenticated users to login for schedules index', function () {
-    $this->get('/app/schedules')->assertRedirect('/admin/login');
+    $this->get('/workbench/schedules')->assertRedirect('/admin/login');
 });
 
 it('returns 403 for non-admin users on schedules index', function () {
-    $this->actingAs($this->user)->get('/app/schedules')->assertForbidden();
+    $this->actingAs($this->user)->get('/workbench/schedules')->assertForbidden();
 });
 
 it('returns 200 for admin users on schedules index', function () {
-    $this->actingAs($this->admin)->get('/app/schedules')->assertOk();
+    $this->actingAs($this->admin)->get('/workbench/schedules')->assertOk();
 });
 
 it('returns 403 for non-admin users on schedules create page', function () {
-    $this->actingAs($this->user)->get('/app/schedules/create')->assertForbidden();
+    $this->actingAs($this->user)->get('/workbench/schedules/create')->assertForbidden();
 });
 
 it('returns 403 for non-admin users on schedules edit page', function () {
     $schedule = TaskSchedule::factory()->create();
-    $this->actingAs($this->user)->get("/app/schedules/{$schedule->id}/edit")->assertForbidden();
+    $this->actingAs($this->user)->get("/workbench/schedules/{$schedule->id}/edit")->assertForbidden();
 });
 
 // --- List component ---

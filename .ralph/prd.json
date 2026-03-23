@@ -1,292 +1,163 @@
 {
-    "branchName": "ralph\/04e415cd-27fb-43cf-acd6-d75c65150b16",
+    "branchName": "ralph\/9f40e0a8-2b2a-40f0-a749-bda988cb6686",
     "verificationCommand": "php artisan test",
-    "parentIssue": 43,
+    "parentIssue": 60,
     "userStories": [
         {
             "id": "STORY-1",
-            "title": "[\/app] Final: swap \/ redirect from \/admin to \/app",
-            "githubIssue": 59,
+            "title": "Migrate existing integrations to Connections table",
+            "githubIssue": 68,
             "priority": 1,
-            "passes": true,
+            "passes": false,
             "acceptanceCriteria": [
-                "`GET \/` redirects authenticated users to `\/app`",
-                "`GET \/` redirects unauthenticated users to login (via `\/app` \u2192 auth middleware)",
-                "`GET \/admin` still works for all existing Filament users",
-                "All affected tests pass with the updated redirect",
-                "Feature test: `GET \/` returns redirect to `\/app`"
+                "Data migration moves all existing integration data to `connections` table",
+                "`GitHubSettings` page reads\/writes from `connections` table",
+                "`GoogleAnalyticsSettings` page reads\/writes from `connections` table",
+                "`SearchConsoleSettings` page reads\/writes from `connections` table",
+                "All existing integrations appear as cards in Connections section",
+                "GitHub repositories still reference correct connection data",
+                "Rollback migration exists to revert if needed",
+                "Feature tests cover: migration correctness, settings pages still function, connection CRUD"
             ],
             "blockedBy": [
-                "44",
-                "45",
-                "46",
-                "47",
-                "48",
-                "49",
-                "50",
-                "51",
-                "52",
-                "53",
-                "54",
-                "55",
-                "56",
-                "57",
-                "58"
+                "61"
             ]
         },
         {
             "id": "STORY-2",
-            "title": "[\/app] PWA: web manifest, service worker, installable on desktop + mobile",
-            "githubIssue": 58,
+            "title": "Completion sync-back to Asana",
+            "githubIssue": 67,
             "priority": 2,
-            "passes": true,
+            "passes": false,
             "acceptanceCriteria": [
-                "`\/app-manifest.json` returns valid JSON with correct `start_url`, `display`, `icons`",
-                "`\/app` layout includes `<link rel=\"manifest\">` and theme-color meta tag",
-                "Service worker is registered and caches the app shell",
-                "App is installable in Chrome (\"Add to Home Screen\" prompt appears)",
-                "App is installable on iOS Safari (\"Add to Home Screen\" works)",
-                "Feature tests: manifest route returns 200 with correct JSON, meta tags present in \/app layout"
+                "`SyncAsanaTaskCompletion` job exists and is queued",
+                "Job dispatched when a CR task with `asana_task_id` completes",
+                "Job adds a comment to the linked Asana task with completion details",
+                "Comment includes PR link if available from task messages",
+                "Job moves the Asana task to the configured Testing section",
+                "Board page has \"Testing section\" config dropdown per project",
+                "Auto-detection fallback finds sections named \"test\"\/\"testing\"\/\"qa\"",
+                "Graceful failure: if Asana API call fails, job retries without blocking CR task",
+                "Feature tests cover: job dispatch on completion, comment creation, section move, auto-detect fallback"
             ],
             "blockedBy": [
-                "44"
+                "66"
             ]
         },
         {
             "id": "STORY-3",
-            "title": "[\/app] Admin nav link + role gating in sidebar",
-            "githubIssue": 57,
+            "title": "Repo-project linking + start CR task from Asana",
+            "githubIssue": 66,
             "priority": 3,
-            "passes": true,
+            "passes": false,
             "acceptanceCriteria": [
-                "Admin role users see an \"Admin\" link in the `\/app` sidebar",
-                "Non-admin users do not see the Admin link",
-                "Clicking the link navigates to `\/admin`",
-                "Feature test: admin user sees link, regular user does not"
+                "Migration adds `asana_project_id` to repositories and `asana_task_id` to tasks",
+                "\"Link Repository\" action on board page with repo dropdown",
+                "Linked repo shown on board page (with unlink option)",
+                "\"Start Claude Runner Task\" button in task slide-over panel",
+                "Clicking it opens CR task form pre-filled with Asana task title + description",
+                "CR task form stores `asana_task_id` on creation",
+                "`repository_id` auto-set from linked repo",
+                "Feature tests cover: link repo, start CR task pre-fill, asana_task_id stored"
             ],
             "blockedBy": [
-                "44"
+                "63"
             ]
         },
         {
             "id": "STORY-4",
-            "title": "[\/app] CRUD: ScrappApis \u2014 Livewire list + create\/edit with Mary UI",
-            "githubIssue": 56,
+            "title": "Create Asana tasks (inline + full form)",
+            "githubIssue": 65,
             "priority": 4,
-            "passes": true,
+            "passes": false,
             "acceptanceCriteria": [
-                "`\/app\/scrapp-apis` renders a paginated, sortable, searchable Mary UI table",
-                "Create and edit forms save correctly",
-                "Admin-only access enforced",
-                "Feature test covering list and create\/edit"
+                "Each column has a \"+ Add task\" button\/area at the bottom",
+                "Inline quick-add accepts a title and creates a task in that section",
+                "\"Create Task\" button opens a full form with all fields",
+                "Full form includes: title, description, assignee, due date, tags, section",
+                "Created tasks appear on the board immediately (cache busted)",
+                "Validation: title required, due date format validated",
+                "Feature tests cover: inline create, full form create, validation errors"
             ],
             "blockedBy": [
-                "44"
+                "62"
             ]
         },
         {
             "id": "STORY-5",
-            "title": "[\/app] CRUD: ResearchReports, MajorUpgradeRuns, SecurityRuns \u2014 Livewire list views with Mary UI",
-            "githubIssue": 55,
+            "title": "Kanban drag-and-drop between columns",
+            "githubIssue": 64,
             "priority": 5,
-            "passes": true,
+            "passes": false,
             "acceptanceCriteria": [
-                "All three list views render with paginated, sortable Mary UI tables",
-                "View pages (where applicable) display record details",
-                "Admin-only access enforced (403 for non-admins)",
-                "Feature tests for list rendering and admin gating"
+                "Task cards are draggable between columns",
+                "Dropping a card in a new column updates the Asana task section via API",
+                "Visual feedback during drag (card opacity, drop zone highlight)",
+                "Optimistic UI: card moves immediately, reverts on API error with notification",
+                "Card order within a column is maintained",
+                "Feature tests cover: section update on drop, error handling\/revert"
             ],
             "blockedBy": [
-                "44"
+                "62"
             ]
         },
         {
             "id": "STORY-6",
-            "title": "[\/app] CRUD: Proposals + PromotionDirectory \u2014 Livewire list + create\/edit with Mary UI",
-            "githubIssue": 54,
+            "title": "Task slide-over panel with edit and delete",
+            "githubIssue": 63,
             "priority": 6,
-            "passes": true,
+            "passes": false,
             "acceptanceCriteria": [
-                "Both resources have working list, create, edit, and delete flows",
-                "Tables are searchable, sortable, paginated",
-                "Feature tests for list and create\/edit"
+                "Clicking a task card opens a slide-over panel from the right",
+                "Panel displays all task details: title, description, assignee, due date, section, tags, subtasks, comments",
+                "All editable fields can be modified and saved to Asana API",
+                "Section can be changed via dropdown (alternative to drag-and-drop)",
+                "Delete action shows confirmation, then removes task from Asana and board",
+                "Panel closes on outside click or close button",
+                "Loading states shown while fetching full task details",
+                "Feature tests cover: panel opens, edit saves, delete removes, section change works"
             ],
             "blockedBy": [
-                "44"
+                "62"
             ]
         },
         {
             "id": "STORY-7",
-            "title": "[\/app] CRUD: Personas + Playbooks \u2014 Livewire list + create\/edit with Mary UI",
-            "githubIssue": 53,
+            "title": "Read-only Asana Kanban board",
+            "githubIssue": 62,
             "priority": 7,
-            "passes": true,
+            "passes": false,
             "acceptanceCriteria": [
-                "`\/app\/personas` and `\/app\/playbooks` render with full Mary UI tables",
-                "Persona edit includes the proposals sub-table or relation tab",
-                "Create, edit, delete all work correctly",
-                "Feature tests for both resources"
+                "\"Asana\" appears as top-level sidebar item (same level as Tasks, Repositories)",
+                "Route `\/workbench\/asana` loads the board component",
+                "Project picker lists all projects grouped by workspace",
+                "Selecting a project renders sections as Kanban columns",
+                "Task cards display: title, assignee, due date, priority color, tags as pills, subtask count",
+                "Board auto-refreshes every 30 seconds via `wire:poll`",
+                "API responses cached with ~60s TTL in Laravel cache",
+                "Empty states handled (no connection, no projects, empty sections)",
+                "Feature tests cover: board renders, project selection, task card display"
             ],
             "blockedBy": [
-                "44"
+                "61"
             ]
         },
         {
             "id": "STORY-8",
-            "title": "[\/app] CRUD: Snippets \u2014 Livewire list + create\/edit with Mary UI",
-            "githubIssue": 52,
+            "title": "Connections table + Asana PAT setup",
+            "githubIssue": 61,
             "priority": 8,
-            "passes": true,
+            "passes": false,
             "acceptanceCriteria": [
-                "`\/app\/snippets` lists snippets in a paginated, sortable, searchable Mary UI table",
-                "Create and edit forms save correctly to DB",
-                "Delete removes the record",
-                "Existing `SnippetBrowserTest` is unaffected",
-                "Feature tests for list, create, edit"
-            ],
-            "blockedBy": [
-                "44"
-            ]
-        },
-        {
-            "id": "STORY-9",
-            "title": "[\/app] CRUD: Sites + Repositories \u2014 Livewire list + create\/edit with Mary UI",
-            "githubIssue": 51,
-            "priority": 9,
-            "passes": true,
-            "acceptanceCriteria": [
-                "`\/app\/sites` and `\/app\/repositories` render paginated, sortable, searchable Mary UI tables",
-                "Create, edit, delete all persist correctly to DB",
-                "Feature tests for both resources covering list, create, edit"
-            ],
-            "blockedBy": [
-                "44"
-            ]
-        },
-        {
-            "id": "STORY-10",
-            "title": "[\/app] CRUD: Tasks + TaskSchedules \u2014 Livewire list + create\/edit with Mary UI",
-            "githubIssue": 50,
-            "priority": 10,
-            "passes": true,
-            "acceptanceCriteria": [
-                "`\/app\/tasks` lists tasks (not to be confused with `\/app\/tasks\/{task}` which is the chat view)",
-                "`\/app\/schedules` lists task schedules with sortable, searchable Mary UI table",
-                "Create, edit, delete work and persist to DB",
-                "Active toggle on schedules works inline",
-                "Feature tests for both list and create\/edit flows"
-            ],
-            "blockedBy": [
-                "44"
-            ]
-        },
-        {
-            "id": "STORY-11",
-            "title": "[\/app] CRUD: Users \u2014 Livewire list + create\/edit with Mary UI",
-            "githubIssue": 49,
-            "priority": 11,
-            "passes": true,
-            "acceptanceCriteria": [
-                "`\/app\/users` lists all users in a paginated, sortable Mary UI table",
-                "Search filters the table in real-time",
-                "Creating a user saves to DB and redirects to list with success notification",
-                "Editing a user updates DB correctly; leaving password blank does not reset it",
-                "Non-admin users get 403 on all `\/app\/users` routes",
-                "Feature tests: list renders, search works, create saves, edit saves, delete removes record"
-            ],
-            "blockedBy": [
-                "44"
-            ]
-        },
-        {
-            "id": "STORY-12",
-            "title": "[\/app] Wire task panels into task view: SessionInfoSidebar, FileBrowser, SnippetBrowser, TodoLists, RalphControlPanel",
-            "githubIssue": 48,
-            "priority": 12,
-            "passes": true,
-            "acceptanceCriteria": [
-                "All six panels render correctly inside `\/app\/tasks\/{task}` layout",
-                "`SessionInfoSidebar` has no `wire:poll` \u2014 updates arrive via `TaskStatusUpdated` broadcast event",
-                "Panels are toggleable or lazy-loaded so initial page load is not blocked",
-                "`FileBrowser`, `SnippetBrowser`, `TaskTodoList`, `TaskTodoMobile` pass their existing feature tests",
-                "Feature test: `TaskStatusUpdated` event causes `SessionInfoSidebar` to refresh its data"
-            ],
-            "blockedBy": [
-                "47"
-            ]
-        },
-        {
-            "id": "STORY-13",
-            "title": "[\/app] Move TaskChat to \/app\/tasks\/{task}, replace polling with Reverb",
-            "githubIssue": 47,
-            "priority": 13,
-            "passes": true,
-            "acceptanceCriteria": [
-                "`GET \/app\/tasks\/{task}` returns 200 for task owner, 403 for non-owner",
-                "`TaskChat` component renders correctly inside the `\/app` layout (not Filament shell)",
-                "No unconditional `wire:poll` on the chat root; updates arrive via Echo broadcast",
-                "AI response chunks appear in real-time in the chat window",
-                "Clicking a recent chat in the sidebar navigates to the correct task URL",
-                "Existing `TaskChatTest` and `TaskChatProviderTest` pass or are updated",
-                "Feature test: unauthenticated `GET \/app\/tasks\/{task}` redirects to login"
-            ],
-            "blockedBy": [
-                "44",
-                "45",
-                "46"
-            ]
-        },
-        {
-            "id": "STORY-14",
-            "title": "[\/app] Move RecentChats to sidebar, replace polling with Reverb",
-            "githubIssue": 46,
-            "priority": 14,
-            "passes": true,
-            "acceptanceCriteria": [
-                "`\/app` sidebar shows the recent chats list for authenticated users",
-                "No `wire:poll` attribute exists on the RecentChats component root element",
-                "Creating or updating a Task causes the sidebar list to update in real-time without a page reload",
-                "Filament sidebar footer no longer renders the recent chats component (Filament unaffected otherwise)",
-                "Existing `RecentChatsTest` passes or is updated to reflect new wiring",
-                "Feature test: `RecentChatsUpdated` event causes component to refresh"
-            ],
-            "blockedBy": [
-                "44",
-                "45"
-            ]
-        },
-        {
-            "id": "STORY-15",
-            "title": "[\/app] Real-time: Install Laravel Reverb + Echo, define broadcast channels",
-            "githubIssue": 45,
-            "priority": 15,
-            "passes": true,
-            "acceptanceCriteria": [
-                "`php artisan reverb:start` runs without errors",
-                "`BROADCAST_CONNECTION=reverb` is set and Laravel recognises Reverb as the driver",
-                "Echo is initialised in `app.js` and connects to Reverb in browser (visible in network tab as WS connection)",
-                "Private channels are defined and authorised for authenticated users only",
-                "All three broadcast event classes exist with correct channel and payload",
-                "Feature test: channel authorisation returns 200 for correct user, 403 for wrong user"
-            ],
-            "blockedBy": [
-                "44"
-            ]
-        },
-        {
-            "id": "STORY-16",
-            "title": "[\/app] Foundation: shell layout, Mary UI, routing, auth",
-            "githubIssue": 44,
-            "priority": 16,
-            "passes": true,
-            "acceptanceCriteria": [
-                "Mary UI is installed and its components are usable in Blade views",
-                "`GET \/app` returns 200 for authenticated users and redirects to login for guests",
-                "The app layout renders: sidebar on the left, main content area on the right",
-                "Sidebar nav items are visible and link to their respective `\/app\/{resource}` paths (even if those pages don't exist yet)",
-                "Existing `\/admin` routes are completely unaffected",
-                "Feature test: unauthenticated `GET \/app` returns redirect to login",
-                "Feature test: authenticated `GET \/app` returns 200 with layout"
+                "`connections` migration exists and runs successfully",
+                "`Connection` model with encrypted credentials, belongs to User",
+                "`ConnectionType` enum with cases: GitHub, GoogleAnalytics, SearchConsole, Asana",
+                "Settings page has a \"Connections\" section showing Asana card",
+                "User can enter Asana PAT, click Connect, and see their workspaces",
+                "User can select a default workspace and save",
+                "PAT is stored encrypted in the `connections` table",
+                "Invalid PAT shows validation error",
+                "Feature tests cover: creating connection, PAT validation, workspace fetching"
             ],
             "blockedBy": []
         }

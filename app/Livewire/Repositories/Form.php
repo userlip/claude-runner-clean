@@ -90,7 +90,7 @@ class Form extends Component
             $this->success('Repository created.');
         }
 
-        $this->redirect(route('app.repositories.index'), navigate: true);
+        $this->redirect(route('workbench.repositories.index'), navigate: true);
     }
 
     public function render(): View

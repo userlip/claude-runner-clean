@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Enums\ConnectionType;
 use BackedEnum;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\TextInput;
@@ -93,9 +94,11 @@ class SearchConsoleSettings extends Page implements HasForms
             return;
         }
 
-        Auth::user()->searchConsoleConnections()->create([
+        Auth::user()->connections()->create([
+            'type' => ConnectionType::SearchConsole,
             'name' => $this->newConnectionName,
-            'credentials_json' => $credentialsJson,
+            'credentials' => $credentialsJson,
+            'is_active' => true,
         ]);
 
         $this->reset(['newConnectionName', 'credentialsFile']);

@@ -2,19 +2,20 @@
 
 namespace App\Providers;
 
-use App\Filament\Pages\PWASettingsPage;
+use App\Models\Connection;
 use App\Models\GoogleAnalyticsConnection;
 use App\Models\Persona;
 use App\Models\SearchConsoleConnection;
+use App\Models\Task;
+use App\Observers\ConnectionObserver;
 use App\Observers\GoogleAnalyticsConnectionObserver;
 use App\Observers\PersonaObserver;
 use App\Observers\SearchConsoleConnectionObserver;
+use App\Observers\TaskObserver;
 use Filament\Schemas\Components\Fieldset;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Illuminate\Support\ServiceProvider;
-use TomatoPHP\FilamentSettingsHub\Facades\FilamentSettingsHub;
-use TomatoPHP\FilamentSettingsHub\Services\Contracts\SettingHold;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -36,17 +37,11 @@ class AppServiceProvider extends ServiceProvider
         Section::configureUsing(fn (Section $section) => $section->columnSpanFull());
 
         // Register observers
+        Connection::observe(ConnectionObserver::class);
         GoogleAnalyticsConnection::observe(GoogleAnalyticsConnectionObserver::class);
         SearchConsoleConnection::observe(SearchConsoleConnectionObserver::class);
         Persona::observe(PersonaObserver::class);
+        Task::observe(TaskObserver::class);
 
-        FilamentSettingsHub::register([
-            SettingHold::make()
-                ->label('filament-pwa::messages.settings.title')
-                ->icon('heroicon-o-sparkles')
-                ->page(PWASettingsPage::class)
-                ->description('filament-pwa::messages.settings.description')
-                ->group('filament-settings-hub::messages.group'),
-        ]);
     }
 }

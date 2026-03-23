@@ -12,6 +12,7 @@ use Filament\Actions;
 use Filament\Forms;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -42,8 +43,8 @@ class PlaybookResource extends Resource
                         Forms\Components\Select::make('proposal_type')
                             ->options(ProposalType::class)
                             ->required()
-                            ->reactive()
-                            ->afterStateUpdated(function ($state, Forms\Set $set) {
+                            ->live()
+                            ->afterStateUpdated(function ($state, Set $set) {
                                 if ($state) {
                                     $type = ProposalType::from($state);
                                     $set('skills', $type->getRequiredSkills());

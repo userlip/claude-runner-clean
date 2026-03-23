@@ -11,7 +11,7 @@
             <x-checkbox label="Active" wire:model="is_active" />
 
             <x-slot:actions>
-                <x-button label="Cancel" link="{{ route('app.playbooks.index') }}" />
+                <x-button label="Cancel" link="{{ route('workbench.playbooks.index') }}" />
                 <x-button label="{{ $playbook ? 'Update' : 'Create' }}" type="submit" icon="o-paper-airplane" class="btn-primary" spinner="save" />
             </x-slot:actions>
         </x-form>

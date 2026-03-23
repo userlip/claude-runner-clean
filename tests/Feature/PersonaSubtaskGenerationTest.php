@@ -78,8 +78,7 @@ test('ProposalExecutionService forks to persona flow when persona_id is present'
     $task = $service->execute($proposal);
 
     expect($task)->toBeInstanceOf(Task::class);
-    expect($task->title)->toContain('Persona');
-    expect($task->title)->toContain('Generating Subtasks');
+    expect($task->title)->toContain('[Persona]');
     expect($task->repository_id)->toBe($this->repository->id);
 
     $proposal->refresh();

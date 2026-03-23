@@ -20,24 +20,24 @@ beforeEach(function () {
 // --- Access control ---
 
 it('redirects unauthenticated users to login for sites index', function () {
-    $this->get('/app/sites')->assertRedirect('/admin/login');
+    $this->get('/workbench/sites')->assertRedirect('/admin/login');
 });
 
 it('returns 403 for non-admin users on sites index', function () {
-    $this->actingAs($this->user)->get('/app/sites')->assertForbidden();
+    $this->actingAs($this->user)->get('/workbench/sites')->assertForbidden();
 });
 
 it('returns 200 for admin users on sites index', function () {
-    $this->actingAs($this->admin)->get('/app/sites')->assertOk();
+    $this->actingAs($this->admin)->get('/workbench/sites')->assertOk();
 });
 
 it('returns 403 for non-admin users on sites create page', function () {
-    $this->actingAs($this->user)->get('/app/sites/create')->assertForbidden();
+    $this->actingAs($this->user)->get('/workbench/sites/create')->assertForbidden();
 });
 
 it('returns 403 for non-admin users on sites edit page', function () {
     $site = Site::factory()->create();
-    $this->actingAs($this->user)->get("/app/sites/{$site->id}/edit")->assertForbidden();
+    $this->actingAs($this->user)->get("/workbench/sites/{$site->id}/edit")->assertForbidden();
 });
 
 // --- List component ---

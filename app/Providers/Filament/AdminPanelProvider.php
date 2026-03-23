@@ -23,9 +23,6 @@ use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Jeffgreco13\FilamentBreezy\BreezyCore;
-use TomatoPHP\FilamentPWA\FilamentPWAPlugin;
-use TomatoPHP\FilamentSettingsHub\FilamentSettingsHubPlugin;
-use TomatoPHP\FilamentTranslations\FilamentTranslationsPlugin;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -53,12 +50,6 @@ class AdminPanelProvider extends PanelProvider
                     ])
                     ->enableTwoFactorAuthentication(),
                 FilamentShieldPlugin::make(),
-                FilamentPWAPlugin::make()
-                    ->allowPWASettings(false),
-                FilamentSettingsHubPlugin::make()
-                    ->allowShield(),
-                FilamentTranslationsPlugin::make(),
-
             ])
             ->colors([
                 'primary' => Color::Blue,
@@ -96,10 +87,6 @@ class AdminPanelProvider extends PanelProvider
                     '<link rel="icon" type="image/png" sizes="16x16" href="'.asset('favicon-16x16.png').'">'.
                     Blade::render('@vite(\'resources/css/filament/admin.css\')').
                     $this->getSentryScript(),
-            )
-            ->renderHook(
-                PanelsRenderHook::SIDEBAR_FOOTER,
-                fn (): string => Blade::render('@livewire(\'recent-chats\')'),
             )
             ->renderHook(
                 PanelsRenderHook::SCRIPTS_AFTER,

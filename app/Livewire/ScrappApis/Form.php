@@ -57,7 +57,7 @@ class Form extends Component
             $this->success('API created.');
         }
 
-        $this->redirect(route('app.scrapp-apis.index'), navigate: true);
+        $this->redirect(route('workbench.scrapp-apis.index'), navigate: true);
     }
 
     public function render(): View

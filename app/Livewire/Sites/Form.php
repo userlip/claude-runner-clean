@@ -90,7 +90,7 @@ class Form extends Component
             $this->success('Site created.');
         }
 
-        $this->redirect(route('app.sites.index'), navigate: true);
+        $this->redirect(route('workbench.sites.index'), navigate: true);
     }
 
     public function render(): View

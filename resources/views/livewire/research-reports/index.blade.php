@@ -12,7 +12,7 @@
             @endscope
 
             @scope('actions', $report)
-                <x-button icon="o-eye" link="{{ route('app.research-reports.show', $report->uuid) }}" spinner class="btn-ghost btn-sm" />
+                <x-button icon="o-eye" link="{{ route('workbench.research-reports.show', $report->uuid) }}" spinner class="btn-ghost btn-sm" />
             @endscope
         </x-table>
     </x-card>

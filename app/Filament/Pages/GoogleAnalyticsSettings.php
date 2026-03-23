@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Enums\ConnectionType;
 use BackedEnum;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\TextInput;
@@ -102,10 +103,14 @@ class GoogleAnalyticsSettings extends Page implements HasForms
             return;
         }
 
-        Auth::user()->googleAnalyticsConnections()->create([
+        Auth::user()->connections()->create([
+            'type' => ConnectionType::GoogleAnalytics,
             'name' => $this->newConnectionName,
-            'credentials_json' => $credentialsJson,
-            'property_id' => $this->newPropertyId ?: null,
+            'credentials' => $credentialsJson,
+            'metadata' => [
+                'property_id' => $this->newPropertyId ?: null,
+            ],
+            'is_active' => true,
         ]);
 
         $this->reset(['newConnectionName', 'credentialsFile', 'newPropertyId']);

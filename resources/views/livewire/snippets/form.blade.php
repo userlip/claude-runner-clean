@@ -8,7 +8,7 @@
             <x-input label="Sort Order" wire:model="sortOrder" type="number" min="0" />
 
             <x-slot:actions>
-                <x-button label="Cancel" link="{{ route('app.snippets.index') }}" />
+                <x-button label="Cancel" link="{{ route('workbench.snippets.index') }}" />
                 <x-button label="{{ $snippet ? 'Update' : 'Create' }}" type="submit" icon="o-paper-airplane" class="btn-primary" spinner="save" />
             </x-slot:actions>
         </x-form>

@@ -60,7 +60,7 @@ class Form extends Component
             $this->success('Playbook created.');
         }
 
-        $this->redirect(route('app.playbooks.index'), navigate: true);
+        $this->redirect(route('workbench.playbooks.index'), navigate: true);
     }
 
     /**

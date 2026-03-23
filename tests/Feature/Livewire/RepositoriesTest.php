@@ -19,24 +19,24 @@ beforeEach(function () {
 // --- Access control ---
 
 it('redirects unauthenticated users to login for repositories index', function () {
-    $this->get('/app/repositories')->assertRedirect('/admin/login');
+    $this->get('/workbench/repositories')->assertRedirect('/admin/login');
 });
 
 it('returns 403 for non-admin users on repositories index', function () {
-    $this->actingAs($this->user)->get('/app/repositories')->assertForbidden();
+    $this->actingAs($this->user)->get('/workbench/repositories')->assertForbidden();
 });
 
 it('returns 200 for admin users on repositories index', function () {
-    $this->actingAs($this->admin)->get('/app/repositories')->assertOk();
+    $this->actingAs($this->admin)->get('/workbench/repositories')->assertOk();
 });
 
 it('returns 403 for non-admin users on repositories create page', function () {
-    $this->actingAs($this->user)->get('/app/repositories/create')->assertForbidden();
+    $this->actingAs($this->user)->get('/workbench/repositories/create')->assertForbidden();
 });
 
 it('returns 403 for non-admin users on repositories edit page', function () {
     $repository = Repository::factory()->create();
-    $this->actingAs($this->user)->get("/app/repositories/{$repository->id}/edit")->assertForbidden();
+    $this->actingAs($this->user)->get("/workbench/repositories/{$repository->id}/edit")->assertForbidden();
 });
 
 // --- List component ---

@@ -19,24 +19,24 @@ beforeEach(function () {
 // --- Access control ---
 
 it('redirects unauthenticated users to login for scrapp-apis index', function () {
-    $this->get('/app/scrapp-apis')->assertRedirect('/admin/login');
+    $this->get('/workbench/scrapp-apis')->assertRedirect('/admin/login');
 });
 
 it('returns 403 for non-admin users on scrapp-apis index', function () {
-    $this->actingAs($this->user)->get('/app/scrapp-apis')->assertForbidden();
+    $this->actingAs($this->user)->get('/workbench/scrapp-apis')->assertForbidden();
 });
 
 it('returns 200 for admin users on scrapp-apis index', function () {
-    $this->actingAs($this->admin)->get('/app/scrapp-apis')->assertOk();
+    $this->actingAs($this->admin)->get('/workbench/scrapp-apis')->assertOk();
 });
 
 it('returns 403 for non-admin users on create page', function () {
-    $this->actingAs($this->user)->get('/app/scrapp-apis/create')->assertForbidden();
+    $this->actingAs($this->user)->get('/workbench/scrapp-apis/create')->assertForbidden();
 });
 
 it('returns 403 for non-admin users on edit page', function () {
     $api = ScrappApi::factory()->create();
-    $this->actingAs($this->user)->get("/app/scrapp-apis/{$api->id}/edit")->assertForbidden();
+    $this->actingAs($this->user)->get("/workbench/scrapp-apis/{$api->id}/edit")->assertForbidden();
 });
 
 // --- List component ---

@@ -54,6 +54,9 @@ class ConnectionFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'type' => ConnectionType::GoogleAnalytics,
             'credentials' => json_encode(['type' => 'service_account', 'client_email' => fake()->email()]),
+            'metadata' => [
+                'property_id' => 'properties/'.fake()->randomNumber(9),
+            ],
         ]);
     }
 

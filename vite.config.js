@@ -8,6 +8,7 @@ export default defineConfig({
             input: [
                 'resources/css/app.css',
                 'resources/css/filament/admin.css',
+                'resources/css/filament/chat.css',
                 'resources/js/app.js',
             ],
             refresh: true,

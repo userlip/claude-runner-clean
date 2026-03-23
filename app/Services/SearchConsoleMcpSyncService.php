@@ -2,7 +2,10 @@
 
 namespace App\Services;
 
+use App\Enums\ConnectionType;
+use App\Models\Connection;
 use App\Models\SearchConsoleConnection;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\File;
 
 class SearchConsoleMcpSyncService
@@ -21,7 +24,7 @@ class SearchConsoleMcpSyncService
     /**
      * Sync a single connection's credential file to disk and update .mcp.json.
      */
-    public function syncConnection(SearchConsoleConnection $connection): void
+    public function syncConnection(SearchConsoleConnection|Connection $connection): void
     {
         $this->ensureDirectoryExists();
         $this->writeCredentialFile($connection);
@@ -31,7 +34,7 @@ class SearchConsoleMcpSyncService
     /**
      * Remove a connection's credential file from disk and update .mcp.json.
      */
-    public function removeConnection(SearchConsoleConnection $connection): void
+    public function removeConnection(SearchConsoleConnection|Connection $connection): void
     {
         $filePath = $connection->getCredentialsFilePath();
         if (File::exists($filePath)) {
@@ -48,16 +51,17 @@ class SearchConsoleMcpSyncService
         }
     }
 
-    private function writeCredentialFile(SearchConsoleConnection $connection): void
+    private function writeCredentialFile(SearchConsoleConnection|Connection $connection): void
     {
         $filePath = $connection->getCredentialsFilePath();
-        File::put($filePath, $connection->credentials_json);
+        $credentials = $connection instanceof Connection ? $connection->credentials : $connection->credentials_json;
+        File::put($filePath, $credentials);
         chmod($filePath, 0600);
     }
 
     private function writeCredentialFiles(): void
     {
-        foreach (SearchConsoleConnection::all() as $connection) {
+        foreach ($this->getAllConnections() as $connection) {
             $this->writeCredentialFile($connection);
         }
     }
@@ -67,7 +71,7 @@ class SearchConsoleMcpSyncService
         $mcpPath = base_path('.mcp.json');
         $config = json_decode(File::get($mcpPath), true);
 
-        $connections = SearchConsoleConnection::all();
+        $connections = $this->getAllConnections();
 
         if ($connections->isEmpty()) {
             unset($config['mcpServers']['search-console']);
@@ -97,12 +101,20 @@ class SearchConsoleMcpSyncService
             return;
         }
 
-        $activeIds = SearchConsoleConnection::pluck('id')->toArray();
+        $activeIds = $this->getAllConnections()->pluck('id')->toArray();
         foreach (File::files($dir) as $file) {
             $fileId = pathinfo($file, PATHINFO_FILENAME);
             if (! in_array((int) $fileId, $activeIds)) {
                 File::delete($file);
             }
         }
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Collection<int, Model>
+     */
+    private function getAllConnections(): \Illuminate\Database\Eloquent\Collection
+    {
+        return Connection::where('type', ConnectionType::SearchConsole)->where('is_active', true)->get();
     }
 }

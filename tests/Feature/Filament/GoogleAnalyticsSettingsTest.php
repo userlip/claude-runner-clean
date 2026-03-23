@@ -1,7 +1,7 @@
 <?php
 
 use App\Filament\Pages\GoogleAnalyticsSettings;
-use App\Models\GoogleAnalyticsConnection;
+use App\Models\Connection;
 use App\Models\User;
 use App\Services\GoogleAnalyticsMcpSyncService;
 use Filament\Facades\Filament;
@@ -29,7 +29,7 @@ test('can view google analytics settings page', function () {
 
 test('shows existing connections', function () {
     $user = User::factory()->create();
-    GoogleAnalyticsConnection::factory()->create([
+    Connection::factory()->googleAnalytics()->create([
         'user_id' => $user->id,
         'name' => 'Test Client',
     ]);
@@ -69,7 +69,7 @@ test('can add a new connection with valid service account json', function () {
 
     $connection = $user->googleAnalyticsConnections()->first();
     expect($connection->name)->toBe('My Test Account');
-    expect($connection->property_id)->toBe('properties/123456');
+    expect($connection->metadata['property_id'])->toBe('properties/123456');
     expect($connection->getClientEmail())->toBe('test@test-project.iam.gserviceaccount.com');
 });
 
@@ -91,7 +91,7 @@ test('rejects non-service-account json file', function () {
 
 test('can delete a connection', function () {
     $user = User::factory()->create();
-    $connection = GoogleAnalyticsConnection::factory()->create([
+    $connection = Connection::factory()->googleAnalytics()->create([
         'user_id' => $user->id,
         'name' => 'To Delete',
     ]);
@@ -106,7 +106,7 @@ test('can delete a connection', function () {
 
 test('supports multiple connections per user', function () {
     $user = User::factory()->create();
-    GoogleAnalyticsConnection::factory()->count(3)->create([
+    Connection::factory()->googleAnalytics()->count(3)->create([
         'user_id' => $user->id,
     ]);
 

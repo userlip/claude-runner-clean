@@ -10,6 +10,7 @@ use BackedEnum;
 use Filament\Forms;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -46,7 +47,7 @@ class RepositoryResource extends Resource
                             ->placeholder('https://ploi.io/servers/12345/sites/67890')
                             ->helperText('Paste a Ploi URL to auto-fill server and site IDs')
                             ->live(onBlur: true)
-                            ->afterStateUpdated(function (Forms\Set $set, ?string $state) {
+                            ->afterStateUpdated(function (Set $set, ?string $state) {
                                 if (! $state) {
                                     return;
                                 }

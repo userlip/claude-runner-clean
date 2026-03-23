@@ -2,7 +2,10 @@
 
 namespace App\Services;
 
+use App\Enums\ConnectionType;
+use App\Models\Connection;
 use App\Models\GoogleAnalyticsConnection;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\File;
 
 class GoogleAnalyticsMcpSyncService
@@ -21,7 +24,7 @@ class GoogleAnalyticsMcpSyncService
     /**
      * Sync a single connection's credential file to disk and update .mcp.json.
      */
-    public function syncConnection(GoogleAnalyticsConnection $connection): void
+    public function syncConnection(GoogleAnalyticsConnection|Connection $connection): void
     {
         $this->ensureDirectoryExists();
         $this->writeCredentialFile($connection);
@@ -31,7 +34,7 @@ class GoogleAnalyticsMcpSyncService
     /**
      * Remove a connection's credential file from disk and update .mcp.json.
      */
-    public function removeConnection(GoogleAnalyticsConnection $connection): void
+    public function removeConnection(GoogleAnalyticsConnection|Connection $connection): void
     {
         $filePath = $connection->getCredentialsFilePath();
         if (File::exists($filePath)) {
@@ -48,16 +51,17 @@ class GoogleAnalyticsMcpSyncService
         }
     }
 
-    private function writeCredentialFile(GoogleAnalyticsConnection $connection): void
+    private function writeCredentialFile(GoogleAnalyticsConnection|Connection $connection): void
     {
         $filePath = $connection->getCredentialsFilePath();
-        File::put($filePath, $connection->credentials_json);
+        $credentials = $connection instanceof Connection ? $connection->credentials : $connection->credentials_json;
+        File::put($filePath, $credentials);
         chmod($filePath, 0600);
     }
 
     private function writeCredentialFiles(): void
     {
-        foreach (GoogleAnalyticsConnection::all() as $connection) {
+        foreach ($this->getAllConnections() as $connection) {
             $this->writeCredentialFile($connection);
         }
     }
@@ -67,7 +71,7 @@ class GoogleAnalyticsMcpSyncService
         $mcpPath = base_path('.mcp.json');
         $config = json_decode(File::get($mcpPath), true);
 
-        $connections = GoogleAnalyticsConnection::all();
+        $connections = $this->getAllConnections();
 
         if ($connections->isEmpty()) {
             unset($config['mcpServers']['google-analytics']);
@@ -97,12 +101,20 @@ class GoogleAnalyticsMcpSyncService
             return;
         }
 
-        $activeIds = GoogleAnalyticsConnection::pluck('id')->toArray();
+        $activeIds = $this->getAllConnections()->pluck('id')->toArray();
         foreach (File::files($dir) as $file) {
             $fileId = pathinfo($file, PATHINFO_FILENAME);
             if (! in_array((int) $fileId, $activeIds)) {
                 File::delete($file);
             }
         }
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Collection<int, Model>
+     */
+    private function getAllConnections(): \Illuminate\Database\Eloquent\Collection
+    {
+        return Connection::where('type', ConnectionType::GoogleAnalytics)->where('is_active', true)->get();
     }
 }

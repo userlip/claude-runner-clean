@@ -74,7 +74,7 @@ class Form extends Component
             $this->success('User created.');
         }
 
-        $this->redirect(route('app.users.index'), navigate: true);
+        $this->redirect(route('workbench.users.index'), navigate: true);
     }
 
     public function render(): View

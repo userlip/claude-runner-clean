@@ -6,26 +6,27 @@
     "license": "proprietary",
     "require": {
         "php": "^8.3",
-        "bezhansalleh/filament-shield": "^4.0",
+        "bezhansalleh/filament-shield": "^4.2",
         "darkaonline/l5-swagger": "^9.0",
-        "filament/filament": "^4.0",
+        "filament/filament": "^5.0",
         "irazasyed/telegram-bot-sdk": "^3.15",
-        "jeffgreco13/filament-breezy": "^3.0",
+        "jeffgreco13/filament-breezy": "^3.2",
         "laravel/framework": "^12.0",
         "laravel/pulse": "^1.5",
+        "laravel/reverb": "^1.8",
         "laravel/socialite": "^5.24",
         "laravel/telescope": "^5.1",
         "laravel/tinker": "^2.9",
+        "livewire/livewire": "^4.0",
         "minishlink/web-push": "^10.0",
+        "pestphp/pest-plugin-livewire": "^4.1",
         "robsontenorio/mary": "^2.8",
         "sentry/sentry-laravel": "^4.20",
         "spatie/laravel-permission": "^6.9",
         "spatie/laravel-query-builder": "^6.2",
-        "stechstudio/filament-impersonate": "^4.0",
+        "stechstudio/filament-impersonate": "^5.0",
         "symfony/http-client": "^7.1.8",
-        "symfony/postmark-mailer": "^7.1",
-        "tomatophp/filament-pwa": "^4.0",
-        "tomatophp/filament-translations": "^4.0"
+        "symfony/postmark-mailer": "^7.1"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
@@ -36,8 +37,7 @@
         "mockery/mockery": "^1.6",
         "nunomaduro/collision": "^8.0",
         "pestphp/pest": "^4.0",
-        "pestphp/pest-plugin-laravel": "^4.0",
-        "pestphp/pest-plugin-livewire": "^4.0"
+        "pestphp/pest-plugin-laravel": "^4.0"
     },
     "autoload": {
         "psr-4": {

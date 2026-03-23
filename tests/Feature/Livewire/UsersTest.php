@@ -19,23 +19,23 @@ beforeEach(function () {
 // --- Access control ---
 
 it('redirects unauthenticated users to login for users index', function () {
-    $this->get('/app/users')->assertRedirect('/admin/login');
+    $this->get('/workbench/users')->assertRedirect('/admin/login');
 });
 
 it('returns 403 for non-admin users on users index', function () {
-    $this->actingAs($this->user)->get('/app/users')->assertForbidden();
+    $this->actingAs($this->user)->get('/workbench/users')->assertForbidden();
 });
 
 it('returns 200 for admin users on users index', function () {
-    $this->actingAs($this->admin)->get('/app/users')->assertOk();
+    $this->actingAs($this->admin)->get('/workbench/users')->assertOk();
 });
 
 it('returns 403 for non-admin users on users create page', function () {
-    $this->actingAs($this->user)->get('/app/users/create')->assertForbidden();
+    $this->actingAs($this->user)->get('/workbench/users/create')->assertForbidden();
 });
 
 it('returns 403 for non-admin users on users edit page', function () {
-    $this->actingAs($this->user)->get("/app/users/{$this->admin->id}/edit")->assertForbidden();
+    $this->actingAs($this->user)->get("/workbench/users/{$this->admin->id}/edit")->assertForbidden();
 });
 
 // --- List component ---

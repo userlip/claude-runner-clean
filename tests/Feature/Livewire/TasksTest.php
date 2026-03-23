@@ -19,24 +19,24 @@ beforeEach(function () {
 // --- Access control ---
 
 it('redirects unauthenticated users to login for tasks index', function () {
-    $this->get('/app/tasks')->assertRedirect('/admin/login');
+    $this->get('/workbench/tasks')->assertRedirect('/admin/login');
 });
 
 it('returns 403 for non-admin users on tasks index', function () {
-    $this->actingAs($this->user)->get('/app/tasks')->assertForbidden();
+    $this->actingAs($this->user)->get('/workbench/tasks')->assertForbidden();
 });
 
 it('returns 200 for admin users on tasks index', function () {
-    $this->actingAs($this->admin)->get('/app/tasks')->assertOk();
+    $this->actingAs($this->admin)->get('/workbench/tasks')->assertOk();
 });
 
 it('returns 403 for non-admin users on tasks create page', function () {
-    $this->actingAs($this->user)->get('/app/tasks/create')->assertForbidden();
+    $this->actingAs($this->user)->get('/workbench/tasks/create')->assertForbidden();
 });
 
 it('returns 403 for non-admin users on tasks edit page', function () {
     $task = Task::factory()->generalChat($this->admin)->create();
-    $this->actingAs($this->user)->get("/app/tasks/{$task->id}/edit")->assertForbidden();
+    $this->actingAs($this->user)->get("/workbench/tasks/{$task->id}/edit")->assertForbidden();
 });
 
 // --- List component ---

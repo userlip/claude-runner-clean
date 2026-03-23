@@ -9,7 +9,7 @@
             <x-input label="Confirm Password" wire:model="passwordConfirmation" type="password" placeholder="Confirm password" :required="!$user" />
 
             <x-slot:actions>
-                <x-button label="Cancel" link="{{ route('app.users.index') }}" />
+                <x-button label="Cancel" link="{{ route('workbench.users.index') }}" />
                 <x-button label="{{ $user ? 'Update' : 'Create' }}" type="submit" icon="o-paper-airplane" class="btn-primary" spinner="save" />
             </x-slot:actions>
         </x-form>

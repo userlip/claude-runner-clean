@@ -19,24 +19,24 @@ beforeEach(function () {
 // --- Access control ---
 
 it('redirects unauthenticated users to login for playbooks index', function () {
-    $this->get('/app/playbooks')->assertRedirect('/admin/login');
+    $this->get('/workbench/playbooks')->assertRedirect('/admin/login');
 });
 
 it('returns 403 for non-admin users on playbooks index', function () {
-    $this->actingAs($this->user)->get('/app/playbooks')->assertForbidden();
+    $this->actingAs($this->user)->get('/workbench/playbooks')->assertForbidden();
 });
 
 it('returns 200 for admin users on playbooks index', function () {
-    $this->actingAs($this->admin)->get('/app/playbooks')->assertOk();
+    $this->actingAs($this->admin)->get('/workbench/playbooks')->assertOk();
 });
 
 it('returns 403 for non-admin users on playbooks create page', function () {
-    $this->actingAs($this->user)->get('/app/playbooks/create')->assertForbidden();
+    $this->actingAs($this->user)->get('/workbench/playbooks/create')->assertForbidden();
 });
 
 it('returns 403 for non-admin users on playbooks edit page', function () {
     $playbook = Playbook::factory()->create();
-    $this->actingAs($this->user)->get("/app/playbooks/{$playbook->id}/edit")->assertForbidden();
+    $this->actingAs($this->user)->get("/workbench/playbooks/{$playbook->id}/edit")->assertForbidden();
 });
 
 // --- List component ---

@@ -1,7 +1,7 @@
 <?php
 
 use App\Filament\Pages\SearchConsoleSettings;
-use App\Models\SearchConsoleConnection;
+use App\Models\Connection;
 use App\Models\User;
 use App\Services\SearchConsoleMcpSyncService;
 use Filament\Facades\Filament;
@@ -29,7 +29,7 @@ test('can view search console settings page', function () {
 
 test('shows existing connections', function () {
     $user = User::factory()->create();
-    SearchConsoleConnection::factory()->create([
+    Connection::factory()->searchConsole()->create([
         'user_id' => $user->id,
         'name' => 'Test Client',
     ]);
@@ -89,7 +89,7 @@ test('rejects non-service-account json file', function () {
 
 test('can delete a connection', function () {
     $user = User::factory()->create();
-    $connection = SearchConsoleConnection::factory()->create([
+    $connection = Connection::factory()->searchConsole()->create([
         'user_id' => $user->id,
         'name' => 'To Delete',
     ]);
@@ -104,7 +104,7 @@ test('can delete a connection', function () {
 
 test('supports multiple connections per user', function () {
     $user = User::factory()->create();
-    SearchConsoleConnection::factory()->count(3)->create([
+    Connection::factory()->searchConsole()->count(3)->create([
         'user_id' => $user->id,
     ]);
 

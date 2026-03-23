@@ -12,7 +12,7 @@
             <x-checkbox label="Active" wire:model="is_active" />
 
             <x-slot:actions>
-                <x-button label="Cancel" link="{{ route('app.personas.index') }}" />
+                <x-button label="Cancel" link="{{ route('workbench.personas.index') }}" />
                 <x-button label="{{ $persona ? 'Update' : 'Create' }}" type="submit" icon="o-paper-airplane" class="btn-primary" spinner="save" />
             </x-slot:actions>
         </x-form>

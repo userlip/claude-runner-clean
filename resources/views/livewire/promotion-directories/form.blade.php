@@ -11,7 +11,7 @@
             <x-textarea label="Notes" wire:model="notes" rows="3" />
 
             <x-slot:actions>
-                <x-button label="Cancel" link="{{ route('app.promotion-directories.index') }}" />
+                <x-button label="Cancel" link="{{ route('workbench.promotion-directories.index') }}" />
                 <x-button label="{{ $directory ? 'Update' : 'Create' }}" type="submit" icon="o-paper-airplane" class="btn-primary" spinner="save" />
             </x-slot:actions>
         </x-form>

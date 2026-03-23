@@ -11,7 +11,7 @@
             <x-select label="Type" wire:model="type" :options="$typeOptions" required />
 
             <x-slot:actions>
-                <x-button label="Cancel" link="{{ route('app.proposals.index') }}" />
+                <x-button label="Cancel" link="{{ route('workbench.proposals.index') }}" />
                 <x-button label="{{ $proposal ? 'Update' : 'Create' }}" type="submit" icon="o-paper-airplane" class="btn-primary" spinner="save" />
             </x-slot:actions>
         </x-form>

@@ -10,9 +10,9 @@ it('shows the Admin nav link to admin users', function () {
     $admin->assignRole('admin');
 
     $this->actingAs($admin)
-        ->get('/app')
+        ->get('/workbench')
         ->assertStatus(200)
-        ->assertSee('admin-nav-link', false)
+        ->assertSee('Admin', false)
         ->assertSee('/admin', false);
 });
 
@@ -20,7 +20,7 @@ it('does not show the Admin nav link to non-admin users', function () {
     $user = User::factory()->create();
 
     $this->actingAs($user)
-        ->get('/app')
+        ->get('/workbench')
         ->assertStatus(200)
-        ->assertDontSee('admin-nav-link', false);
+        ->assertDontSee('o-cog-6-tooth', false);
 });

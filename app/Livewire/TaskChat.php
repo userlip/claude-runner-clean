@@ -23,11 +23,6 @@ use Livewire\Component;
 
 class TaskChat extends Component
 {
-    /**
-     * Number of messages to load per page for pagination.
-     */
-    public const MESSAGES_PER_PAGE = 30;
-
     public Task $task;
 
     public string $prompt = '';
@@ -40,11 +35,6 @@ class TaskChat extends Component
     public bool $waitingForResponse = false;
 
     public int $lastMessageCount = 0;
-
-    /**
-     * Number of message pages currently loaded.
-     */
-    public int $loadedPages = 1;
 
     /**
      * To improve perceived performance (especially in SPA navigation), defer
@@ -103,19 +93,10 @@ class TaskChat extends Component
             return new Collection;
         }
 
-        $totalMessages = $this->task->messages()
-            ->where('status', MessageStatus::Sent)
-            ->count();
-
-        $limit = self::MESSAGES_PER_PAGE * $this->loadedPages;
-        $skip = max(0, $totalMessages - $limit);
-
         return $this->task->messages()
             ->where('status', MessageStatus::Sent)
             ->oldest()
             ->orderBy('id')
-            ->skip($skip)
-            ->take($limit)
             ->get();
     }
 
@@ -132,38 +113,6 @@ class TaskChat extends Component
         return $this->task->messages()
             ->where('status', MessageStatus::Sent)
             ->count();
-    }
-
-    /**
-     * Number of messages not yet loaded (hidden).
-     */
-    #[Computed]
-    public function hiddenMessageCount(): int
-    {
-        if (! $this->messagesLoaded) {
-            return 0;
-        }
-
-        $loaded = self::MESSAGES_PER_PAGE * $this->loadedPages;
-
-        return max(0, $this->totalMessageCount - $loaded);
-    }
-
-    /**
-     * Whether there are more messages to load.
-     */
-    #[Computed]
-    public function hasMoreMessages(): bool
-    {
-        return $this->hiddenMessageCount > 0;
-    }
-
-    /**
-     * Load more (earlier) messages.
-     */
-    public function loadMoreMessages(): void
-    {
-        $this->loadedPages++;
     }
 
     /**
@@ -1402,7 +1351,9 @@ PROMPT,
      */
     public function stopRunning(): void
     {
-        if (! $this->task->isRunning() && ! $this->task->has_active_subagents) {
+        $shouldStopRalph = (bool) $this->task->ralph_enabled;
+
+        if (! $this->task->isRunning() && ! $this->task->has_active_subagents && ! $shouldStopRalph) {
             return;
         }
 
@@ -1424,8 +1375,14 @@ PROMPT,
             exec("pkill -f '{$pattern}.*{$workingDir}' 2>/dev/null");
         }
 
-        // Clear subagent flag and mark the task as completed
-        $this->task->update(['has_active_subagents' => false]);
+        // Clear loop flags before marking complete so Ralph cannot keep dispatching.
+        $updates = ['has_active_subagents' => false];
+        if ($shouldStopRalph) {
+            $updates['ralph_enabled'] = false;
+            $updates['ralph_stopped_reason'] = 'stopped_by_user';
+        }
+
+        $this->task->update($updates);
         $this->task->markAsCompleted();
 
         // Clear waiting state

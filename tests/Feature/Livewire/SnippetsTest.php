@@ -19,24 +19,24 @@ beforeEach(function () {
 // --- Access control ---
 
 it('redirects unauthenticated users to login for snippets index', function () {
-    $this->get('/app/snippets')->assertRedirect('/admin/login');
+    $this->get('/workbench/snippets')->assertRedirect('/admin/login');
 });
 
 it('returns 403 for non-admin users on snippets index', function () {
-    $this->actingAs($this->user)->get('/app/snippets')->assertForbidden();
+    $this->actingAs($this->user)->get('/workbench/snippets')->assertForbidden();
 });
 
 it('returns 200 for admin users on snippets index', function () {
-    $this->actingAs($this->admin)->get('/app/snippets')->assertOk();
+    $this->actingAs($this->admin)->get('/workbench/snippets')->assertOk();
 });
 
 it('returns 403 for non-admin users on snippets create page', function () {
-    $this->actingAs($this->user)->get('/app/snippets/create')->assertForbidden();
+    $this->actingAs($this->user)->get('/workbench/snippets/create')->assertForbidden();
 });
 
 it('returns 403 for non-admin users on snippets edit page', function () {
     $snippet = Snippet::factory()->create();
-    $this->actingAs($this->user)->get("/app/snippets/{$snippet->id}/edit")->assertForbidden();
+    $this->actingAs($this->user)->get("/workbench/snippets/{$snippet->id}/edit")->assertForbidden();
 });
 
 // --- List component ---

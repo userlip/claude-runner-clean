@@ -32,18 +32,20 @@ return new class extends Migration
             }
         });
 
-        // Make old columns nullable if they exist (to allow spatie settings to work)
-        if (Schema::hasColumn('settings', 'type')) {
-            DB::statement('ALTER TABLE settings MODIFY type VARCHAR(255) NULL');
-        }
-        if (Schema::hasColumn('settings', 'key')) {
-            DB::statement('ALTER TABLE settings MODIFY `key` VARCHAR(255) NULL');
-        }
-        if (Schema::hasColumn('settings', 'value')) {
-            DB::statement('ALTER TABLE settings MODIFY value TEXT NULL');
-        }
-        if (Schema::hasColumn('settings', 'data_type')) {
-            DB::statement('ALTER TABLE settings MODIFY data_type VARCHAR(255) NULL');
+        // Make old columns nullable if they exist (MySQL only; SQLite columns are nullable by default)
+        if (DB::getDriverName() === 'mysql') {
+            if (Schema::hasColumn('settings', 'type')) {
+                DB::statement('ALTER TABLE settings MODIFY type VARCHAR(255) NULL');
+            }
+            if (Schema::hasColumn('settings', 'key')) {
+                DB::statement('ALTER TABLE settings MODIFY `key` VARCHAR(255) NULL');
+            }
+            if (Schema::hasColumn('settings', 'value')) {
+                DB::statement('ALTER TABLE settings MODIFY value TEXT NULL');
+            }
+            if (Schema::hasColumn('settings', 'data_type')) {
+                DB::statement('ALTER TABLE settings MODIFY data_type VARCHAR(255) NULL');
+            }
         }
     }
 

@@ -387,6 +387,53 @@ test('defers rendering existing messages until loadMessages is called', function
         ->assertSee('hello from history');
 });
 
+test('loads the full chat history once messages are loaded', function () {
+    $repository = Repository::factory()->create(['user_id' => $this->user->id]);
+    $task = Task::factory()->create(['repository_id' => $repository->id]);
+
+    Message::factory()->create([
+        'task_id' => $task->id,
+        'role' => \App\Enums\MessageRole::User,
+        'status' => \App\Enums\MessageStatus::Sent,
+        'content' => 'oldest hidden message',
+    ]);
+
+    foreach (range(1, 30) as $index) {
+        Message::factory()->create([
+            'task_id' => $task->id,
+            'role' => \App\Enums\MessageRole::User,
+            'status' => \App\Enums\MessageStatus::Sent,
+            'content' => "visible message {$index}",
+        ]);
+    }
+
+    Livewire::test(TaskChat::class, ['task' => $task])
+        ->call('loadMessages')
+        ->assertSee('oldest hidden message')
+        ->assertSee('visible message 30')
+        ->assertDontSee('Show 1 older message');
+});
+
+test('stopRunning disables Ralph even when the task is already marked completed', function () {
+    $provider = AiProvider::factory()->codex()->create();
+    $repository = Repository::factory()->create(['user_id' => $this->user->id]);
+    $task = Task::factory()->create([
+        'repository_id' => $repository->id,
+        'ai_provider_id' => $provider->id,
+        'status' => \App\Enums\TaskStatus::Completed,
+        'ralph_enabled' => true,
+        'has_active_subagents' => false,
+        'session_id' => (string) str()->uuid(),
+        'workspace_path' => null,
+    ]);
+
+    Livewire::test(TaskChat::class, ['task' => $task])
+        ->call('stopRunning');
+
+    expect($task->fresh()->ralph_enabled)->toBeFalse()
+        ->and($task->fresh()->ralph_stopped_reason)->toBe('stopped_by_user');
+});
+
 test('does not add standalone polling to the context usage indicators', function () {
     $repository = Repository::factory()->create(['user_id' => $this->user->id]);
     $task = Task::factory()->create(['repository_id' => $repository->id]);

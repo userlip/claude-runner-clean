@@ -53,7 +53,7 @@ class Prompts extends Page implements HasTable
                     ->since()
                     ->sortable(),
             ])
-            ->actions([
+            ->recordActions([
                 Actions\Action::make('edit')
                     ->label('Edit')
                     ->icon('heroicon-o-pencil-square')

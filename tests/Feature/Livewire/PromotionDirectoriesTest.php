@@ -19,24 +19,24 @@ beforeEach(function () {
 // --- Access control ---
 
 it('redirects unauthenticated users to login for promotion-directories index', function () {
-    $this->get('/app/promotion-directories')->assertRedirect('/admin/login');
+    $this->get('/workbench/promotion-directories')->assertRedirect('/admin/login');
 });
 
 it('returns 403 for non-admin users on promotion-directories index', function () {
-    $this->actingAs($this->user)->get('/app/promotion-directories')->assertForbidden();
+    $this->actingAs($this->user)->get('/workbench/promotion-directories')->assertForbidden();
 });
 
 it('returns 200 for admin users on promotion-directories index', function () {
-    $this->actingAs($this->admin)->get('/app/promotion-directories')->assertOk();
+    $this->actingAs($this->admin)->get('/workbench/promotion-directories')->assertOk();
 });
 
 it('returns 403 for non-admin users on promotion-directories create page', function () {
-    $this->actingAs($this->user)->get('/app/promotion-directories/create')->assertForbidden();
+    $this->actingAs($this->user)->get('/workbench/promotion-directories/create')->assertForbidden();
 });
 
 it('returns 403 for non-admin users on promotion-directories edit page', function () {
     $directory = PromotionDirectory::factory()->create();
-    $this->actingAs($this->user)->get("/app/promotion-directories/{$directory->uuid}/edit")->assertForbidden();
+    $this->actingAs($this->user)->get("/workbench/promotion-directories/{$directory->uuid}/edit")->assertForbidden();
 });
 
 // --- List component ---

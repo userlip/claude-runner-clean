@@ -5,7 +5,7 @@ use App\Models\User;
 test('GET / redirects to /app', function () {
     $response = $this->get('/');
 
-    $response->assertRedirect('/app');
+    $response->assertRedirect('/workbench');
 });
 
 test('GET / redirects authenticated users to /app', function () {
@@ -13,11 +13,11 @@ test('GET / redirects authenticated users to /app', function () {
 
     $response = $this->actingAs($user)->get('/');
 
-    $response->assertRedirect('/app');
+    $response->assertRedirect('/workbench');
 });
 
 test('GET /app redirects unauthenticated users to login', function () {
-    $response = $this->get('/app');
+    $response = $this->get('/workbench');
 
     $response->assertRedirect('/admin/login');
 });
@@ -25,7 +25,7 @@ test('GET /app redirects unauthenticated users to login', function () {
 test('GET /app returns 200 for authenticated users', function () {
     $user = User::factory()->create();
 
-    $response = $this->actingAs($user)->get('/app');
+    $response = $this->actingAs($user)->get('/workbench');
 
     $response->assertOk();
 });

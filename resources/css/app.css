@@ -525,6 +525,15 @@ html, body {
     }
 }
 
+/* Hide scrollbar for panel tabs */
+.scrollbar-none {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+    display: none;
+}
+
 /* Mary UI pagination - center the container */
 .mary-table-pagination > div:last-child {
     justify-content: center !important;

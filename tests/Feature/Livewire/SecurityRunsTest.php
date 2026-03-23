@@ -18,15 +18,15 @@ beforeEach(function () {
 // --- Access control ---
 
 it('redirects unauthenticated users to login for security-runs index', function () {
-    $this->get('/app/security-runs')->assertRedirect('/admin/login');
+    $this->get('/workbench/security-runs')->assertRedirect('/admin/login');
 });
 
 it('returns 403 for non-admin users on security-runs index', function () {
-    $this->actingAs($this->user)->get('/app/security-runs')->assertForbidden();
+    $this->actingAs($this->user)->get('/workbench/security-runs')->assertForbidden();
 });
 
 it('returns 200 for admin users on security-runs index', function () {
-    $this->actingAs($this->admin)->get('/app/security-runs')->assertOk();
+    $this->actingAs($this->admin)->get('/workbench/security-runs')->assertOk();
 });
 
 // --- List component ---

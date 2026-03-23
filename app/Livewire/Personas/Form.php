@@ -66,7 +66,7 @@ class Form extends Component
             $this->success('Persona created.');
         }
 
-        $this->redirect(route('app.personas.index'), navigate: true);
+        $this->redirect(route('workbench.personas.index'), navigate: true);
     }
 
     /**

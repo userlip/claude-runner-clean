@@ -2,7 +2,8 @@
 
 namespace App\Filament\Pages;
 
-use App\Models\GitHubConnection;
+use App\Enums\ConnectionType;
+use App\Models\Connection;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -20,7 +21,7 @@ class GitHubSettings extends Page
 
     protected string $view = 'filament.pages.github-settings';
 
-    public function getGitHubConnection(): ?GitHubConnection
+    public function getGitHubConnection(): ?Connection
     {
         return Auth::user()->githubConnection;
     }
@@ -60,7 +61,7 @@ class GitHubSettings extends Page
                 ->requiresConfirmation()
                 ->modalDescription('This will disconnect your GitHub account. Your synced repositories will remain.')
                 ->action(function () {
-                    Auth::user()->githubConnection()->delete();
+                    Auth::user()->connections()->where('type', ConnectionType::GitHub)->delete();
                     Notification::make()
                         ->title('GitHub disconnected')
                         ->success()

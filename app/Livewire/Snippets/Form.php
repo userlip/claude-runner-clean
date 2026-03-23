@@ -51,7 +51,7 @@ class Form extends Component
             $this->success('Snippet created.');
         }
 
-        $this->redirect(route('app.snippets.index'), navigate: true);
+        $this->redirect(route('workbench.snippets.index'), navigate: true);
     }
 
     public function render(): View

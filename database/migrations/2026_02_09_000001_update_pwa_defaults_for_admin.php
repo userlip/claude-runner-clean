@@ -1,9 +1,9 @@
 <?php
 
+use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
-use Spatie\LaravelSettings\Migrations\SettingsMigration;
 
-class UpdatePwaDefaultsForAdmin extends SettingsMigration
+return new class extends Migration
 {
     public function up(): void
     {
@@ -44,4 +44,4 @@ class UpdatePwaDefaultsForAdmin extends SettingsMigration
             ],
         );
     }
-}
+};

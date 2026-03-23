@@ -11,7 +11,7 @@
             <x-select label="Status" wire:model="status" :options="$statusOptions" required />
 
             <x-slot:actions>
-                <x-button label="Cancel" link="{{ route('app.sites.index') }}" />
+                <x-button label="Cancel" link="{{ route('workbench.sites.index') }}" />
                 <x-button label="{{ $site ? 'Update' : 'Create' }}" type="submit" icon="o-paper-airplane" class="btn-primary" spinner="save" />
             </x-slot:actions>
         </x-form>

@@ -1,7 +1,7 @@
 <div>
     <x-header title="{{ $report->title }}" separator>
         <x-slot:actions>
-            <x-button label="Back" icon="o-arrow-left" link="{{ route('app.research-reports.index') }}" class="btn-ghost" />
+            <x-button label="Back" icon="o-arrow-left" link="{{ route('workbench.research-reports.index') }}" class="btn-ghost" />
         </x-slot:actions>
     </x-header>
 

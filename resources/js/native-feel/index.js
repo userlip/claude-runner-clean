@@ -12,7 +12,8 @@
 
 import { initHaptics, haptics } from './haptics'
 import { initTouchFeedback, destroyTouchFeedback } from './touch-feedback'
-import { initPullToRefresh, destroyPullToRefresh } from './pull-to-refresh'
+// Pull-to-refresh disabled — not needed for this PWA
+// import { initPullToRefresh, destroyPullToRefresh } from './pull-to-refresh'
 import { initSwipeGestures, destroySwipeGestures } from './swipe-gestures'
 import { initNavigation, destroyNavigation } from './navigation'
 
@@ -39,7 +40,7 @@ export function initNativeFeel() {
 
   initHaptics()
   initTouchFeedback()
-  initPullToRefresh()
+  // initPullToRefresh()
   initSwipeGestures()
   initNavigation()
 
@@ -57,7 +58,7 @@ export function initNativeFeel() {
  */
 export function destroyNativeFeel() {
   destroyTouchFeedback()
-  destroyPullToRefresh()
+  // destroyPullToRefresh()
   destroySwipeGestures()
   destroyNavigation()
 

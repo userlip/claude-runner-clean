@@ -11,7 +11,7 @@
             <x-checkbox label="Private" wire:model="isPrivate" />
 
             <x-slot:actions>
-                <x-button label="Cancel" link="{{ route('app.repositories.index') }}" />
+                <x-button label="Cancel" link="{{ route('workbench.repositories.index') }}" />
                 <x-button label="{{ $repository ? 'Update' : 'Create' }}" type="submit" icon="o-paper-airplane" class="btn-primary" spinner="save" />
             </x-slot:actions>
         </x-form>

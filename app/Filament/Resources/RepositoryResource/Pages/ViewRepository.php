@@ -104,7 +104,7 @@ class ViewRepository extends Page implements HasTable
                     ->since()
                     ->sortable(),
             ])
-            ->actions([
+            ->recordActions([
                 Actions\Action::make('setDefault')
                     ->label('Set Default')
                     ->icon('heroicon-o-star')

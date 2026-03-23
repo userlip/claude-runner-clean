@@ -19,24 +19,24 @@ beforeEach(function () {
 // --- Access control ---
 
 it('redirects unauthenticated users to login for proposals index', function () {
-    $this->get('/app/proposals')->assertRedirect('/admin/login');
+    $this->get('/workbench/proposals')->assertRedirect('/admin/login');
 });
 
 it('returns 403 for non-admin users on proposals index', function () {
-    $this->actingAs($this->user)->get('/app/proposals')->assertForbidden();
+    $this->actingAs($this->user)->get('/workbench/proposals')->assertForbidden();
 });
 
 it('returns 200 for admin users on proposals index', function () {
-    $this->actingAs($this->admin)->get('/app/proposals')->assertOk();
+    $this->actingAs($this->admin)->get('/workbench/proposals')->assertOk();
 });
 
 it('returns 403 for non-admin users on proposals create page', function () {
-    $this->actingAs($this->user)->get('/app/proposals/create')->assertForbidden();
+    $this->actingAs($this->user)->get('/workbench/proposals/create')->assertForbidden();
 });
 
 it('returns 403 for non-admin users on proposals edit page', function () {
     $proposal = Proposal::factory()->create();
-    $this->actingAs($this->user)->get("/app/proposals/{$proposal->uuid}/edit")->assertForbidden();
+    $this->actingAs($this->user)->get("/workbench/proposals/{$proposal->uuid}/edit")->assertForbidden();
 });
 
 // --- List component ---

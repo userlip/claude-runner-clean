@@ -20,24 +20,24 @@ beforeEach(function () {
 // --- Access control ---
 
 it('redirects unauthenticated users to login for personas index', function () {
-    $this->get('/app/personas')->assertRedirect('/admin/login');
+    $this->get('/workbench/personas')->assertRedirect('/admin/login');
 });
 
 it('returns 403 for non-admin users on personas index', function () {
-    $this->actingAs($this->user)->get('/app/personas')->assertForbidden();
+    $this->actingAs($this->user)->get('/workbench/personas')->assertForbidden();
 });
 
 it('returns 200 for admin users on personas index', function () {
-    $this->actingAs($this->admin)->get('/app/personas')->assertOk();
+    $this->actingAs($this->admin)->get('/workbench/personas')->assertOk();
 });
 
 it('returns 403 for non-admin users on personas create page', function () {
-    $this->actingAs($this->user)->get('/app/personas/create')->assertForbidden();
+    $this->actingAs($this->user)->get('/workbench/personas/create')->assertForbidden();
 });
 
 it('returns 403 for non-admin users on personas edit page', function () {
     $persona = Persona::factory()->create();
-    $this->actingAs($this->user)->get("/app/personas/{$persona->slug}/edit")->assertForbidden();
+    $this->actingAs($this->user)->get("/workbench/personas/{$persona->slug}/edit")->assertForbidden();
 });
 
 // --- List component ---

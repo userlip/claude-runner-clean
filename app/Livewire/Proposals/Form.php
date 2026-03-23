@@ -64,7 +64,7 @@ class Form extends Component
             $this->success('Proposal created.');
         }
 
-        $this->redirect(route('app.proposals.index'), navigate: true);
+        $this->redirect(route('workbench.proposals.index'), navigate: true);
     }
 
     /**
