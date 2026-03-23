@@ -64,6 +64,38 @@ Started: 2026-03-23 15:20:48
 - All 32 AsanaBoard tests passing
 - Code style clean via `pint --dirty`
 
+### 2026-03-23 - STORY-5: Kanban drag-and-drop between columns
+**Status**: Completed
+**Tests**: 7 drag-and-drop tests added, 39 total passed
+
+**Key Implementation Details**:
+- Drag and drop uses Alpine.js `x-on:dragstart`, `x-on:dragend`, `x-on:drop` handlers
+- `draggable="true"` attribute on task cards with visual feedback via `x-bind:class="dragging ? 'opacity-50' : ''"`
+- Drop zones highlight with ring classes when `dropTarget` matches section ID
+- `startDrag()` stores `draggedTaskId` and `draggedTaskSourceSection` for reference
+- `setDropTarget()` provides visual feedback during drag operations
+- `moveTaskToSection()` implements optimistic UI: updates local state immediately, then calls API
+- On API failure, `loadSections()` reverts to server state
+- `clearDragState()` resets all drag-related properties after operation
+
+**Test Coverage**:
+- Task moves between sections in local state (optimistic UI)
+- API call made to `sections/{id}/addTask` endpoint with correct task ID
+- Same-section drops are ignored (no API call)
+- Drag state cleared after successful move
+- Reverts to server state when API fails
+- Early returns for missing project or connection
+
+**Learnings for future iterations:**
+- Alpine.js drag-and-drop integrates well with Livewire via `$wire` calls
+- Optimistic UI pattern: update local state first, revert on API error with notification
+- Use `wire:key="task-{{ $task['gid'] }}"` to maintain DOM state during reordering
+- `array_values()` needed after `unset()` to reindex arrays for Livewire reactivity
+
+**Verification**:
+- All 39 AsanaBoard tests passing
+- Code style clean via `pint --dirty`
+
 ### 2026-03-23 - STORY-3: Repo-project linking + start CR task from Asana
 **Status**: Completed
 **Tests**: 20 passed, 39 assertions
