@@ -1,7 +1,7 @@
-# Beta Persona Context
+# Content Strategist Context
 
 ## Overview
-Consequatur nostrum ipsa blanditiis nulla ipsa ut reprehenderit quia.
+Autem ea autem debitis deleniti inventore iure.
 
 ## Key Learnings
 <!-- Accumulated learnings from analysis cycles will appear here -->

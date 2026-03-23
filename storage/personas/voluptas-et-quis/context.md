@@ -1,7 +1,7 @@
-# Old Name Context
+# Beta Persona Context
 
 ## Overview
-Quisquam iusto pariatur sit nostrum.
+Amet in officia reprehenderit voluptate itaque natus.
 
 ## Key Learnings
 <!-- Accumulated learnings from analysis cycles will appear here -->

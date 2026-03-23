@@ -8,3 +8,5 @@
 {"iteration":5,"timestamp":"2026-03-23T16:59:26+00:00","story":"STORY-3","tokens_in":4621381,"tokens_out":20927,"duration_seconds":2321,"status":"failed"}
 {"iteration":4,"timestamp":"2026-03-23T17:11:26+00:00","story":"STORY-4","tokens_in":4519531,"tokens_out":20398,"duration_seconds":2011,"status":"failed"}
 {"iteration":5,"timestamp":"2026-03-23T17:17:07+00:00","story":"STORY-5","tokens_in":1182054,"tokens_out":3662,"duration_seconds":340,"status":"failed"}
+{"iteration":6,"timestamp":"2026-03-23T17:18:27+00:00","story":"STORY-5","tokens_in":2633773,"tokens_out":9079,"duration_seconds":1140,"status":"failed"}
+{"iteration":7,"timestamp":"2026-03-23T17:21:45+00:00","story":"STORY-5","tokens_in":3626312,"tokens_out":18732,"duration_seconds":1527,"status":"failed"}

@@ -1,4 +1,4 @@
-# Dependency Checker Context
+# SEO Analyzer Context
 
 ## Overview
 Growth analysis specialist

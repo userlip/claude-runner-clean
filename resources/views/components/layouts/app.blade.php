@@ -34,7 +34,7 @@
                         <x-menu activate-by-route>
                             <x-menu-item title="Tasks" icon="o-clipboard-document-list" :link="route('workbench.tasks.index')" />
                             <x-menu-item title="Repositories" icon="o-code-bracket" :link="route('workbench.repositories.index')" />
-                            <x-menu-item title="Asana" icon="o-check-badge" :link="route('workbench.asana.index')" />
+                            <x-menu-item title="Asana" icon="o-check-circle" :link="route('workbench.asana.index')" />
 
                             <x-menu-sub title="Content" icon="o-rectangle-stack">
                                 <x-menu-item title="Personas" icon="o-user-circle" :link="route('workbench.personas.index')" />

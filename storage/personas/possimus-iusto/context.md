@@ -1,7 +1,7 @@
-# Security Auditor Context
+# Alpha Persona Context
 
 ## Overview
-Maxime numquam dolores deleniti magnam.
+Ratione modi alias beatae veniam rerum reiciendis.
 
 ## Key Learnings
 <!-- Accumulated learnings from analysis cycles will appear here -->
