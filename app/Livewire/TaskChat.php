@@ -113,6 +113,7 @@ class TaskChat extends Component
         return $this->task->messages()
             ->where('status', MessageStatus::Sent)
             ->oldest()
+            ->orderBy('id')
             ->skip($skip)
             ->take($limit)
             ->get();
@@ -1499,6 +1500,24 @@ PROMPT,
         $this->task->dispatchMessage($userMessage, continue: true);
 
         $this->waitingForResponse = true;
+    }
+
+    /**
+     * Handle a broadcast update from WebSocket (TaskChatUpdated / TaskStatusUpdated).
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public function handleBroadcastUpdate(array $data = []): void
+    {
+        $this->task->refresh();
+
+        unset($this->chatMessages);
+
+        $type = $data['type'] ?? null;
+
+        if (in_array($type, ['completed', 'failed'])) {
+            $this->waitingForResponse = false;
+        }
     }
 
     public function render()

@@ -28,28 +28,50 @@
     <x-main full-width with-nav>
         <x-slot:sidebar drawer="main-drawer" class="bg-base-100">
             @auth
-                <x-menu activate-by-route>
-                    <x-menu-item title="Tasks" icon="o-clipboard-document-list" :link="route('workbench.tasks.index')" />
-                    <x-menu-item title="Repositories" icon="o-code-bracket" :link="route('workbench.repositories.index')" />
-                    <x-menu-item title="Personas" icon="o-user-circle" :link="route('workbench.personas.index')" />
-                    <x-menu-item title="Playbooks" icon="o-book-open" :link="route('workbench.playbooks.index')" />
-                    <x-menu-item title="Snippets" icon="o-code-bracket-square" :link="route('workbench.snippets.index')" />
-                    <x-menu-item title="Proposals" icon="o-document-text" :link="route('workbench.proposals.index')" />
-                    <x-menu-item title="Sites" icon="o-globe-alt" :link="route('workbench.sites.index')" />
-                    <x-menu-item title="Schedules" icon="o-clock" :link="route('workbench.schedules.index')" />
-                    <x-menu-item title="Analytics" icon="o-chart-bar" :link="route('workbench.analytics.index')" />
-                    <x-menu-item title="Settings" icon="o-adjustments-horizontal" :link="route('workbench.settings.index')" />
+                @php $pinChats = (bool) auth()->user()->setting('pin_recent_chats', true); @endphp
+                <div class="flex flex-col h-full">
+                    <div class="{{ $pinChats ? 'flex-1 overflow-y-auto min-h-0 sidebar-pinned' : '' }}">
+                        <x-menu activate-by-route>
+                            <x-menu-item title="Tasks" icon="o-clipboard-document-list" :link="route('workbench.tasks.index')" />
+                            <x-menu-item title="Repositories" icon="o-code-bracket" :link="route('workbench.repositories.index')" />
 
-                    @if(auth()->user()->hasRole('admin'))
-                        <x-menu-separator />
-                        <x-menu-item title="Users" icon="o-users" :link="route('workbench.users.index')" />
-                        <x-menu-item title="Scrapp APIs" icon="o-bolt" :link="route('workbench.scrapp-apis.index')" />
-                        <x-menu-item title="Admin" icon="o-cog-6-tooth" link="/admin" no-wire-navigate />
+                            <x-menu-sub title="Content" icon="o-rectangle-stack">
+                                <x-menu-item title="Personas" icon="o-user-circle" :link="route('workbench.personas.index')" />
+                                <x-menu-item title="Playbooks" icon="o-book-open" :link="route('workbench.playbooks.index')" />
+                                <x-menu-item title="Snippets" icon="o-code-bracket-square" :link="route('workbench.snippets.index')" />
+                                <x-menu-item title="Proposals" icon="o-document-text" :link="route('workbench.proposals.index')" />
+                            </x-menu-sub>
+
+                            <x-menu-sub title="Infrastructure" icon="o-server-stack">
+                                <x-menu-item title="Sites" icon="o-globe-alt" :link="route('workbench.sites.index')" />
+                                <x-menu-item title="Schedules" icon="o-clock" :link="route('workbench.schedules.index')" />
+                            </x-menu-sub>
+
+                            <x-menu-separator />
+
+                            <x-menu-item title="Analytics" icon="o-chart-bar" :link="route('workbench.analytics.index')" />
+                            <x-menu-item title="AI Providers" icon="o-cpu-chip" :link="route('workbench.ai-providers.index')" />
+                            <x-menu-item title="Settings" icon="o-adjustments-horizontal" :link="route('workbench.settings.index')" />
+
+                            @if(auth()->user()->hasRole('admin'))
+                                <x-menu-separator />
+                                <x-menu-item title="Users" icon="o-users" :link="route('workbench.users.index')" />
+                                <x-menu-item title="Admin" icon="o-cog-6-tooth" link="/admin" no-wire-navigate />
+                            @endif
+                        </x-menu>
+
+                        @if(!$pinChats)
+                            <div class="border-t border-base-300 pt-2 mt-2">
+                                <livewire:recent-chats />
+                            </div>
+                        @endif
+                    </div>
+
+                    @if($pinChats)
+                        <div class="shrink-0 border-t border-base-300 pt-2">
+                            <livewire:recent-chats />
+                        </div>
                     @endif
-                </x-menu>
-
-                <div class="mt-auto border-t border-base-300 pt-2">
-                    <livewire:recent-chats />
                 </div>
             @endauth
         </x-slot:sidebar>
@@ -66,6 +88,36 @@
             });
         }
     </script>
+
+    <script>
+    document.addEventListener('livewire:init', () => {
+        Livewire.hook('request', ({ fail }) => {
+            fail(({ status }) => {
+                if (status === 419) {
+                    window.location.reload();
+                }
+            });
+        });
+    });
+    </script>
+
+    @auth
+    <script>
+    document.addEventListener('livewire:init', () => {
+        const setupRecentChatsEcho = () => {
+            if (window.Echo) {
+                window.Echo.private('users.{{ auth()->id() }}')
+                    .listen('.RecentChatsUpdated', () => {
+                        Livewire.dispatch('recent-chats-updated');
+                    });
+            } else {
+                setTimeout(setupRecentChatsEcho, 500);
+            }
+        };
+        setupRecentChatsEcho();
+    });
+    </script>
+    @endauth
 
 </body>
 </html>

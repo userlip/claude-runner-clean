@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Enums\MessageRole;
 use App\Enums\MessageStatus;
 use App\Enums\TaskStatus;
+use App\Events\TaskChatUpdated;
 use App\Exceptions\RateLimitException;
 use App\Models\Message;
 use App\Models\Task;
@@ -21,6 +22,8 @@ class RunClaudeMessageJob implements ShouldQueue
     public int $timeout = 10800; // 3 hours for complex tasks
 
     public int $tries = 3; // Allow retries for rate limit errors
+
+    protected float $lastBroadcastAt = 0;
 
     /**
      * Backoff intervals in seconds for rate limit retries.
@@ -173,6 +176,7 @@ class RunClaudeMessageJob implements ShouldQueue
                             'tool_calls' => $toolCalls,
                             'content_blocks' => $contentBlocks,
                         ]);
+                        $this->broadcastChatUpdate('tool_call');
 
                         // Detect AskUserQuestion tool - we need to IMMEDIATELY stop and wait for input
                         // In headless mode, Claude will auto-answer and continue if we don't stop now
@@ -216,6 +220,7 @@ class RunClaudeMessageJob implements ShouldQueue
                             'content' => ($assistantMessage->content ?? '').$parsed['content'],
                             'content_blocks' => $contentBlocks,
                         ]);
+                        $this->broadcastChatUpdate('message_chunk');
                     }
                     if (isset($parsed['turn_usage'])) {
                         // Track the latest turn's context usage (overwrites previous)
@@ -347,6 +352,7 @@ class RunClaudeMessageJob implements ShouldQueue
             // Handle AskUserQuestion FIRST - we may have broken early before receiving result
             if ($askUserQuestionDetected) {
                 $this->task->markAsWaitingForInput();
+                $this->broadcastChatUpdate('waiting_for_input');
                 Log::info('Task marked as waiting for input (AskUserQuestion detected)', [
                     'task_id' => $this->task->id,
                 ]);
@@ -417,6 +423,7 @@ class RunClaudeMessageJob implements ShouldQueue
 
             if ($resultReceived) {
                 $this->task->markAsCompleted();
+                $this->broadcastChatUpdate('completed');
                 Log::debug('Task marked as completed (result received)', ['task_id' => $this->task->id]);
 
                 // Best-effort: if the agent opened a PR, store it so we can poll CI/reviews later.
@@ -457,6 +464,7 @@ class RunClaudeMessageJob implements ShouldQueue
                 $this->task->update(['is_compacting' => false]);
 
                 $this->task->markAsCompleted();
+                $this->broadcastChatUpdate('completed');
 
                 $this->sendPushNotification(
                     'Task Interrupted',
@@ -486,6 +494,7 @@ class RunClaudeMessageJob implements ShouldQueue
             ]);
 
             $this->task->markAsFailed();
+            $this->broadcastChatUpdate('failed');
 
             // Best-effort PR detection on failures as well (agent may have created a PR before erroring).
             try {
@@ -595,6 +604,23 @@ class RunClaudeMessageJob implements ShouldQueue
         }
 
         return $content ?: 'Task completed successfully.';
+    }
+
+    protected function broadcastChatUpdate(string $type = 'message_chunk'): void
+    {
+        if ($type === 'message_chunk') {
+            $now = microtime(true);
+            if (($now - $this->lastBroadcastAt) < 2.0) {
+                return;
+            }
+            $this->lastBroadcastAt = $now;
+        }
+
+        TaskChatUpdated::dispatch($this->task, $type);
+
+        if ($type !== 'message_chunk') {
+            $this->lastBroadcastAt = 0;
+        }
     }
 
     protected function handlePrematurePlanOnlyResult(Message $assistantMessage, array $toolCalls, ?array $resultMetadata): bool
@@ -985,6 +1011,7 @@ class RunClaudeMessageJob implements ShouldQueue
 
             // Only mark as failed after all retries are exhausted
             $this->task->markAsFailed();
+            $this->broadcastChatUpdate('failed');
 
             $this->sendPushNotification(
                 'Task Rate Limited',
@@ -1001,6 +1028,7 @@ class RunClaudeMessageJob implements ShouldQueue
         ]);
 
         $this->task->markAsFailed();
+        $this->broadcastChatUpdate('failed');
 
         $this->sendPushNotification(
             'Task Failed',

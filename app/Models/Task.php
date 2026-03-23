@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\DataObjects\RalphState;
 use App\Enums\TaskStatus;
+use App\Events\TaskStatusUpdated;
 use App\Jobs\DeleteTaskJob;
 use App\Jobs\RunClaudeMessageJob;
 use App\Jobs\RunCodexMessageJob;
@@ -27,7 +28,6 @@ class Task extends Model
         'task_schedule_id',
         'site_id',
         'ai_provider_id',
-        'scrapp_api_id',
         'workspace_path',
         'session_id',
         'status',
@@ -183,11 +183,6 @@ class Task extends Model
         RunClaudeMessageJob::dispatch($this, $userMessage, continue: $continue)->onQueue($queue);
     }
 
-    public function scrappApi(): BelongsTo
-    {
-        return $this->belongsTo(ScrappApi::class);
-    }
-
     public function isRunning(): bool
     {
         return $this->status === TaskStatus::Running;
@@ -199,6 +194,8 @@ class Task extends Model
             'status' => TaskStatus::Running,
             'started_at' => now(),
         ]);
+
+        TaskStatusUpdated::dispatch($this);
     }
 
     public function markAsCompleted(): void
@@ -208,6 +205,8 @@ class Task extends Model
             'completed_at' => now(),
             'has_active_subagents' => false,
         ]);
+
+        TaskStatusUpdated::dispatch($this);
 
         $this->handleScheduleCompletion();
         $this->updateProposalExecution(true);
@@ -219,6 +218,8 @@ class Task extends Model
             'status' => TaskStatus::Failed,
             'completed_at' => now(),
         ]);
+
+        TaskStatusUpdated::dispatch($this);
 
         $this->handleScheduleCompletion();
         $this->updateProposalExecution(false);
