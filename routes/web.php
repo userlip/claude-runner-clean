@@ -3,6 +3,7 @@
 use App\Http\Controllers\GitHubAuthController;
 use App\Livewire\AiProviders\Index as AiProvidersIndex;
 use App\Livewire\Analytics\Index as AnalyticsIndex;
+use App\Livewire\AsanaBoard;
 use App\Livewire\Home\Index as HomeIndex;
 use App\Livewire\MajorUpgradeRuns\Index as MajorUpgradeRunsIndex;
 use App\Livewire\Personas\Form as PersonaForm;
@@ -105,6 +106,7 @@ Route::middleware(['auth'])->prefix('workbench')->group(function () {
     Route::get('/settings', SettingsIndex::class)->name('workbench.settings.index');
     Route::get('/settings/ai-providers', AiProvidersIndex::class)->name('workbench.ai-providers.index');
     Route::get('/analytics', AnalyticsIndex::class)->name('workbench.analytics.index');
+    Route::get('/asana', AsanaBoard::class)->name('workbench.asana.index');
 
     Route::middleware(['role:admin'])->prefix('schedules')->group(function () {
         Route::get('/', SchedulesIndex::class)->name('workbench.schedules.index');

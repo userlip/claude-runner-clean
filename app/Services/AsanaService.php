@@ -163,4 +163,28 @@ class AsanaService
 
         return $response->json();
     }
+
+    /**
+     * Find a testing section in a project by name pattern.
+     * Matches sections named like "test", "testing", "qa", etc.
+     *
+     * @param  string  $projectId  The Asana project GID
+     * @return string|null The section GID or null if not found
+     */
+    public function findTestingSection(string $projectId): ?string
+    {
+        $sections = $this->getProjectSections($projectId);
+        $data = $sections['data'] ?? [];
+
+        foreach ($data as $section) {
+            $name = strtolower($section['name'] ?? '');
+
+            // Match sections with test/qa related names
+            if (preg_match('/\b(test|testing|qa)\b/i', $name)) {
+                return $section['gid'];
+            }
+        }
+
+        return null;
+    }
 }
