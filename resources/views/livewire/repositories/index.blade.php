@@ -4,7 +4,7 @@
             <x-input placeholder="Search..." wire:model.live.debounce="search" clearable icon="o-magnifying-glass" />
         </x-slot:middle>
         <x-slot:actions>
-            <x-button label="Create" icon="o-plus" link="{{ route('app.repositories.create') }}" class="btn-primary" />
+            <x-button label="Sync" icon="o-arrow-path" wire:click="syncRepositories" spinner="syncRepositories" class="btn-primary" />
         </x-slot:actions>
     </x-header>
 
@@ -15,8 +15,10 @@
             @endscope
 
             @scope('actions', $repository)
-                <x-button icon="o-pencil" link="{{ route('app.repositories.edit', $repository->id) }}" spinner class="btn-ghost btn-sm" />
-                <x-button icon="o-trash" wire:click="delete({{ $repository->id }})" wire:confirm="Are you sure you want to delete this repository?" spinner class="btn-ghost btn-sm text-error" />
+                <div class="flex gap-1">
+                    <x-button icon="o-pencil" link="{{ route('workbench.repositories.edit', $repository->id) }}" spinner class="btn-ghost btn-sm" />
+                    <x-button icon="o-trash" wire:click="delete({{ $repository->id }})" wire:confirm="Are you sure you want to delete this repository?" spinner class="btn-ghost btn-sm text-error" />
+                </div>
             @endscope
         </x-table>
     </x-card>

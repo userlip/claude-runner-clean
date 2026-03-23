@@ -4,7 +4,7 @@
             <x-input placeholder="Search..." wire:model.live.debounce="search" clearable icon="o-magnifying-glass" />
         </x-slot:middle>
         <x-slot:actions>
-            <x-button label="Create" icon="o-plus" link="{{ route('app.schedules.create') }}" class="btn-primary" />
+            <x-button label="Create" icon="o-plus" link="{{ route('workbench.schedules.create') }}" class="btn-primary" />
         </x-slot:actions>
     </x-header>
 
@@ -19,8 +19,10 @@
             @endscope
 
             @scope('actions', $schedule)
-                <x-button icon="o-pencil" link="{{ route('app.schedules.edit', $schedule->id) }}" spinner class="btn-ghost btn-sm" />
-                <x-button icon="o-trash" wire:click="delete({{ $schedule->id }})" wire:confirm="Are you sure you want to delete this schedule?" spinner class="btn-ghost btn-sm text-error" />
+                <div class="flex gap-1">
+                    <x-button icon="o-pencil" link="{{ route('workbench.schedules.edit', $schedule->id) }}" spinner class="btn-ghost btn-sm" />
+                    <x-button icon="o-trash" wire:click="delete({{ $schedule->id }})" wire:confirm="Are you sure you want to delete this schedule?" spinner class="btn-ghost btn-sm text-error" />
+                </div>
             @endscope
         </x-table>
     </x-card>

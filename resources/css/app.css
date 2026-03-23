@@ -1,5 +1,27 @@
 @import "tailwindcss";
+@plugin "daisyui";
 @source "../views";
+@source "../../vendor/robsontenorio/mary/src/View/Components";
+
+/* Sidebar pinned: override Mary UI's outer scroll so recent chats stay fixed at bottom.
+   The .sidebar-pinned class is on our inner div; we target the Mary wrapper (2 levels up)
+   using :has() to disable its overflow-y-auto. */
+.bg-base-100:has(.sidebar-pinned) {
+    overflow-y: hidden !important;
+}
+
+.bg-base-100:has(.sidebar-pinned) > .flex-1 {
+    flex: 1 1 0% !important;
+    min-height: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+}
+
+/* Disable pull-to-refresh in PWA standalone mode */
+html, body {
+    overscroll-behavior-y: none;
+}
 
 /* Chat interface styles - works with Filament dark mode */
 .chat-container {
@@ -501,4 +523,9 @@
     50% {
         opacity: 0.5;
     }
+}
+
+/* Mary UI pagination - center the container */
+.mary-table-pagination > div:last-child {
+    justify-content: center !important;
 }

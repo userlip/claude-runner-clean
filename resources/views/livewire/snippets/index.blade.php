@@ -4,15 +4,17 @@
             <x-input placeholder="Search..." wire:model.live.debounce="search" clearable icon="o-magnifying-glass" />
         </x-slot:middle>
         <x-slot:actions>
-            <x-button label="Create" icon="o-plus" link="{{ route('app.snippets.create') }}" class="btn-primary" />
+            <x-button label="Create" icon="o-plus" link="{{ route('workbench.snippets.create') }}" class="btn-primary" />
         </x-slot:actions>
     </x-header>
 
     <x-card shadow>
         <x-table :headers="$headers" :rows="$snippets" :sort-by="$sortBy" with-pagination>
             @scope('actions', $snippet)
-                <x-button icon="o-pencil" link="{{ route('app.snippets.edit', $snippet->id) }}" spinner class="btn-ghost btn-sm" />
-                <x-button icon="o-trash" wire:click="delete({{ $snippet->id }})" wire:confirm="Are you sure you want to delete this snippet?" spinner class="btn-ghost btn-sm text-error" />
+                <div class="flex gap-1">
+                    <x-button icon="o-pencil" link="{{ route('workbench.snippets.edit', $snippet->id) }}" spinner class="btn-ghost btn-sm" />
+                    <x-button icon="o-trash" wire:click="delete({{ $snippet->id }})" wire:confirm="Are you sure you want to delete this snippet?" spinner class="btn-ghost btn-sm text-error" />
+                </div>
             @endscope
         </x-table>
     </x-card>
