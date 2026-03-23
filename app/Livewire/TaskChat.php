@@ -23,6 +23,8 @@ use Livewire\Component;
 
 class TaskChat extends Component
 {
+    private const int MESSAGE_BATCH_SIZE = 100;
+
     public Task $task;
 
     public string $prompt = '';
@@ -41,6 +43,8 @@ class TaskChat extends Component
      * loading the message list until the browser has painted the shell.
      */
     public bool $messagesLoaded = false;
+
+    public int $visibleMessageCount = 0;
 
     public bool $showDeployModal = false;
 
@@ -71,7 +75,30 @@ class TaskChat extends Component
     public function loadMessages(): void
     {
         $this->messagesLoaded = true;
+        $this->visibleMessageCount = min($this->sentMessageCount(), self::MESSAGE_BATCH_SIZE);
+        unset($this->chatMessages, $this->totalMessageCount, $this->hasHiddenMessages);
         $this->dispatch('messages-loaded');
+    }
+
+    public function loadMoreMessages(): void
+    {
+        if (! $this->messagesLoaded) {
+            $this->loadMessages();
+
+            return;
+        }
+
+        $totalMessageCount = $this->sentMessageCount();
+        $nextVisibleCount = min($totalMessageCount, $this->visibleMessageCount + self::MESSAGE_BATCH_SIZE);
+
+        if ($nextVisibleCount === $this->visibleMessageCount) {
+            return;
+        }
+
+        $this->visibleMessageCount = $nextVisibleCount;
+        unset($this->chatMessages, $this->totalMessageCount, $this->hasHiddenMessages);
+
+        $this->dispatch('chat-history-prepended');
     }
 
     #[On('insert-snippet')]
@@ -93,9 +120,16 @@ class TaskChat extends Component
             return new Collection;
         }
 
-        return $this->task->messages()
-            ->where('status', MessageStatus::Sent)
+        $totalMessageCount = $this->sentMessageCount();
+        $visibleMessageCount = $this->visibleMessageCount > 0
+            ? min($this->visibleMessageCount, $totalMessageCount)
+            : min($totalMessageCount, self::MESSAGE_BATCH_SIZE);
+        $hiddenMessageCount = max(0, $totalMessageCount - $visibleMessageCount);
+
+        return $this->sentMessagesQuery()
             ->oldest()
+            ->skip($hiddenMessageCount)
+            ->take($visibleMessageCount)
             ->orderBy('id')
             ->get();
     }
@@ -110,9 +144,17 @@ class TaskChat extends Component
             return 0;
         }
 
-        return $this->task->messages()
-            ->where('status', MessageStatus::Sent)
-            ->count();
+        return $this->sentMessageCount();
+    }
+
+    #[Computed]
+    public function hasHiddenMessages(): bool
+    {
+        if (! $this->messagesLoaded) {
+            return false;
+        }
+
+        return $this->visibleMessageCount < $this->totalMessageCount;
     }
 
     /**
@@ -377,6 +419,8 @@ class TaskChat extends Component
             'images.*.name' => 'required|string|max:255',
         ]);
 
+        $previousSentMessageCount = $this->messagesLoaded ? $this->sentMessageCount() : 0;
+
         // Refresh task to get latest status before checking isRunning
         $this->task->refresh();
 
@@ -436,6 +480,8 @@ class TaskChat extends Component
         }
 
         $this->task->dispatchMessage($userMessage, continue: $hasSuccessfulResponse);
+
+        $this->expandVisibleWindowIfFullyLoaded($previousSentMessageCount);
 
         $this->prompt = '';
         $this->images = [];
@@ -1352,6 +1398,8 @@ PROMPT,
     public function stopRunning(): void
     {
         $shouldStopRalph = (bool) $this->task->ralph_enabled;
+        $sessionMetadata = $this->task->session_metadata ?? [];
+        $ralphProcessPid = data_get($sessionMetadata, 'ralph_process.pid');
 
         if (! $this->task->isRunning() && ! $this->task->has_active_subagents && ! $shouldStopRalph) {
             return;
@@ -1360,19 +1408,23 @@ PROMPT,
         $sessionId = $this->task->session_id;
         $provider = $this->task->aiProvider;
 
-        if ($provider?->isCodex()) {
-            exec("pkill -f 'codex.*exec resume.*{$sessionId}' 2>/dev/null");
+        if ($shouldStopRalph && is_numeric($ralphProcessPid)) {
+            $this->terminateProcessTree((int) $ralphProcessPid);
         } else {
-            // Kill any Claude processes with this session ID
-            exec("pkill -f 'claude.*--session-id {$sessionId}' 2>/dev/null");
-            exec("pkill -f 'claude.*--resume {$sessionId}' 2>/dev/null");
-        }
+            if ($provider?->isCodex()) {
+                $this->runStopCommand("pkill -f 'codex.*exec resume.*{$sessionId}' 2>/dev/null || true");
+            } else {
+                // Kill any Claude processes with this session ID
+                $this->runStopCommand("pkill -f 'claude.*--session-id {$sessionId}' 2>/dev/null || true");
+                $this->runStopCommand("pkill -f 'claude.*--resume {$sessionId}' 2>/dev/null || true");
+            }
 
-        // Also kill any AI processes associated with this task's working directory
-        if ($this->task->working_directory) {
-            $workingDir = escapeshellarg($this->task->working_directory);
-            $pattern = $provider?->isCodex() ? 'codex.*--cd' : 'claude.*';
-            exec("pkill -f '{$pattern}.*{$workingDir}' 2>/dev/null");
+            // Also kill any AI processes associated with this task's working directory
+            if ($this->task->working_directory) {
+                $workingDir = escapeshellarg($this->task->working_directory);
+                $pattern = $provider?->isCodex() ? 'codex.*--cd' : 'claude.*';
+                $this->runStopCommand("pkill -f '{$pattern}.*{$workingDir}' 2>/dev/null || true");
+            }
         }
 
         // Clear loop flags before marking complete so Ralph cannot keep dispatching.
@@ -1380,6 +1432,10 @@ PROMPT,
         if ($shouldStopRalph) {
             $updates['ralph_enabled'] = false;
             $updates['ralph_stopped_reason'] = 'stopped_by_user';
+        }
+        if (array_key_exists('ralph_process', $sessionMetadata)) {
+            unset($sessionMetadata['ralph_process']);
+            $updates['session_metadata'] = $sessionMetadata;
         }
 
         $this->task->update($updates);
@@ -1399,6 +1455,17 @@ PROMPT,
             ->body('You can send a new message now.')
             ->info()
             ->send();
+    }
+
+    protected function terminateProcessTree(int $pid): void
+    {
+        $this->runStopCommand("pkill -TERM -P {$pid} 2>/dev/null || true");
+        $this->runStopCommand("kill -TERM {$pid} 2>/dev/null || true");
+    }
+
+    protected function runStopCommand(string $command): void
+    {
+        Process::run(['bash', '-lc', $command]);
     }
 
     /**
@@ -1466,9 +1533,13 @@ PROMPT,
      */
     public function handleBroadcastUpdate(array $data = []): void
     {
+        $previousSentMessageCount = $this->messagesLoaded ? $this->sentMessageCount() : 0;
+
         $this->task->refresh();
 
-        unset($this->chatMessages);
+        $this->expandVisibleWindowIfFullyLoaded($previousSentMessageCount);
+
+        unset($this->chatMessages, $this->totalMessageCount, $this->hasHiddenMessages);
 
         $type = $data['type'] ?? null;
 
@@ -1480,5 +1551,29 @@ PROMPT,
     public function render()
     {
         return view('livewire.task-chat');
+    }
+
+    protected function sentMessagesQuery()
+    {
+        return $this->task->messages()
+            ->where('status', MessageStatus::Sent);
+    }
+
+    protected function sentMessageCount(): int
+    {
+        return $this->sentMessagesQuery()->count();
+    }
+
+    protected function expandVisibleWindowIfFullyLoaded(int $previousSentMessageCount): void
+    {
+        if (! $this->messagesLoaded || $previousSentMessageCount === 0) {
+            return;
+        }
+
+        if ($this->visibleMessageCount < $previousSentMessageCount) {
+            return;
+        }
+
+        $this->visibleMessageCount = $this->sentMessageCount();
     }
 }

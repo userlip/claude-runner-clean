@@ -31,6 +31,8 @@ class Repository extends Model
         'ploi_site_id',
         'ploi_site_domain',
         'security_task_id',
+        'asana_project_id',
+        'asana_testing_section_id',
     ];
 
     protected function casts(): array

@@ -517,6 +517,9 @@
             scrollThreshold: 150,
             pendingScroll: null,
             lastStableScrollTop: 0,
+            loadingOlderMessages: false,
+            prependScrollState: null,
+            historyObserver: null,
             cacheKey() {
                 return `cr:chat-cache:${'{{ $task->uuid }}'}`;
             },
@@ -602,6 +605,56 @@
                 el.scrollTop = el.scrollHeight;
                 this.lastStableScrollTop = el.scrollTop;
             },
+            prepareForHistoryPrepend() {
+                const el = this.$refs.messages;
+                if (!el) return;
+
+                this.prependScrollState = {
+                    scrollHeight: el.scrollHeight,
+                    scrollTop: el.scrollTop,
+                };
+            },
+            restoreAfterHistoryPrepend() {
+                const el = this.$refs.messages;
+                if (!el || !this.prependScrollState) {
+                    this.loadingOlderMessages = false;
+                    return;
+                }
+
+                const delta = el.scrollHeight - this.prependScrollState.scrollHeight;
+                el.scrollTop = this.prependScrollState.scrollTop + delta;
+                this.lastStableScrollTop = el.scrollTop;
+                this.prependScrollState = null;
+                this.loadingOlderMessages = false;
+            },
+            observeHistoryTop() {
+                if (this.historyObserver) {
+                    this.historyObserver.disconnect();
+                    this.historyObserver = null;
+                }
+
+                const root = this.$refs.messages;
+                const sentinel = this.$refs.historyTopSentinel;
+
+                if (!root || !sentinel) return;
+
+                this.historyObserver = new IntersectionObserver((entries) => {
+                    const entry = entries[0];
+
+                    if (!entry?.isIntersecting || this.loadingOlderMessages) {
+                        return;
+                    }
+
+                    this.loadingOlderMessages = true;
+                    this.prepareForHistoryPrepend();
+                    $wire.loadMoreMessages();
+                }, {
+                    root,
+                    threshold: 0.1,
+                });
+
+                this.historyObserver.observe(sentinel);
+            },
             init() {
                 // Restore scroll position when navigating away and back in SPA mode.
                 // Important: defer applying scrollTop until messages are actually rendered, otherwise
@@ -641,10 +694,12 @@
                         if (!this.$refs.messages) return;
                         if (this.isNearBottom) {
                             this.scrollToBottom();
+                            this.observeHistoryTop();
                             return;
                         }
                         this.$refs.messages.scrollTop = previousScrollTop;
                         this.lastStableScrollTop = this.$refs.messages.scrollTop;
+                        this.observeHistoryTop();
                     });
                 });
                 observer.observe(this.$refs.messages, { childList: true, subtree: true });
@@ -658,6 +713,9 @@
                     } catch {}
                     this.saveMessagesToCache();
                     observer.disconnect();
+                    if (this.historyObserver) {
+                        this.historyObserver.disconnect();
+                    }
                 });
 
                 const setupEcho = () => {
@@ -687,17 +745,30 @@
                         this.$nextTick(() => {
                             if (this.isNearBottom) {
                                 this.scrollToBottom();
+                                this.observeHistoryTop();
                                 return;
                             }
                             this.$refs.messages.scrollTop = scrollTop;
+                            this.observeHistoryTop();
                         });
                     } else {
                         // Default chat behavior: stay pinned to bottom when opening.
-                        this.$nextTick(() => this.scrollToBottom());
+                        this.$nextTick(() => {
+                            this.scrollToBottom();
+                            this.observeHistoryTop();
+                        });
                     }
 
                     // Refresh cache from the real DOM.
                     this.$nextTick(() => this.saveMessagesToCache());
+                });
+
+                document.addEventListener('chat-history-prepended', () => {
+                    this.$nextTick(() => {
+                        this.restoreAfterHistoryPrepend();
+                        this.observeHistoryTop();
+                        this.saveMessagesToCache();
+                    });
                 });
             }
         }"
@@ -710,6 +781,16 @@
             @if($this->shouldPoll) wire:poll.30s.visible="checkPolling" @endif
         >
             <div class="chat-cached-history" wire:ignore x-ref="cachedHistory"></div>
+
+            @if($this->hasHiddenMessages)
+                <div
+                    wire:key="chat-history-sentinel-{{ $this->visibleMessageCount }}"
+                    x-ref="historyTopSentinel"
+                    class="flex justify-center py-2 text-xs text-base-content/45"
+                >
+                    <span x-show="loadingOlderMessages">Loading older messages...</span>
+                </div>
+            @endif
 
             @forelse($this->chatMessages as $index => $message)
                 @php

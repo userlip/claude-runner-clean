@@ -241,6 +241,26 @@ class RunRalphJobTest extends TestCase
         Queue::assertNothingPushed();
     }
 
+    public function test_tracks_and_clears_active_ralph_process_metadata(): void
+    {
+        $task = Task::factory()->ralph()->create([
+            'workspace_path' => '/tmp/test-workspace',
+        ]);
+
+        $job = new RunRalphJob($task, 2);
+
+        $this->invokeProtected($job, 'trackActiveProcess', [4321]);
+        $task->refresh();
+
+        $this->assertSame(4321, data_get($task->session_metadata, 'ralph_process.pid'));
+        $this->assertSame(2, data_get($task->session_metadata, 'ralph_process.iteration'));
+
+        $this->invokeProtected($job, 'clearTrackedProcess');
+        $task->refresh();
+
+        $this->assertNull(data_get($task->session_metadata, 'ralph_process'));
+    }
+
     public function test_handle_completes_task_after_final_story_passes_without_dispatching_another_iteration(): void
     {
         Queue::fake();

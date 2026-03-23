@@ -387,31 +387,53 @@ test('defers rendering existing messages until loadMessages is called', function
         ->assertSee('hello from history');
 });
 
-test('loads the full chat history once messages are loaded', function () {
+test('loads the newest 100 sent messages first once messages are loaded', function () {
     $repository = Repository::factory()->create(['user_id' => $this->user->id]);
     $task = Task::factory()->create(['repository_id' => $repository->id]);
 
-    Message::factory()->create([
-        'task_id' => $task->id,
-        'role' => \App\Enums\MessageRole::User,
-        'status' => \App\Enums\MessageStatus::Sent,
-        'content' => 'oldest hidden message',
-    ]);
-
-    foreach (range(1, 30) as $index) {
+    foreach (range(1, 105) as $index) {
         Message::factory()->create([
             'task_id' => $task->id,
             'role' => \App\Enums\MessageRole::User,
             'status' => \App\Enums\MessageStatus::Sent,
-            'content' => "visible message {$index}",
+            'content' => 'message '.str_pad((string) $index, 3, '0', STR_PAD_LEFT),
         ]);
     }
 
     Livewire::test(TaskChat::class, ['task' => $task])
         ->call('loadMessages')
-        ->assertSee('oldest hidden message')
-        ->assertSee('visible message 30')
-        ->assertDontSee('Show 1 older message');
+        ->assertDontSee('message 001')
+        ->assertDontSee('message 005')
+        ->assertSee('message 006')
+        ->assertSee('message 105');
+});
+
+test('can load older sent messages in 100 message batches', function () {
+    $repository = Repository::factory()->create(['user_id' => $this->user->id]);
+    $task = Task::factory()->create(['repository_id' => $repository->id]);
+
+    foreach (range(1, 205) as $index) {
+        Message::factory()->create([
+            'task_id' => $task->id,
+            'role' => \App\Enums\MessageRole::User,
+            'status' => \App\Enums\MessageStatus::Sent,
+            'content' => 'message '.str_pad((string) $index, 3, '0', STR_PAD_LEFT),
+        ]);
+    }
+
+    Livewire::test(TaskChat::class, ['task' => $task])
+        ->call('loadMessages')
+        ->assertDontSee('message 001')
+        ->assertDontSee('message 100')
+        ->assertSee('message 106')
+        ->assertSee('message 205')
+        ->call('loadMoreMessages')
+        ->assertDontSee('message 001')
+        ->assertSee('message 006')
+        ->assertSee('message 205')
+        ->call('loadMoreMessages')
+        ->assertSee('message 001')
+        ->assertSee('message 205');
 });
 
 test('stopRunning disables Ralph even when the task is already marked completed', function () {
@@ -432,6 +454,45 @@ test('stopRunning disables Ralph even when the task is already marked completed'
 
     expect($task->fresh()->ralph_enabled)->toBeFalse()
         ->and($task->fresh()->ralph_stopped_reason)->toBe('stopped_by_user');
+});
+
+test('stopRunning terminates the tracked Ralph process tree when present', function () {
+    Process::fake();
+
+    $provider = AiProvider::factory()->codex()->create();
+    $repository = Repository::factory()->create(['user_id' => $this->user->id]);
+    $task = Task::factory()->create([
+        'repository_id' => $repository->id,
+        'ai_provider_id' => $provider->id,
+        'status' => \App\Enums\TaskStatus::Completed,
+        'ralph_enabled' => true,
+        'has_active_subagents' => false,
+        'session_id' => (string) str()->uuid(),
+        'workspace_path' => null,
+        'session_metadata' => [
+            'ralph_process' => [
+                'pid' => 4321,
+                'iteration' => 2,
+            ],
+        ],
+    ]);
+
+    Livewire::test(TaskChat::class, ['task' => $task])
+        ->call('stopRunning');
+
+    Process::assertRan(function ($process) {
+        $command = is_array($process->command) ? implode(' ', $process->command) : $process->command;
+
+        return str_contains($command, 'pkill -TERM -P 4321');
+    });
+
+    Process::assertRan(function ($process) {
+        $command = is_array($process->command) ? implode(' ', $process->command) : $process->command;
+
+        return str_contains($command, 'kill -TERM 4321');
+    });
+
+    expect(data_get($task->fresh()->session_metadata, 'ralph_process'))->toBeNull();
 });
 
 test('does not add standalone polling to the context usage indicators', function () {

@@ -8,6 +8,7 @@ use App\Events\TaskStatusUpdated;
 use App\Jobs\DeleteTaskJob;
 use App\Jobs\RunClaudeMessageJob;
 use App\Jobs\RunCodexMessageJob;
+use App\Jobs\SyncAsanaTaskCompletion;
 use App\Services\RalphWorkspaceService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -28,6 +29,7 @@ class Task extends Model
         'task_schedule_id',
         'site_id',
         'ai_provider_id',
+        'asana_task_id',
         'workspace_path',
         'session_id',
         'status',
@@ -42,6 +44,7 @@ class Task extends Model
         'max_turns',
         'question_responses',
         'session_metadata',
+        'todos',
         'started_at',
         'completed_at',
         'last_viewed_at',
@@ -207,6 +210,11 @@ class Task extends Model
         ]);
 
         TaskStatusUpdated::dispatch($this);
+
+        // Sync completion to Asana if linked
+        if ($this->asana_task_id) {
+            SyncAsanaTaskCompletion::dispatch($this);
+        }
 
         $this->handleScheduleCompletion();
         $this->updateProposalExecution(true);

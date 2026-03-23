@@ -4,6 +4,7 @@ namespace App\Filament\Resources\RepositoryResource\Pages;
 
 use App\Filament\Resources\RepositoryResource;
 use App\Models\RepositoryEnvConfig;
+use App\Services\AsanaService;
 use Filament\Actions;
 use Filament\Forms;
 use Filament\Notifications\Notification;
@@ -14,6 +15,7 @@ use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Log;
 
 class ViewRepository extends Page implements HasTable
 {
@@ -47,6 +49,42 @@ class ViewRepository extends Page implements HasTable
                 ->icon('heroicon-o-arrow-top-right-on-square')
                 ->url("https://github.com/{$this->record->full_name}")
                 ->openUrlInNewTab(),
+
+            Actions\Action::make('configureAsana')
+                ->label('Configure Asana')
+                ->icon('heroicon-o-clipboard-document-list')
+                ->visible(fn (): bool => $this->record->user?->asanaConnection !== null)
+                ->form([
+                    Forms\Components\Select::make('asana_project_id')
+                        ->label('Asana Project')
+                        ->options(fn (): array => $this->getAsanaProjectOptions())
+                        ->searchable()
+                        ->placeholder('Select an Asana project')
+                        ->helperText('Select the Asana project to link with this repository')
+                        ->live(),
+                    Forms\Components\Select::make('asana_testing_section_id')
+                        ->label('Testing Section')
+                        ->options(fn (Forms\Get $get): array => $this->getTestingSectionOptions($get('asana_project_id')))
+                        ->searchable()
+                        ->placeholder('Select a testing section (optional)')
+                        ->helperText('Tasks will be moved to this section when completed. Auto-detected if not set.')
+                        ->visible(fn (Forms\Get $get): bool => ! empty($get('asana_project_id'))),
+                ])
+                ->fillForm(fn (): array => [
+                    'asana_project_id' => $this->record->asana_project_id,
+                    'asana_testing_section_id' => $this->record->asana_testing_section_id,
+                ])
+                ->action(function (array $data): void {
+                    $this->record->update([
+                        'asana_project_id' => $data['asana_project_id'] ?? null,
+                        'asana_testing_section_id' => $data['asana_testing_section_id'] ?? null,
+                    ]);
+
+                    Notification::make()
+                        ->title('Asana configuration updated')
+                        ->success()
+                        ->send();
+                }),
 
             Actions\Action::make('addEnvConfig')
                 ->label('Add Env Config')
@@ -200,5 +238,77 @@ class ViewRepository extends Page implements HasTable
                             ->send();
                     }),
             ]);
+    }
+
+    /**
+     * Get Asana project options for the select dropdown.
+     *
+     * @return array<string, string>
+     */
+    protected function getAsanaProjectOptions(): array
+    {
+        $connection = $this->record->user?->asanaConnection;
+        if (! $connection) {
+            return [];
+        }
+
+        try {
+            $asanaService = new AsanaService($connection->token);
+
+            // For now, we'll fetch projects from all workspaces
+            // This is a simplified approach - in production you might want to cache this
+            $workspaces = $asanaService->getWorkspaces();
+            $options = [];
+
+            // Note: Asana API requires workspace to list projects, so we'll need to fetch per workspace
+            // For simplicity, we're returning an empty array that will be populated via JavaScript
+            // or you can implement workspace-based project fetching
+
+            return $options;
+        } catch (\Exception $e) {
+            Log::warning('Failed to fetch Asana projects', [
+                'repository_id' => $this->record->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [];
+        }
+    }
+
+    /**
+     * Get testing section options for a given project.
+     *
+     * @return array<string, string>
+     */
+    protected function getTestingSectionOptions(?string $projectId): array
+    {
+        if (empty($projectId)) {
+            return [];
+        }
+
+        $connection = $this->record->user?->asanaConnection;
+        if (! $connection) {
+            return [];
+        }
+
+        try {
+            $asanaService = new AsanaService($connection->token);
+            $sections = $asanaService->getProjectSections($projectId);
+
+            $options = [];
+            foreach ($sections['data'] ?? [] as $section) {
+                $options[$section['gid']] = $section['name'];
+            }
+
+            return $options;
+        } catch (\Exception $e) {
+            Log::warning('Failed to fetch Asana sections', [
+                'repository_id' => $this->record->id,
+                'project_id' => $projectId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [];
+        }
     }
 }

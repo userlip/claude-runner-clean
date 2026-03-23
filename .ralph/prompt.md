@@ -14,7 +14,7 @@ You are an autonomous coding agent working on a Laravel application.
 1. Read `.ralph/prd.json` for the product requirements and user stories
 2. Read `.ralph/progress.txt` (check **Codebase Patterns** section FIRST)
 3. Read `.ralph/guardrails.md` for applicable constraints
-4. Check you're on the correct branch: `ralph/9f40e0a8-2b2a-40f0-a749-bda988cb6686`. If not, create it from main.
+4. Check you're on the correct branch: `ralph/3637ea40-c7c6-4302-9c04-22a3a30c2caf`. If not, create it from main.
 5. Pick the **highest priority** user story where `passes: false`
 6. Implement that **ONE** story only
 7. Run quality checks:

@@ -258,154 +258,160 @@ class RunRalphJob implements ShouldQueue
             ];
         }
 
-        if ($isCodex) {
-            fwrite($pipes[0], $prompt."\n");
-        }
-        fclose($pipes[0]); // Close stdin
+        $this->trackActiveProcess((int) (proc_get_status($process)['pid'] ?? 0));
 
-        // Set stream timeout (5 min of silence = hung)
-        stream_set_timeout($pipes[1], 300);
-
-        $tokensIn = 0;
-        $tokensOut = 0;
-        $learnings = '';
-        $toolSummaries = [];
-        $lastUpdateAt = 0;
-
-        while (! feof($pipes[1])) {
-            $line = fgets($pipes[1]);
-
-            if ($line === false) {
-                $meta = stream_get_meta_data($pipes[1]);
-                if ($meta['timed_out']) {
-                    Log::warning('Ralph Claude stream timed out', [
-                        'task_id' => $this->task->id,
-                        'iteration' => $this->iteration,
-                    ]);
-                    break;
-                }
-
-                continue;
-            }
-
-            $line = trim($line);
-            if (empty($line)) {
-                continue;
-            }
-
-            $json = json_decode($line, true);
-            if (! $json) {
-                continue;
-            }
-
-            $type = $json['type'] ?? '';
-
+        try {
             if ($isCodex) {
-                if ($type === 'item.completed') {
-                    $item = $json['item'] ?? [];
-                    $itemType = $item['type'] ?? '';
+                fwrite($pipes[0], $prompt."\n");
+            }
+            fclose($pipes[0]); // Close stdin
 
-                    if (in_array($itemType, ['agent_message', 'assistant_message'], true)) {
-                        $text = $this->stripCitationMarkers($item['text'] ?? '');
-                        $learnings .= $text."\n";
+            // Set stream timeout (5 min of silence = hung)
+            stream_set_timeout($pipes[1], 300);
 
-                        if (! empty(trim($text))) {
-                            $this->postRalphTextMessage($text);
-                        }
+            $tokensIn = 0;
+            $tokensOut = 0;
+            $learnings = '';
+            $toolSummaries = [];
+            $lastUpdateAt = 0;
+
+            while (! feof($pipes[1])) {
+                $line = fgets($pipes[1]);
+
+                if ($line === false) {
+                    $meta = stream_get_meta_data($pipes[1]);
+                    if ($meta['timed_out']) {
+                        Log::warning('Ralph Claude stream timed out', [
+                            'task_id' => $this->task->id,
+                            'iteration' => $this->iteration,
+                        ]);
+                        break;
                     }
 
-                    if ($itemType === 'command_execution') {
-                        $toolSummaries[] = 'shell_command';
-                    }
+                    continue;
                 }
 
-                if ($type === 'turn.completed') {
-                    $usage = $json['usage'] ?? [];
-                    $tokensIn = ($usage['input_tokens'] ?? 0) + ($usage['cached_input_tokens'] ?? 0);
-                    $tokensOut = $usage['output_tokens'] ?? $tokensOut;
-                }
-            } else {
-                // Result message contains final stats
-                if ($type === 'result') {
-                    $tokensIn = $json['usage']['input_tokens'] ?? $tokensIn;
-                    $tokensOut = $json['usage']['output_tokens'] ?? $tokensOut;
+                $line = trim($line);
+                if (empty($line)) {
+                    continue;
                 }
 
-                // Extract text content from assistant messages
-                if ($type === 'assistant' && isset($json['message']['content'])) {
-                    foreach ($json['message']['content'] as $block) {
-                        if (($block['type'] ?? '') === 'text') {
-                            $text = $block['text'] ?? '';
+                $json = json_decode($line, true);
+                if (! $json) {
+                    continue;
+                }
+
+                $type = $json['type'] ?? '';
+
+                if ($isCodex) {
+                    if ($type === 'item.completed') {
+                        $item = $json['item'] ?? [];
+                        $itemType = $item['type'] ?? '';
+
+                        if (in_array($itemType, ['agent_message', 'assistant_message'], true)) {
+                            $text = $this->stripCitationMarkers($item['text'] ?? '');
                             $learnings .= $text."\n";
 
-                            // Create a separate chat message for each text block
                             if (! empty(trim($text))) {
                                 $this->postRalphTextMessage($text);
                             }
                         }
 
-                        if (($block['type'] ?? '') === 'tool_use') {
-                            $toolName = $block['name'] ?? 'unknown';
-                            $toolSummaries[] = $toolName;
+                        if ($itemType === 'command_execution') {
+                            $toolSummaries[] = 'shell_command';
                         }
+                    }
 
-                        if (($block['type'] ?? '') === 'tool_result') {
-                            // Tool completed - don't need the full result in the stream
+                    if ($type === 'turn.completed') {
+                        $usage = $json['usage'] ?? [];
+                        $tokensIn = ($usage['input_tokens'] ?? 0) + ($usage['cached_input_tokens'] ?? 0);
+                        $tokensOut = $usage['output_tokens'] ?? $tokensOut;
+                    }
+                } else {
+                    // Result message contains final stats
+                    if ($type === 'result') {
+                        $tokensIn = $json['usage']['input_tokens'] ?? $tokensIn;
+                        $tokensOut = $json['usage']['output_tokens'] ?? $tokensOut;
+                    }
+
+                    // Extract text content from assistant messages
+                    if ($type === 'assistant' && isset($json['message']['content'])) {
+                        foreach ($json['message']['content'] as $block) {
+                            if (($block['type'] ?? '') === 'text') {
+                                $text = $block['text'] ?? '';
+                                $learnings .= $text."\n";
+
+                                // Create a separate chat message for each text block
+                                if (! empty(trim($text))) {
+                                    $this->postRalphTextMessage($text);
+                                }
+                            }
+
+                            if (($block['type'] ?? '') === 'tool_use') {
+                                $toolName = $block['name'] ?? 'unknown';
+                                $toolSummaries[] = $toolName;
+                            }
+
+                            if (($block['type'] ?? '') === 'tool_result') {
+                                // Tool completed - don't need the full result in the stream
+                            }
                         }
                     }
                 }
+
+                // Update live status message every 3 seconds (avoid hammering DB)
+                $now = microtime(true);
+                if ($now - $lastUpdateAt >= 3) {
+                    $liveMessage->update([
+                        'content' => $this->buildLiveContent($toolSummaries, $startTime),
+                    ]);
+                    $lastUpdateAt = $now;
+                }
             }
 
-            // Update live status message every 3 seconds (avoid hammering DB)
-            $now = microtime(true);
-            if ($now - $lastUpdateAt >= 3) {
-                $liveMessage->update([
-                    'content' => $this->buildLiveContent($toolSummaries, $startTime),
-                ]);
-                $lastUpdateAt = $now;
-            }
-        }
+            // Read stderr
+            $stderr = stream_get_contents($pipes[2]);
+            fclose($pipes[1]);
+            fclose($pipes[2]);
+            $exitCode = proc_close($process);
 
-        // Read stderr
-        $stderr = stream_get_contents($pipes[2]);
-        fclose($pipes[1]);
-        fclose($pipes[2]);
-        $exitCode = proc_close($process);
+            $duration = (int) (microtime(true) - $startTime);
 
-        $duration = (int) (microtime(true) - $startTime);
-
-        // Final update to live message
-        $liveMessage->update([
-            'content' => $this->buildLiveContent($toolSummaries, $startTime, true),
-            'tokens_in' => $tokensIn,
-            'tokens_out' => $tokensOut,
-        ]);
-
-        if ($exitCode !== 0) {
-            Log::error('Ralph execution failed', [
-                'task_id' => $this->task->id,
-                'iteration' => $this->iteration,
-                'provider' => strtolower($providerName),
-                'exit_code' => $exitCode,
-                'error' => $stderr,
+            // Final update to live message
+            $liveMessage->update([
+                'content' => $this->buildLiveContent($toolSummaries, $startTime, true),
+                'tokens_in' => $tokensIn,
+                'tokens_out' => $tokensOut,
             ]);
 
+            if ($exitCode !== 0) {
+                Log::error('Ralph execution failed', [
+                    'task_id' => $this->task->id,
+                    'iteration' => $this->iteration,
+                    'provider' => strtolower($providerName),
+                    'exit_code' => $exitCode,
+                    'error' => $stderr,
+                ]);
+
+                return [
+                    'success' => false,
+                    'error' => $stderr ?: "{$providerName} process failed with exit code {$exitCode}",
+                    'tokens_in' => $tokensIn,
+                    'tokens_out' => $tokensOut,
+                    'duration' => $duration,
+                ];
+            }
+
             return [
-                'success' => false,
-                'error' => $stderr ?: "{$providerName} process failed with exit code {$exitCode}",
+                'success' => true,
+                'learnings' => $learnings,
                 'tokens_in' => $tokensIn,
                 'tokens_out' => $tokensOut,
                 'duration' => $duration,
             ];
+        } finally {
+            $this->clearTrackedProcess();
         }
-
-        return [
-            'success' => true,
-            'learnings' => $learnings,
-            'tokens_in' => $tokensIn,
-            'tokens_out' => $tokensOut,
-            'duration' => $duration,
-        ];
     }
 
     /**
@@ -502,6 +508,36 @@ class RunRalphJob implements ShouldQueue
         }
 
         return "{$envCmd} {$agentCmd}";
+    }
+
+    protected function trackActiveProcess(int $pid): void
+    {
+        if ($pid <= 0) {
+            return;
+        }
+
+        $metadata = $this->task->session_metadata ?? [];
+        $metadata['ralph_process'] = [
+            'pid' => $pid,
+            'iteration' => $this->iteration,
+            'provider' => $this->task->aiProvider?->name,
+            'started_at' => now()->toIso8601String(),
+        ];
+
+        $this->task->update(['session_metadata' => $metadata]);
+    }
+
+    protected function clearTrackedProcess(): void
+    {
+        $this->task->refresh();
+
+        $metadata = $this->task->session_metadata ?? [];
+        if (! array_key_exists('ralph_process', $metadata)) {
+            return;
+        }
+
+        unset($metadata['ralph_process']);
+        $this->task->update(['session_metadata' => $metadata]);
     }
 
     /**

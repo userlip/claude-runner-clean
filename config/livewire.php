@@ -79,6 +79,23 @@ return [
 
     /*
     |---------------------------------------------------------------------------
+    | Payload Guards
+    |---------------------------------------------------------------------------
+    |
+    | Chat image attachments are currently sent as component payload data, so
+    | the default 1MB guard is too small for common screenshots.
+    |
+    */
+
+    'payload' => [
+        'max_size' => 4 * 1024 * 1024,
+        'max_nesting_depth' => 10,
+        'max_calls' => 50,
+        'max_components' => 20,
+    ],
+
+    /*
+    |---------------------------------------------------------------------------
     | Render On Redirect
     |---------------------------------------------------------------------------
     |

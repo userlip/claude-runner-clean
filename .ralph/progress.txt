@@ -28,3 +28,9 @@ Started: 2026-03-23 15:20:48
 - GoogleAnalyticsSettings tests: 6 passed - creates connections with encrypted credentials
 - SearchConsoleSettings tests: 6 passed - disconnect removes from connections table
 - AsanaSettings tests: 10 passed - PAT validation and workspace fetching
+
+## Verification Failed
+
+```
+
+```

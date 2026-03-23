@@ -97,6 +97,11 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
         return $this->hasMany(Connection::class)->where('type', ConnectionType::SearchConsole);
     }
 
+    public function asanaConnection(): HasOne
+    {
+        return $this->hasOne(Connection::class)->where('type', ConnectionType::Asana)->where('is_active', true);
+    }
+
     public function connections(): HasMany
     {
         return $this->hasMany(Connection::class);
