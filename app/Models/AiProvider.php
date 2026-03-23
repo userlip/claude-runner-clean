@@ -47,15 +47,22 @@ class AiProvider extends Model
      */
     public function getEnvironmentVariables(): array
     {
-        if ($this->name === 'claude' || $this->name === 'codex') {
+        // Built-in providers use system credentials
+        if ($this->isClaude() || $this->isCodex()) {
             return [];
         }
 
+        // Custom providers pass their credentials via environment
         return array_filter([
             'ANTHROPIC_BASE_URL' => $this->base_url,
             'ANTHROPIC_API_KEY' => $this->api_key,
             'ANTHROPIC_MODEL' => $this->model,
         ]);
+    }
+
+    public function isBuiltin(): bool
+    {
+        return $this->isClaude() || $this->isCodex();
     }
 
     public function isClaude(): bool
