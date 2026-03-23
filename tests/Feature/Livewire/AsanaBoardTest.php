@@ -780,8 +780,7 @@ it('creates task using full form with all fields', function () {
         ->call('createFullTask');
 
     Http::assertSent(function ($request) {
-        $body = json_decode($request->body(), true);
-        $data = $body['data'] ?? [];
+        $data = $request->data()['data'] ?? [];
 
         return $request->url() === 'https://app.asana.com/api/1.0/tasks'
             && ($data['name'] ?? null) === 'Full Task'
