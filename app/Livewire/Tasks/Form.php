@@ -3,10 +3,12 @@
 namespace App\Livewire\Tasks;
 
 use App\Enums\TaskStatus;
+use App\Jobs\CloneRepositoryJob;
 use App\Models\AiProvider;
 use App\Models\Repository;
 use App\Models\Site;
 use App\Models\Task;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Livewire\Component;
 use Mary\Traits\Toast;
@@ -27,6 +29,8 @@ class Form extends Component
 
     public ?int $aiProviderId = null;
 
+    public string $workLocation = 'workspace';
+
     public function mount(?int $id = null): void
     {
         if ($id) {
@@ -39,16 +43,44 @@ class Form extends Component
         }
     }
 
+    public function updatedRepositoryId(): void
+    {
+        $this->workLocation = 'workspace';
+    }
+
     /**
      * @return array<int, array<string, mixed>>
      */
     public function repositoryOptions(): array
     {
         return Repository::query()
+            ->where('user_id', auth()->id())
             ->orderBy('name')
             ->get()
             ->map(fn ($r) => ['id' => $r->id, 'name' => $r->full_name ?: $r->name])
             ->toArray();
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function workLocationOptions(): array
+    {
+        $options = [
+            ['id' => 'workspace', 'name' => 'New Workspace (fresh clone)'],
+        ];
+
+        if ($this->repositoryId) {
+            $sites = Site::where('repository_id', $this->repositoryId)
+                ->where('status', 'active')
+                ->get();
+
+            foreach ($sites as $site) {
+                $options[] = ['id' => 'site_'.$site->id, 'name' => 'Site: '.$site->domain];
+            }
+        }
+
+        return $options;
     }
 
     /**
@@ -87,6 +119,47 @@ class Form extends Component
 
     public function save(): void
     {
+        if ($this->task) {
+            $this->saveExisting();
+        } else {
+            $this->createNew();
+        }
+    }
+
+    protected function createNew(): void
+    {
+        $this->validate([
+            'repositoryId' => ['required', 'integer', 'exists:repositories,id'],
+            'workLocation' => ['required', 'string'],
+        ]);
+
+        $data = [
+            'user_id' => auth()->id(),
+            'repository_id' => $this->repositoryId,
+            'ai_provider_id' => AiProvider::getDefault()?->id,
+        ];
+
+        if ($this->workLocation === 'workspace') {
+            $repository = Repository::find($this->repositoryId);
+            $data['workspace_path'] = '/home/ploi/workspaces/'.Str::slug($repository->name).'-'.Str::random(8);
+            $data['site_id'] = null;
+        } else {
+            $siteId = (int) str_replace('site_', '', $this->workLocation);
+            $data['site_id'] = $siteId;
+            $data['workspace_path'] = null;
+        }
+
+        $task = Task::create($data);
+
+        if ($task->workspace_path) {
+            CloneRepositoryJob::dispatch($task);
+        }
+
+        $this->redirect(route('workbench.tasks.show', $task->uuid), navigate: true);
+    }
+
+    protected function saveExisting(): void
+    {
         $validated = $this->validate([
             'title' => ['required', 'string', 'max:255'],
             'status' => ['required', 'string'],
@@ -95,25 +168,16 @@ class Form extends Component
             'aiProviderId' => ['nullable', 'integer', 'exists:ai_providers,id'],
         ]);
 
-        $data = [
+        $this->task->update([
             'title' => $validated['title'],
             'status' => $validated['status'],
             'repository_id' => $validated['repositoryId'],
             'site_id' => $validated['siteId'],
             'ai_provider_id' => $validated['aiProviderId'],
-        ];
+        ]);
 
-        if ($this->task) {
-            $this->task->update($data);
-            $this->success('Task updated.');
-        } else {
-            Task::create(array_merge($data, [
-                'user_id' => auth()->id(),
-            ]));
-            $this->success('Task created.');
-        }
-
-        $this->redirect(route('app.tasks.index'), navigate: true);
+        $this->success('Task updated.');
+        $this->redirect(route('workbench.tasks.index'), navigate: true);
     }
 
     public function render(): View
@@ -123,6 +187,7 @@ class Form extends Component
             'siteOptions' => $this->siteOptions(),
             'aiProviderOptions' => $this->aiProviderOptions(),
             'statusOptions' => $this->statusOptions(),
+            'workLocationOptions' => $this->workLocationOptions(),
         ]);
     }
 }
