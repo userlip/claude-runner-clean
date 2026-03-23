@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Enums\ConnectionType;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Models\Contracts\HasAvatar;
 use Filament\Panel;
@@ -94,5 +95,56 @@ class User extends Authenticatable implements FilamentUser, HasAvatar
     public function searchConsoleConnections(): HasMany
     {
         return $this->hasMany(SearchConsoleConnection::class);
+    }
+
+    public function connections(): HasMany
+    {
+        return $this->hasMany(Connection::class);
+    }
+
+    public function connectionOfType(ConnectionType $type): ?Connection
+    {
+        return $this->connections()->where('type', $type)->where('is_active', true)->first();
+    }
+
+    public function settings(): HasMany
+    {
+        return $this->hasMany(UserSetting::class);
+    }
+
+    /**
+     * Get a user setting value by key.
+     */
+    public function setting(string $key, mixed $default = null): mixed
+    {
+        $setting = $this->settings()->where('key', $key)->first();
+
+        if (! $setting) {
+            return $default;
+        }
+
+        $value = $setting->value;
+
+        // Attempt JSON decode for structured values
+        $decoded = json_decode($value, true);
+
+        if (json_last_error() === JSON_ERROR_NONE) {
+            return $decoded;
+        }
+
+        return $value;
+    }
+
+    /**
+     * Set a user setting value by key.
+     */
+    public function setSetting(string $key, mixed $value): void
+    {
+        $storedValue = is_string($value) ? $value : json_encode($value);
+
+        $this->settings()->updateOrCreate(
+            ['key' => $key],
+            ['value' => $storedValue],
+        );
     }
 }
