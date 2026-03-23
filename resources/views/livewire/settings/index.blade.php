@@ -48,6 +48,11 @@
                     wire:model.live="showRecentChats"
                 />
                 @if($showRecentChats)
+                    <x-toggle
+                        label="Pin Recent Chats"
+                        hint="Pin recent chats to the bottom of the sidebar. When unpinned, they scroll with the menu."
+                        wire:model.live="pinRecentChats"
+                    />
                     <x-input
                         label="Recent Chats Limit"
                         hint="How many recent chats to show (1–50)."
@@ -57,6 +62,54 @@
                         wire:model.live.debounce.500ms="recentChatsLimit"
                         class="w-24"
                     />
+                @endif
+            </div>
+        </x-card>
+
+        {{-- System Triggers --}}
+        <x-card shadow>
+            <x-header title="System Triggers" subtitle="Automated behaviors that run in the background." size="text-lg" class="mb-4" separator />
+
+            <div class="flex flex-col gap-4">
+                <x-toggle
+                    label="GitHub PR Polling"
+                    hint="Poll GitHub every minute for CI results on detected PRs."
+                    wire:model.live="triggerPrPollingEnabled"
+                />
+
+                @if($triggerPrPollingEnabled)
+                    <x-toggle
+                        label="Auto-Detect PRs"
+                        hint="Automatically detect PR URLs in task messages and start monitoring them."
+                        wire:model.live="triggerPrDetectionEnabled"
+                    />
+
+                    <x-toggle
+                        label="Auto-Nudge on CI Finish"
+                        hint="Send an automatic message to the task chat when CI finishes with results and review info."
+                        wire:model.live="triggerPrNudgeEnabled"
+                    />
+
+                    <x-input
+                        label="Skip These Checks"
+                        hint="Comma-separated keywords. Checks matching these words won't block the nudge — the system won't wait for them to finish. All other checks must complete first."
+                        wire:model="triggerPrIgnoredChecks"
+                        placeholder="claude"
+                    />
+
+                    @if($triggerPrNudgeEnabled)
+                        <x-textarea
+                            label="Nudge Instruction"
+                            hint="The instruction appended to the auto-nudge message. Tells the agent what to do when CI finishes."
+                            wire:model="triggerPrNudgeTemplate"
+                            rows="3"
+                        />
+                    @endif
+
+                    <div class="flex gap-2">
+                        <x-button label="Save" wire:click="saveTriggerSettings" spinner="saveTriggerSettings" class="btn-primary btn-sm" />
+                        <x-button label="Reset to Defaults" wire:click="resetNudgeTemplate" spinner="resetNudgeTemplate" class="btn-ghost btn-sm" />
+                    </div>
                 @endif
             </div>
         </x-card>

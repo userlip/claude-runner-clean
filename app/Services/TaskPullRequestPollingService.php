@@ -52,6 +52,11 @@ class TaskPullRequestPollingService
                 continue;
             }
 
+            $taskOwner = $task->user ?? $repo->user;
+            if ($taskOwner && ! $taskOwner->setting('trigger_pr_polling_enabled', true)) {
+                continue;
+            }
+
             $fullName = (string) ($monitor['repository_full_name'] ?? $repo->full_name ?? '');
             $prNumber = (int) ($monitor['pr_number'] ?? 0);
             if ($fullName === '' || $prNumber <= 0) {
@@ -60,6 +65,13 @@ class TaskPullRequestPollingService
 
             try {
                 $github = new GitHubService($connection);
+
+                $ignoredChecksRaw = $taskOwner
+                    ? $taskOwner->setting('trigger_pr_ignored_checks', \App\Livewire\Settings\Index::DEFAULT_IGNORED_CHECKS)
+                    : \App\Livewire\Settings\Index::DEFAULT_IGNORED_CHECKS;
+                $github->setIgnoredCheckKeywords(
+                    array_filter(array_map('trim', explode(',', (string) $ignoredChecksRaw)))
+                );
 
                 $pr = $github->fetchPullRequest($fullName, $prNumber);
                 $state = (string) ($pr['state'] ?? 'open');
@@ -104,6 +116,23 @@ class TaskPullRequestPollingService
                 $reviews = $github->fetchPullRequestReviews($fullName, $prNumber);
                 $issueComments = $github->fetchIssueComments($fullName, $prNumber, $monitor['last_issue_comment_since'] ?? null);
 
+                // Check if nudge messages are enabled for this user
+                if ($taskOwner && ! $taskOwner->setting('trigger_pr_nudge_enabled', true)) {
+                    $this->updateMonitor($task, $monitor, [
+                        'last_notified_sha' => $headSha,
+                        'last_notified_state' => $ciState,
+                        'last_notified_at' => now()->toIso8601String(),
+                        'last_seen_head_sha' => $headSha,
+                        'last_polled_at' => now()->toIso8601String(),
+                    ]);
+
+                    continue;
+                }
+
+                $nudgeInstruction = $taskOwner
+                    ? $taskOwner->setting('trigger_pr_nudge_template', \App\Livewire\Settings\Index::DEFAULT_NUDGE_TEMPLATE)
+                    : \App\Livewire\Settings\Index::DEFAULT_NUDGE_TEMPLATE;
+
                 $body = $this->buildUserNudgeMessage(
                     fullName: $fullName,
                     prNumber: $prNumber,
@@ -112,6 +141,7 @@ class TaskPullRequestPollingService
                     failingChecks: $failingChecks,
                     reviews: $reviews,
                     issueComments: $issueComments,
+                    nudgeInstruction: $nudgeInstruction,
                 );
 
                 $shouldQueueOnly = $task->status === TaskStatus::Running;
@@ -184,7 +214,8 @@ class TaskPullRequestPollingService
         string $ciState,
         array $failingChecks,
         array $reviews,
-        array $issueComments
+        array $issueComments,
+        string $nudgeInstruction = '',
     ): string {
         $prUrl = "https://github.com/{$fullName}/pull/{$prNumber}";
         $shortSha = Str::substr($headSha, 0, 7);
@@ -219,8 +250,10 @@ class TaskPullRequestPollingService
             }
         }
 
-        $lines[] = '';
-        $lines[] = 'Please check the latest code review in the PR (if available) and check out the result of the test suite. Act if you see something wrong.';
+        if (trim($nudgeInstruction) !== '') {
+            $lines[] = '';
+            $lines[] = trim($nudgeInstruction);
+        }
 
         return implode("\n", $lines);
     }

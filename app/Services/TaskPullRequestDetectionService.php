@@ -20,6 +20,11 @@ class TaskPullRequestDetectionService
             return;
         }
 
+        $taskOwner = $task->user ?? $repo->user;
+        if ($taskOwner && ! $taskOwner->setting('trigger_pr_detection_enabled', true)) {
+            return;
+        }
+
         $match = $this->findPullRequestUrlInRecentMessages($task);
         if (! $match) {
             return;

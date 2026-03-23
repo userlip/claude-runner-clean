@@ -11,9 +11,24 @@ class GitHubService
 {
     private const API_BASE = 'https://api.github.com';
 
+    /** @var array<int, string> */
+    private array $ignoredCheckKeywords = ['claude'];
+
     public function __construct(
         private GitHubConnection $connection
     ) {}
+
+    /**
+     * Set custom ignored check keywords (from user settings).
+     *
+     * @param  array<int, string>  $keywords
+     */
+    public function setIgnoredCheckKeywords(array $keywords): self
+    {
+        $this->ignoredCheckKeywords = $keywords;
+
+        return $this;
+    }
 
     /**
      * Check if the GitHub API rate limit has remaining requests.
@@ -257,8 +272,14 @@ class GitHubService
     {
         $context = strtolower($context);
 
-        return str_contains($context, 'claude')
-            || str_contains($context, 'code review');
+        foreach ($this->ignoredCheckKeywords as $keyword) {
+            $keyword = strtolower(trim($keyword));
+            if ($keyword !== '' && str_contains($context, $keyword)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -268,8 +289,14 @@ class GitHubService
     {
         $name = strtolower((string) ($run['name'] ?? $run['app']['name'] ?? $run['external_id'] ?? ''));
 
-        return str_contains($name, 'claude')
-            || str_contains($name, 'code review');
+        foreach ($this->ignoredCheckKeywords as $keyword) {
+            $keyword = strtolower(trim($keyword));
+            if ($keyword !== '' && str_contains($name, $keyword)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
