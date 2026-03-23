@@ -314,7 +314,7 @@ test('rollback handles mixed migrated and non-migrated connections', function ()
 
 test('migration skips when legacy tables do not exist', function () {
     // Don't create legacy tables - migration should complete without error
-    expect(fn () => runMigration())->not->toThrow();
+    expect(fn () => runMigration())->not->toThrow(\Throwable::class);
 
     expect(Connection::count())->toBe(0);
 });

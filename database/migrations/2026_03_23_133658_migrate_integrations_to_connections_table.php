@@ -62,6 +62,17 @@ return new class extends Migration
             $gaConnections = DB::table('google_analytics_connections')->get();
 
             foreach ($gaConnections as $gaConn) {
+                // Skip if already migrated (check for existing connection with this legacy_id)
+                $exists = DB::table('connections')
+                    ->where('user_id', $gaConn->user_id)
+                    ->where('type', ConnectionType::GoogleAnalytics->value)
+                    ->whereRaw("JSON_EXTRACT(metadata, '$.legacy_id') = ?", [$gaConn->id])
+                    ->exists();
+
+                if ($exists) {
+                    continue;
+                }
+
                 $credentialsJson = null;
                 try {
                     $credentialsJson = Crypt::decryptString($gaConn->credentials_json);
@@ -90,6 +101,17 @@ return new class extends Migration
             $scConnections = DB::table('search_console_connections')->get();
 
             foreach ($scConnections as $scConn) {
+                // Skip if already migrated (check for existing connection with this legacy_id)
+                $exists = DB::table('connections')
+                    ->where('user_id', $scConn->user_id)
+                    ->where('type', ConnectionType::SearchConsole->value)
+                    ->whereRaw("JSON_EXTRACT(metadata, '$.legacy_id') = ?", [$scConn->id])
+                    ->exists();
+
+                if ($exists) {
+                    continue;
+                }
+
                 $credentialsJson = null;
                 try {
                     $credentialsJson = Crypt::decryptString($scConn->credentials_json);

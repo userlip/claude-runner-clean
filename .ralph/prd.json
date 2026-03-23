@@ -1,5 +1,5 @@
 {
-    "branchName": "ralph\/9f40e0a8-2b2a-40f0-a749-bda988cb6686",
+    "branchName": "ralph\/3637ea40-c7c6-4302-9c04-22a3a30c2caf",
     "verificationCommand": "php artisan test",
     "parentIssue": 60,
     "userStories": [
@@ -8,7 +8,7 @@
             "title": "Migrate existing integrations to Connections table",
             "githubIssue": 68,
             "priority": 1,
-            "passes": false,
+            "passes": true,
             "acceptanceCriteria": [
                 "Data migration moves all existing integration data to `connections` table",
                 "`GitHubSettings` page reads\/writes from `connections` table",

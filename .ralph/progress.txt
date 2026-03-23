@@ -1,14 +1,30 @@
 # Ralph Progress Log
-Started: 2026-03-23 14:29:50
+Started: 2026-03-23 15:20:48
 
 ## Codebase Patterns
 <!-- Patterns accumulate here -->
 
+- **Connection Model Pattern**: Unified connections table stores all integrations with encrypted credentials and JSON metadata. Legacy code uses backward-compatible accessors (e.g., `getAccessTokenAttribute()` returns `$this->credentials`).
+- **Migration Pattern**: When migrating data from legacy tables, use `JSON_EXTRACT(metadata, '$.legacy_id')` to identify migrated records for safe rollback without affecting newer connections.
+- **Filament Settings Pages**: Settings pages extend `Page` and use `getHeaderActions()` for connect/disconnect buttons. Connection status displayed via infolists, forms use modal actions for new connections.
+
 ## Iteration History
 <!-- Learnings append here -->
 
-## Verification Failed
+### 2026-03-23 - STORY-1: Migrate existing integrations to Connections table
+**Status**: Completed
+**Tests**: 47 passed, 155+ assertions
 
-```
+**Key Implementation Details**:
+- Migration handles GitHub, Google Analytics, and Search Console legacy tables
+- Rollback uses `JSON_EXTRACT(metadata, '$.legacy_id')` to identify and remove only migrated records
+- Settings pages read from unified `connections` table via `Auth::user()->{type}Connection` relationships
+- ConnectionFactory has type-specific states (github, asana, googleAnalytics, searchConsole)
 
-```
+**Verification**:
+- Migration tests: 11 passed (36 assertions) - covers data migration, rollback, duplicate prevention
+- Connections tests: 11 passed (44 assertions) - covers all connection types appearing as cards
+- GitHubSettings tests: 3 passed - reads/writes from connections table
+- GoogleAnalyticsSettings tests: 6 passed - creates connections with encrypted credentials
+- SearchConsoleSettings tests: 6 passed - disconnect removes from connections table
+- AsanaSettings tests: 10 passed - PAT validation and workspace fetching
