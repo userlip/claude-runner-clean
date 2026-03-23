@@ -8,6 +8,58 @@ Started: 2026-03-23 15:20:48
 - **Migration Pattern**: When migrating data from legacy tables, use `JSON_EXTRACT(metadata, '$.legacy_id')` to identify migrated records for safe rollback without affecting newer connections.
 - **Filament Settings Pages**: Settings pages extend `Page` and use `getHeaderActions()` for connect/disconnect buttons. Connection status displayed via infolists, forms use modal actions for new connections.
 
+### 2026-03-23 - STORY-8: Connections table + Asana PAT setup
+**Status**: Completed (Already Implemented)
+**Tests**: 10 passed (AsanaSettingsTest)
+
+**Key Implementation Details**:
+- `connections` table migration exists with encrypted credentials field
+- `Connection` model with `connectionOfType()` method for type-specific lookups
+- `ConnectionType` enum with GitHub, GoogleAnalytics, SearchConsole, Asana cases
+- `AsanaSettings` page handles PAT connection, validation, workspace fetching
+- Credentials stored encrypted using Laravel's encryption
+- Invalid PAT shows validation error via API validation call
+
+**Verification**:
+- Tests cover: PAT validation, workspace fetching, credential encryption, disconnect
+
+### 2026-03-23 - STORY-7: Read-only Asana Kanban board
+**Status**: Completed (Already Implemented)
+**Tests**: 20 passed (AsanaBoardTest - access/workspace/project/section tests)
+
+**Key Implementation Details**:
+- "Asana" sidebar item in top-level navigation
+- Route `/workbench/asana` loads AsanaBoard Livewire component
+- Project picker lists projects grouped by workspace
+- Sections render as Kanban columns
+- Task cards display: title, assignee, due date, tags
+- Board auto-refreshes every 30s via `wire:poll.30s`
+- API responses cached with 60s TTL
+- Empty states handled for no connection, no projects, empty sections
+
+**Verification**:
+- Feature tests cover: board renders, project selection, task card display, access control
+
+### 2026-03-23 - STORY-3: Repo-project linking + start CR task from Asana
+**Status**: Completed
+**Tests**: 20 passed, 39 assertions
+
+**Key Implementation Details**:
+- Database already had required columns: `asana_project_id` on repositories, `asana_task_id` on tasks
+- Livewire component uses `updatedLinkedRepositoryId()` and `updatedTestingSectionId()` hooks for reactive linking
+- `startClaudeRunnerTask()` creates CR task pre-filled from Asana task data, stores `asana_task_id`
+- Repository auto-set from linked repo when creating task
+- Duplicate prevention: redirects to existing CR task if one already exists for the Asana task
+
+**Bug Fixes**:
+- Fixed `TaskStatus::Draft` to `TaskStatus::Pending` (Draft doesn't exist in enum)
+- Fixed blade view: removed `\_l()` helper calls (function doesn't exist), use null coalescing for array keys
+- Fixed tests: removed `assertNotified()` (Mary Toast doesn't use Filament notifications), fixed `assertRedirect()` usage
+
+**Verification**:
+- All 20 AsanaBoard tests passing
+- Coverage: access control, workspace/project loading, repository linking/unlinking, section loading, task panel, CR task creation
+
 ## Iteration History
 <!-- Learnings append here -->
 
@@ -29,31 +81,9 @@ Started: 2026-03-23 15:20:48
 - SearchConsoleSettings tests: 6 passed - disconnect removes from connections table
 - AsanaSettings tests: 10 passed - PAT validation and workspace fetching
 
-### 2026-03-23 - STORY-2: Completion sync-back to Asana
-**Status**: Completed
-**Tests**: 14 passed, 17 assertions
-
-**Key Implementation Details**:
-- `SyncAsanaTaskCompletion` job dispatched when `Task::markAsCompleted()` called on tasks with `asana_task_id`
-- Job extracts PR link from task title (e.g., "PR #42") or messages containing GitHub PR URLs
-- Job adds formatted comment to Asana task with completion details and PR link
-- Testing section config stored on Repository model (`asana_testing_section_id`)
-- Auto-detection fallback in `AsanaService::findTestingSection()` matches sections named "test"/"testing"/"qa"
-- Job has retry config: `$tries = 3`, `$backoff = 60` - comment failures throw exception for retry, section move failures are graceful
-- Repository View page has "Configure Asana" action with Testing Section dropdown
-
-**Verification**:
-- Job dispatch tests: 2 passed - dispatched when task has `asana_task_id`, not dispatched without
-- Comment creation tests: 3 passed - comment with task title, PR from title, PR from messages
-- Section move tests: 4 passed - configured section, auto-detect testing, auto-detect QA, graceful skip
-- Error handling tests: 5 passed - no user, no connection, retry config, comment failure exception, section move graceful failure
 
 ## Verification Failed
 
 ```
 
 ```
-
-## Execution Failed
-
-Claude process failed with exit code 15

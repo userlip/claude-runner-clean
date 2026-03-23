@@ -49,7 +49,7 @@
             "title": "Repo-project linking + start CR task from Asana",
             "githubIssue": 66,
             "priority": 3,
-            "passes": false,
+            "passes": true,
             "acceptanceCriteria": [
                 "Migration adds `asana_project_id` to repositories and `asana_task_id` to tasks",
                 "\"Link Repository\" action on board page with repo dropdown",
@@ -126,7 +126,7 @@
             "title": "Read-only Asana Kanban board",
             "githubIssue": 62,
             "priority": 7,
-            "passes": false,
+            "passes": true,
             "acceptanceCriteria": [
                 "\"Asana\" appears as top-level sidebar item (same level as Tasks, Repositories)",
                 "Route `\/workbench\/asana` loads the board component",
@@ -147,7 +147,7 @@
             "title": "Connections table + Asana PAT setup",
             "githubIssue": 61,
             "priority": 8,
-            "passes": false,
+            "passes": true,
             "acceptanceCriteria": [
                 "`connections` migration exists and runs successfully",
                 "`Connection` model with encrypted credentials, belongs to User",
