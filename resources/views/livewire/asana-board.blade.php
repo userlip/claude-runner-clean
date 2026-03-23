@@ -86,12 +86,21 @@
 
         {{-- Kanban Board --}}
         @if($selectedProjectId && !empty($sections))
-            <div class="flex-1 overflow-x-auto">
+            <div class="flex-1 overflow-x-auto" x-data="{ dragging: false, dropTarget: null }">
                 <div class="flex gap-4 min-w-max pb-4">
                     @foreach($sections as $sectionId => $section)
-                        <div class="w-80 flex-shrink-0">
+                        <div
+                            class="w-80 flex-shrink-0"
+                            x-on:dragover.prevent="dropTarget = '{{ $sectionId }}'; $wire.setDropTarget('{{ $sectionId }}')"
+                            x-on:dragleave="if (dropTarget === '{{ $sectionId }}') { dropTarget = null; $wire.setDropTarget(null) }"
+                            x-on:drop.prevent="dropTarget = null; $wire.moveTaskToSection($event.dataTransfer.getData('taskId'), '{{ $sectionId }}')"
+                        >
                             {{-- Column Header --}}
-                            <div class="bg-base-300/50 rounded-t-lg px-4 py-3">
+                            <div
+                                class="bg-base-300/50 rounded-t-lg px-4 py-3 transition-colors"
+                                x-bind:class="dropTarget === '{{ $sectionId }}' ? 'bg-primary/20 ring-2 ring-primary' : ''"
+                                wire:loading.class="opacity-50"
+                            >
                                 <h3 class="font-semibold text-sm">{{ $section['name'] }}</h3>
                                 <span class="text-xs text-base-content/50">
                                     {{ count($section['tasks']) }} tasks
@@ -99,12 +108,20 @@
                             </div>
 
                             {{-- Tasks --}}
-                            <div class="bg-base-200/50 rounded-b-lg p-2 space-y-2 min-h-[200px]">
+                            <div
+                                class="bg-base-200/50 rounded-b-lg p-2 space-y-2 min-h-[200px] transition-colors"
+                                x-bind:class="dropTarget === '{{ $sectionId }}' ? 'bg-primary/10 ring-2 ring-primary/50' : ''"
+                            >
                                 @forelse($section['tasks'] as $task)
                                     <div
                                         wire:key="task-{{ $task['gid'] }}"
+                                        x-data="{ dragging: false }"
+                                        x-on:dragstart="dragging = true; $event.dataTransfer.setData('taskId', '{{ $task['gid'] }}'); $event.dataTransfer.effectAllowed = 'move'; $wire.startDrag('{{ $task['gid'] }}', '{{ $sectionId }}')"
+                                        x-on:dragend="dragging = false; $wire.setDropTarget(null)"
+                                        x-bind:class="dragging ? 'opacity-50' : ''"
+                                        draggable="true"
                                         wire:click="openTaskPanel('{{ $task['gid'] }}')"
-                                        class="bg-base-100 rounded-lg p-3 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+                                        class="bg-base-100 rounded-lg p-3 shadow-sm cursor-pointer hover:shadow-md transition-all"
                                     >
                                         {{-- Task Title --}}
                                         <h4 class="font-medium text-sm mb-2">{{ $task['name'] }}</h4>
@@ -223,101 +240,204 @@
             <div class="absolute inset-y-0 right-0 w-full max-w-lg bg-base-100 shadow-xl flex flex-col">
                 {{-- Header --}}
                 <div class="flex items-center justify-between px-6 py-4 border-b border-base-300">
-                    <h2 class="text-lg font-semibold">Task Details</h2>
-                    <button wire:click="closeTaskPanel" class="btn btn-ghost btn-sm btn-circle">
-                        <x-icon name="o-x-mark" class="w-5 h-5" />
-                    </button>
+                    <h2 class="text-lg font-semibold">
+                        @if($isEditingTask)
+                            Edit Task
+                        @else
+                            Task Details
+                        @endif
+                    </h2>
+                    <div class="flex items-center gap-2">
+                        @if(!$isEditingTask)
+                            <button wire:click="startEditMode" class="btn btn-ghost btn-sm btn-circle" title="Edit">
+                                <x-icon name="o-pencil" class="w-5 h-5" />
+                            </button>
+                            <button wire:click="confirmDelete" class="btn btn-ghost btn-sm btn-circle text-error" title="Delete">
+                                <x-icon name="o-trash" class="w-5 h-5" />
+                            </button>
+                        @endif
+                        <button wire:click="closeTaskPanel" class="btn btn-ghost btn-sm btn-circle">
+                            <x-icon name="o-x-mark" class="w-5 h-5" />
+                        </button>
+                    </div>
                 </div>
 
                 {{-- Content --}}
                 <div class="flex-1 overflow-y-auto p-6 space-y-6">
-                    {{-- Title --}}
-                    <div>
-                        <h3 class="text-xl font-semibold">{{ $selectedTask['name'] }}</h3>
-                        @if($selectedTask['completed'] ?? false)
-                            <span class="inline-flex items-center gap-1 text-success text-sm mt-1">
-                                <x-icon name="o-check-circle" class="w-4 h-4" />
-                                Completed
-                            </span>
-                        @endif
-                    </div>
-
-                    {{-- Meta Grid --}}
-                    <div class="grid grid-cols-2 gap-4 text-sm">
-                        @if($selectedTask['assignee']['name'] ?? false)
+                    @if($isEditingTask)
+                        {{-- Edit Mode --}}
+                        <div class="space-y-4">
+                            {{-- Title --}}
                             <div>
-                                <span class="text-base-content/50 block">Assignee</span>
-                                <span class="flex items-center gap-1 mt-1">
-                                    <x-icon name="o-user" class="w-4 h-4" />
-                                    {{ $selectedTask['assignee']['name'] }}
-                                </span>
+                                <label class="label">
+                                    <span class="label-text">Title <span class="text-error">*</span></span>
+                                </label>
+                                <x-input
+                                    wire:model="editTaskTitle"
+                                    placeholder="Enter task title..."
+                                    class="w-full"
+                                />
+                                @error('editTaskTitle')
+                                    <span class="text-error text-sm">{{ $message }}</span>
+                                @enderror
                             </div>
-                        @endif
 
-                        @if($selectedTask['due_on'] ?? false)
+                            {{-- Section --}}
                             <div>
-                                <span class="text-base-content/50 block">Due Date</span>
-                                <span class="flex items-center gap-1 mt-1">
-                                    <x-icon name="o-calendar" class="w-4 h-4" />
-                                    {{ $selectedTask['due_on'] }}
-                                </span>
+                                <label class="label">
+                                    <span class="label-text">Section</span>
+                                </label>
+                                <x-select
+                                    wire:model="editTaskSectionId"
+                                    :options="collect($sections)->map(fn($s) => ['label' => $s['name'], 'value' => $s['gid']])->toArray()"
+                                    class="w-full"
+                                />
                             </div>
-                        @endif
 
-                        @if($selectedTask['section']['name'] ?? false)
+                            {{-- Description --}}
                             <div>
-                                <span class="text-base-content/50 block">Section</span>
-                                <span class="mt-1">{{ $selectedTask['section']['name'] }}</span>
+                                <label class="label">
+                                    <span class="label-text">Description</span>
+                                </label>
+                                <textarea
+                                    wire:model="editTaskDescription"
+                                    placeholder="Enter task description..."
+                                    class="textarea textarea-bordered w-full h-32"
+                                ></textarea>
                             </div>
-                        @endif
 
-                        <div>
-                            <span class="text-base-content/50 block">Created</span>
-                            <span class="mt-1">{{ $selectedTask['created_at'] ?? '-' }}</span>
+                            {{-- Assignee --}}
+                            <div>
+                                <label class="label">
+                                    <span class="label-text">Assignee</span>
+                                </label>
+                                <x-select
+                                    wire:model="editTaskAssignee"
+                                    :options="collect($workspaceUsers)->map(fn($u) => ['label' => $u['name'], 'value' => $u['gid']])->toArray()"
+                                    placeholder="Select assignee..."
+                                    class="w-full"
+                                />
+                            </div>
+
+                            {{-- Due Date --}}
+                            <div>
+                                <label class="label">
+                                    <span class="label-text">Due Date</span>
+                                </label>
+                                <x-input
+                                    type="date"
+                                    wire:model="editTaskDueDate"
+                                    class="w-full"
+                                />
+                                @error('editTaskDueDate')
+                                    <span class="text-error text-sm">{{ $message }}</span>
+                                @enderror
+                            </div>
                         </div>
-                    </div>
-
-                    {{-- Description --}}
-                    @if($selectedTask['notes'] ?? false)
+                    @else
+                        {{-- View Mode --}}
+                        {{-- Title --}}
                         <div>
-                            <span class="text-base-content/50 text-sm block mb-2">Description</span>
-                            <div class="bg-base-200 rounded-lg p-4 text-sm whitespace-pre-wrap">
-                                {{ $selectedTask['notes'] }}
-                            </div>
+                            <h3 class="text-xl font-semibold">{{ $selectedTask['name'] }}</h3>
+                            @if($selectedTask['completed'] ?? false)
+                                <span class="inline-flex items-center gap-1 text-success text-sm mt-1">
+                                    <x-icon name="o-check-circle" class="w-4 h-4" />
+                                    Completed
+                                </span>
+                            @endif
                         </div>
-                    @endif
 
-                    {{-- Tags --}}
-                    @if(!empty($selectedTask['tags']))
-                        <div>
-                            <span class="text-base-content/50 text-sm block mb-2">Tags</span>
-                            <div class="flex flex-wrap gap-2">
-                                @foreach($selectedTask['tags'] as $tag)
-                                    <span class="px-2 py-1 bg-base-200 rounded-full text-sm">
-                                        {{ $tag['name'] ?? 'Tag' }}
+                        {{-- Meta Grid --}}
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            @if($selectedTask['assignee']['name'] ?? false)
+                                <div>
+                                    <span class="text-base-content/50 block">Assignee</span>
+                                    <span class="flex items-center gap-1 mt-1">
+                                        <x-icon name="o-user" class="w-4 h-4" />
+                                        {{ $selectedTask['assignee']['name'] }}
                                     </span>
-                                @endforeach
+                                </div>
+                            @endif
+
+                            @if($selectedTask['due_on'] ?? false)
+                                <div>
+                                    <span class="text-base-content/50 block">Due Date</span>
+                                    <span class="flex items-center gap-1 mt-1">
+                                        <x-icon name="o-calendar" class="w-4 h-4" />
+                                        {{ $selectedTask['due_on'] }}
+                                    </span>
+                                </div>
+                            @endif
+
+                            @if($selectedTask['section']['name'] ?? false)
+                                <div>
+                                    <span class="text-base-content/50 block">Section</span>
+                                    <span class="mt-1">{{ $selectedTask['section']['name'] }}</span>
+                                </div>
+                            @endif
+
+                            <div>
+                                <span class="text-base-content/50 block">Created</span>
+                                <span class="mt-1">{{ $selectedTask['created_at'] ?? '-' }}</span>
                             </div>
                         </div>
-                    @endif
 
-                    {{-- Asana Link --}}
-                    <div>
-                        <a
-                            href="https://app.asana.com/0/{{ $selectedProjectId }}/{{ $selectedTask['gid'] }}"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            class="btn btn-ghost btn-sm"
-                        >
-                            <x-icon name="o-arrow-top-right-on-square" class="w-4 h-4" />
-                            Open in Asana
-                        </a>
-                    </div>
+                        {{-- Description --}}
+                        @if($selectedTask['notes'] ?? false)
+                            <div>
+                                <span class="text-base-content/50 text-sm block mb-2">Description</span>
+                                <div class="bg-base-200 rounded-lg p-4 text-sm whitespace-pre-wrap">
+                                    {{ $selectedTask['notes'] }}
+                                </div>
+                            </div>
+                        @endif
+
+                        {{-- Tags --}}
+                        @if(!empty($selectedTask['tags']))
+                            <div>
+                                <span class="text-base-content/50 text-sm block mb-2">Tags</span>
+                                <div class="flex flex-wrap gap-2">
+                                    @foreach($selectedTask['tags'] as $tag)
+                                        <span class="px-2 py-1 bg-base-200 rounded-full text-sm">
+                                            {{ $tag['name'] ?? 'Tag' }}
+                                        </span>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
+
+                        {{-- Asana Link --}}
+                        <div>
+                            <a
+                                href="https://app.asana.com/0/{{ $selectedProjectId }}/{{ $selectedTask['gid'] }}"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="btn btn-ghost btn-sm"
+                            >
+                                <x-icon name="o-arrow-top-right-on-square" class="w-4 h-4" />
+                                Open in Asana
+                            </a>
+                        </div>
+                    @endif
                 </div>
 
                 {{-- Footer Actions --}}
                 <div class="border-t border-base-300 px-6 py-4 space-y-2">
-                    @if($linkedRepositoryId)
+                    @if($isEditingTask)
+                        <div class="flex gap-2">
+                            <x-button
+                                label="Cancel"
+                                wire:click="cancelEdit"
+                                class="btn-ghost flex-1"
+                            />
+                            <x-button
+                                label="Save Changes"
+                                wire:click="saveTaskChanges"
+                                class="btn-primary flex-1"
+                                spinner
+                            />
+                        </div>
+                    @elseif($linkedRepositoryId)
                         <x-button
                             label="Start Claude Runner Task"
                             icon="o-play"
@@ -442,6 +562,50 @@
                             />
                         </div>
                     </form>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    {{-- Delete Confirmation Modal --}}
+    @if($showDeleteConfirm)
+        <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+            {{-- Backdrop --}}
+            <div
+                class="fixed inset-0 bg-black/50 transition-opacity"
+                wire:click="cancelDelete"
+            ></div>
+
+            {{-- Modal Panel --}}
+            <div class="flex min-h-full items-center justify-center p-4">
+                <div class="relative w-full max-w-sm bg-base-100 rounded-lg shadow-xl p-6 text-center">
+                    {{-- Icon --}}
+                    <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-error/10 mb-4">
+                        <x-icon name="o-exclamation-triangle" class="h-6 w-6 text-error" />
+                    </div>
+
+                    {{-- Title --}}
+                    <h3 class="text-lg font-semibold mb-2">Delete Task</h3>
+
+                    {{-- Message --}}
+                    <p class="text-base-content/60 text-sm mb-6">
+                        Are you sure you want to delete this task? This action cannot be undone.
+                    </p>
+
+                    {{-- Actions --}}
+                    <div class="flex gap-3">
+                        <x-button
+                            label="Cancel"
+                            wire:click="cancelDelete"
+                            class="btn-ghost flex-1"
+                        />
+                        <x-button
+                            label="Delete"
+                            wire:click="deleteTask"
+                            class="btn-error flex-1"
+                            spinner
+                        />
+                    </div>
                 </div>
             </div>
         </div>

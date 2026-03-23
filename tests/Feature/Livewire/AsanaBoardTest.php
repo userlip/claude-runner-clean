@@ -920,3 +920,298 @@ it('clears cache after full form task creation', function () {
         ->assertSet('showCreateTaskModal', false)
         ->assertSet('newTaskTitle', '');
 });
+
+// --- Drag and Drop ---
+
+it('moves task between sections via drag and drop', function () {
+    $user = User::factory()->create();
+
+    Connection::factory()->asana()->create([
+        'user_id' => $user->id,
+        'credentials' => 'test_pat_token',
+    ]);
+
+    Http::fake([
+        'app.asana.com/api/1.0/workspaces' => Http::response(['data' => []], 200),
+        'app.asana.com/api/1.0/sections/sec_2/addTask' => Http::response([
+            'data' => ['gid' => 'task_1'],
+        ], 200),
+    ]);
+
+    $component = Livewire::actingAs($user)
+        ->test(AsanaBoard::class)
+        ->set('selectedProjectId', 'proj_123')
+        ->set('sections', [
+            'sec_1' => [
+                'gid' => 'sec_1',
+                'name' => 'To Do',
+                'tasks' => [
+                    [
+                        'gid' => 'task_1',
+                        'name' => 'Task to Move',
+                        'completed' => false,
+                        'section' => ['gid' => 'sec_1', 'name' => 'To Do'],
+                    ],
+                ],
+            ],
+            'sec_2' => [
+                'gid' => 'sec_2',
+                'name' => 'Done',
+                'tasks' => [],
+            ],
+        ])
+        ->call('startDrag', 'task_1', 'sec_1')
+        ->call('moveTaskToSection', 'task_1', 'sec_2');
+
+    // Assert task moved in local state (optimistic UI)
+    $component->assertSet('sections.sec_1.tasks', []);
+    $component->assertSet('sections.sec_2.tasks', [
+        [
+            'gid' => 'task_1',
+            'name' => 'Task to Move',
+            'completed' => false,
+            'section' => ['gid' => 'sec_2', 'name' => 'Done'],
+        ],
+    ]);
+
+    // Assert API was called to move task
+    Http::assertSent(function ($request) {
+        return str_contains($request->url(), 'sections/sec_2/addTask')
+            && $request->data()['data']['task'] === 'task_1';
+    });
+});
+
+it('does not move task when dropped in same section', function () {
+    $user = User::factory()->create();
+
+    Connection::factory()->asana()->create([
+        'user_id' => $user->id,
+        'credentials' => 'test_pat_token',
+    ]);
+
+    Http::fake([
+        'app.asana.com/api/1.0/workspaces' => Http::response(['data' => []], 200),
+    ]);
+
+    $component = Livewire::actingAs($user)
+        ->test(AsanaBoard::class)
+        ->set('selectedProjectId', 'proj_123')
+        ->set('sections', [
+            'sec_1' => [
+                'gid' => 'sec_1',
+                'name' => 'To Do',
+                'tasks' => [
+                    [
+                        'gid' => 'task_1',
+                        'name' => 'Task to Stay',
+                        'completed' => false,
+                        'section' => ['gid' => 'sec_1', 'name' => 'To Do'],
+                    ],
+                ],
+            ],
+        ])
+        ->call('startDrag', 'task_1', 'sec_1')
+        ->call('moveTaskToSection', 'task_1', 'sec_1');
+
+    // Assert task still in original section
+    $component->assertSet('sections.sec_1.tasks', [
+        [
+            'gid' => 'task_1',
+            'name' => 'Task to Stay',
+            'completed' => false,
+            'section' => ['gid' => 'sec_1', 'name' => 'To Do'],
+        ],
+    ]);
+
+    // Assert no API call was made
+    Http::assertNotSent(function ($request) {
+        return str_contains($request->url(), 'sections/sec_1/addTask');
+    });
+});
+
+it('clears drag state after move', function () {
+    $user = User::factory()->create();
+
+    Connection::factory()->asana()->create([
+        'user_id' => $user->id,
+        'credentials' => 'test_pat_token',
+    ]);
+
+    Http::fake([
+        'app.asana.com/api/1.0/workspaces' => Http::response(['data' => []], 200),
+        'app.asana.com/api/1.0/sections/sec_2/addTask' => Http::response([
+            'data' => ['gid' => 'task_1'],
+        ], 200),
+    ]);
+
+    Livewire::actingAs($user)
+        ->test(AsanaBoard::class)
+        ->set('selectedProjectId', 'proj_123')
+        ->set('sections', [
+            'sec_1' => [
+                'gid' => 'sec_1',
+                'name' => 'To Do',
+                'tasks' => [
+                    [
+                        'gid' => 'task_1',
+                        'name' => 'Task to Move',
+                        'completed' => false,
+                        'section' => ['gid' => 'sec_1', 'name' => 'To Do'],
+                    ],
+                ],
+            ],
+            'sec_2' => [
+                'gid' => 'sec_2',
+                'name' => 'Done',
+                'tasks' => [],
+            ],
+        ])
+        ->call('startDrag', 'task_1', 'sec_1')
+        ->call('moveTaskToSection', 'task_1', 'sec_2')
+        ->assertSet('draggedTaskId', null)
+        ->assertSet('draggedTaskSourceSection', null)
+        ->assertSet('dropTargetSection', null);
+});
+
+it('reverts optimistic update when api call fails', function () {
+    $user = User::factory()->create();
+
+    Connection::factory()->asana()->create([
+        'user_id' => $user->id,
+        'credentials' => 'test_pat_token',
+    ]);
+
+    Http::fake([
+        'app.asana.com/api/1.0/workspaces' => Http::response(['data' => []], 200),
+        'app.asana.com/api/1.0/projects/proj_123/sections' => Http::response([
+            'data' => [
+                ['gid' => 'sec_1', 'name' => 'To Do'],
+                ['gid' => 'sec_2', 'name' => 'Done'],
+            ],
+        ], 200),
+        'app.asana.com/api/1.0/tasks*' => Http::response([
+            'data' => [
+                [
+                    'gid' => 'task_1',
+                    'name' => 'Task to Move',
+                    'completed' => false,
+                    'section' => ['gid' => 'sec_1', 'name' => 'To Do'],
+                ],
+            ],
+        ], 200),
+        'app.asana.com/api/1.0/sections/sec_2/addTask' => Http::response([
+            'errors' => [
+                ['message' => 'Section not found'],
+            ],
+        ], 404),
+    ]);
+
+    $component = Livewire::actingAs($user)
+        ->test(AsanaBoard::class)
+        ->set('selectedProjectId', 'proj_123')
+        ->set('sections', [
+            'sec_1' => [
+                'gid' => 'sec_1',
+                'name' => 'To Do',
+                'tasks' => [
+                    [
+                        'gid' => 'task_1',
+                        'name' => 'Task to Move',
+                        'completed' => false,
+                        'section' => ['gid' => 'sec_1', 'name' => 'To Do'],
+                    ],
+                ],
+            ],
+            'sec_2' => [
+                'gid' => 'sec_2',
+                'name' => 'Done',
+                'tasks' => [],
+            ],
+        ])
+        ->call('startDrag', 'task_1', 'sec_1')
+        ->call('moveTaskToSection', 'task_1', 'sec_2');
+
+    // After revert, sections should be reloaded from API
+    Http::assertSent(function ($request) {
+        return str_contains($request->url(), 'sections/sec_2/addTask');
+    });
+});
+
+it('returns early when no project is selected during drag', function () {
+    $user = User::factory()->create();
+
+    Connection::factory()->asana()->create([
+        'user_id' => $user->id,
+        'credentials' => 'test_pat_token',
+    ]);
+
+    Http::fake([
+        'app.asana.com/api/1.0/workspaces' => Http::response(['data' => []], 200),
+    ]);
+
+    // Test completes without throwing exception
+    $component = Livewire::actingAs($user)
+        ->test(AsanaBoard::class)
+        ->set('selectedProjectId', null)
+        ->set('sections', [])
+        ->call('startDrag', 'task_1', 'sec_1')
+        ->call('moveTaskToSection', 'task_1', 'sec_2');
+
+    // Drag state should be preserved since we returned early
+    expect($component->instance()->draggedTaskId)->toBe('task_1')
+        ->and($component->instance()->draggedTaskSourceSection)->toBe('sec_1');
+});
+
+it('returns early when no asana connection exists during drag', function () {
+    $user = User::factory()->create();
+
+    Http::fake([
+        'app.asana.com/api/1.0/workspaces' => Http::response(['data' => []], 200),
+    ]);
+
+    // Test completes without throwing exception
+    $component = Livewire::actingAs($user)
+        ->test(AsanaBoard::class)
+        ->set('selectedProjectId', 'proj_123')
+        ->set('sections', [
+            'sec_1' => [
+                'gid' => 'sec_1',
+                'name' => 'To Do',
+                'tasks' => [
+                    [
+                        'gid' => 'task_1',
+                        'name' => 'Task',
+                        'completed' => false,
+                        'section' => ['gid' => 'sec_1', 'name' => 'To Do'],
+                    ],
+                ],
+            ],
+        ])
+        ->call('startDrag', 'task_1', 'sec_1')
+        ->call('moveTaskToSection', 'task_1', 'sec_2');
+
+    // Drag state should be cleared after error
+    expect($component->instance()->draggedTaskId)->toBeNull()
+        ->and($component->instance()->draggedTaskSourceSection)->toBeNull()
+        ->and($component->instance()->dropTargetSection)->toBeNull();
+});
+
+it('sets drop target for visual feedback', function () {
+    $user = User::factory()->create();
+
+    Connection::factory()->asana()->create([
+        'user_id' => $user->id,
+        'credentials' => 'test_pat_token',
+    ]);
+
+    Http::fake([
+        'app.asana.com/api/1.0/workspaces' => Http::response(['data' => []], 200),
+    ]);
+
+    Livewire::actingAs($user)
+        ->test(AsanaBoard::class)
+        ->call('setDropTarget', 'sec_2')
+        ->assertSet('dropTargetSection', 'sec_2')
+        ->call('setDropTarget', null)
+        ->assertSet('dropTargetSection', null);
+});

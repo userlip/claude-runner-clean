@@ -63,6 +63,28 @@ class AsanaBoard extends Component
 
     public ?string $newTaskSectionId = null;
 
+    // Drag and drop properties
+    public ?string $draggedTaskId = null;
+
+    public ?string $draggedTaskSourceSection = null;
+
+    public ?string $dropTargetSection = null;
+
+    // Task edit properties
+    public bool $isEditingTask = false;
+
+    public string $editTaskTitle = '';
+
+    public string $editTaskDescription = '';
+
+    public ?string $editTaskAssignee = null;
+
+    public ?string $editTaskDueDate = null;
+
+    public ?string $editTaskSectionId = null;
+
+    public bool $showDeleteConfirm = false;
+
     /** @var array<string, string> */
     protected array $validationErrors = [];
 
@@ -541,6 +563,262 @@ class AsanaBoard extends Component
         if ($this->selectedWorkspaceId) {
             Cache::forget("asana.projects.{$connection->id}.{$this->selectedWorkspaceId}");
         }
+    }
+
+    /**
+     * Start dragging a task.
+     */
+    public function startDrag(string $taskId, string $sourceSectionId): void
+    {
+        $this->draggedTaskId = $taskId;
+        $this->draggedTaskSourceSection = $sourceSectionId;
+    }
+
+    /**
+     * Set drop target section for visual feedback.
+     */
+    public function setDropTarget(?string $sectionId): void
+    {
+        $this->dropTargetSection = $sectionId;
+    }
+
+    /**
+     * Move a task to a different section (drag-and-drop).
+     */
+    public function moveTaskToSection(string $taskId, string $targetSectionId): void
+    {
+        // Validate we have required data
+        if (! $this->selectedProjectId) {
+            $this->error('No project selected');
+
+            return;
+        }
+
+        // Prevent dropping in same section
+        if ($this->draggedTaskSourceSection === $targetSectionId) {
+            $this->clearDragState();
+
+            return;
+        }
+
+        $connection = Auth::user()?->asanaConnection()->first();
+
+        if (! $connection) {
+            $this->error('No Asana connection found');
+            $this->clearDragState();
+
+            return;
+        }
+
+        // Optimistic UI: Move task in local state immediately
+        $task = null;
+        $sourceSection = $this->sections[$this->draggedTaskSourceSection] ?? null;
+
+        if ($sourceSection) {
+            // Find and remove task from source section
+            foreach ($sourceSection['tasks'] as $index => $t) {
+                if ($t['gid'] === $taskId) {
+                    $task = $t;
+                    unset($this->sections[$this->draggedTaskSourceSection]['tasks'][$index]);
+                    $this->sections[$this->draggedTaskSourceSection]['tasks'] = array_values($this->sections[$this->draggedTaskSourceSection]['tasks']);
+                    break;
+                }
+            }
+        }
+
+        // Add task to target section with updated section reference
+        if ($task && isset($this->sections[$targetSectionId])) {
+            $task['section'] = [
+                'gid' => $targetSectionId,
+                'name' => $this->sections[$targetSectionId]['name'],
+            ];
+            $this->sections[$targetSectionId]['tasks'][] = $task;
+        }
+
+        // Clear drag state
+        $this->clearDragState();
+
+        // Call Asana API to update task section
+        $service = app(AsanaService::class, ['personalAccessToken' => $connection->credentials]);
+        $result = $service->moveTaskToSection($taskId, $targetSectionId);
+
+        if ($result === null) {
+            // API failed - revert the optimistic update
+            $this->error('Failed to move task. Reverting...');
+            $this->loadSections();
+
+            return;
+        }
+
+        // Clear cache and reload to ensure consistency
+        $this->clearAsanaCache();
+        $this->success('Task moved successfully');
+    }
+
+    /**
+     * Clear drag state.
+     */
+    protected function clearDragState(): void
+    {
+        $this->draggedTaskId = null;
+        $this->draggedTaskSourceSection = null;
+        $this->dropTargetSection = null;
+    }
+
+    /**
+     * Enter edit mode for the selected task.
+     */
+    public function startEditMode(): void
+    {
+        if (! $this->selectedTask) {
+            return;
+        }
+
+        $this->editTaskTitle = $this->selectedTask['name'] ?? '';
+        $this->editTaskDescription = $this->selectedTask['notes'] ?? '';
+        $this->editTaskAssignee = $this->selectedTask['assignee']['gid'] ?? null;
+        $this->editTaskDueDate = $this->selectedTask['due_on'] ?? null;
+        $this->editTaskSectionId = $this->selectedTask['section']['gid'] ?? null;
+        $this->isEditingTask = true;
+
+        // Load workspace users for assignee dropdown
+        $this->loadWorkspaceUsers();
+    }
+
+    /**
+     * Cancel edit mode and return to view mode.
+     */
+    public function cancelEdit(): void
+    {
+        $this->isEditingTask = false;
+        $this->editTaskTitle = '';
+        $this->editTaskDescription = '';
+        $this->editTaskAssignee = null;
+        $this->editTaskDueDate = null;
+        $this->editTaskSectionId = null;
+    }
+
+    /**
+     * Save task changes to Asana.
+     */
+    public function saveTaskChanges(): void
+    {
+        $this->validate([
+            'editTaskTitle' => 'required|string|max:255',
+            'editTaskDueDate' => 'nullable|date_format:Y-m-d',
+        ]);
+
+        if (! $this->selectedTaskId || ! $this->selectedTask) {
+            $this->error('No task selected');
+
+            return;
+        }
+
+        $connection = Auth::user()?->asanaConnection()->first();
+
+        if (! $connection) {
+            $this->error('No Asana connection found');
+
+            return;
+        }
+
+        $service = app(AsanaService::class, ['personalAccessToken' => $connection->credentials]);
+
+        $updateData = [
+            'name' => $this->editTaskTitle,
+            'notes' => $this->editTaskDescription,
+        ];
+
+        if ($this->editTaskAssignee) {
+            $updateData['assignee'] = $this->editTaskAssignee;
+        } else {
+            $updateData['assignee'] = null;
+        }
+
+        if ($this->editTaskDueDate) {
+            $updateData['due_on'] = $this->editTaskDueDate;
+        } else {
+            $updateData['due_on'] = null;
+        }
+
+        // Handle section change if different
+        $currentSectionId = $this->selectedTask['section']['gid'] ?? null;
+        if ($this->editTaskSectionId && $this->editTaskSectionId !== $currentSectionId) {
+            $service->moveTaskToSection($this->selectedTaskId, $this->editTaskSectionId);
+        }
+
+        $result = $service->updateTask($this->selectedTaskId, $updateData);
+
+        if ($result === null) {
+            $this->error('Failed to update task');
+
+            return;
+        }
+
+        // Clear cache to refresh board
+        $this->clearAsanaCache();
+
+        // Refresh task details
+        $taskDetails = $service->getTaskDetails($this->selectedTaskId);
+        $this->selectedTask = $taskDetails['data'] ?? null;
+
+        $this->isEditingTask = false;
+        $this->success('Task updated successfully');
+        $this->loadSections();
+    }
+
+    /**
+     * Show delete confirmation dialog.
+     */
+    public function confirmDelete(): void
+    {
+        $this->showDeleteConfirm = true;
+    }
+
+    /**
+     * Cancel delete and hide confirmation.
+     */
+    public function cancelDelete(): void
+    {
+        $this->showDeleteConfirm = false;
+    }
+
+    /**
+     * Delete the selected task from Asana.
+     */
+    public function deleteTask(): void
+    {
+        if (! $this->selectedTaskId) {
+            $this->error('No task selected');
+
+            return;
+        }
+
+        $connection = Auth::user()?->asanaConnection()->first();
+
+        if (! $connection) {
+            $this->error('No Asana connection found');
+
+            return;
+        }
+
+        $service = app(AsanaService::class, ['personalAccessToken' => $connection->credentials]);
+
+        $success = $service->deleteTask($this->selectedTaskId);
+
+        if (! $success) {
+            $this->error('Failed to delete task');
+
+            return;
+        }
+
+        // Clear cache to refresh board
+        $this->clearAsanaCache();
+
+        $this->showDeleteConfirm = false;
+        $this->closeTaskPanel();
+        $this->success('Task deleted successfully');
+        $this->loadSections();
     }
 
     public function hasAsanaConnection(): bool

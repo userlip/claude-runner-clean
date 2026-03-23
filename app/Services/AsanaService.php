@@ -85,6 +85,27 @@ class AsanaService
     }
 
     /**
+     * Update a task's properties including section.
+     *
+     * @param  string  $taskId  The Asana task GID
+     * @param  array<string, mixed>  $data  Task data to update
+     * @return array{data: array{gid: string}}|null
+     */
+    public function updateTask(string $taskId, array $data): ?array
+    {
+        $response = Http::withToken($this->personalAccessToken)
+            ->put("{$this->baseUrl}/tasks/{$taskId}", [
+                'data' => $data,
+            ]);
+
+        if (! $response->successful()) {
+            return null;
+        }
+
+        return $response->json();
+    }
+
+    /**
      * Get all sections for a project.
      *
      * @param  string  $projectId  The Asana project GID
@@ -252,5 +273,18 @@ class AsanaService
         }
 
         return $response->json()['data'] ?? [];
+    }
+
+    /**
+     * Delete a task in Asana.
+     *
+     * @param  string  $taskId  The Asana task GID
+     */
+    public function deleteTask(string $taskId): bool
+    {
+        $response = Http::withToken($this->personalAccessToken)
+            ->delete("{$this->baseUrl}/tasks/{$taskId}");
+
+        return $response->successful();
     }
 }

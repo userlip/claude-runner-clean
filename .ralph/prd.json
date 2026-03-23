@@ -88,7 +88,7 @@
             "title": "Kanban drag-and-drop between columns",
             "githubIssue": 64,
             "priority": 5,
-            "passes": false,
+            "passes": true,
             "acceptanceCriteria": [
                 "Task cards are draggable between columns",
                 "Dropping a card in a new column updates the Asana task section via API",

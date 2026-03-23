@@ -4,3 +4,6 @@
 {"iteration":4,"timestamp":"2026-03-23T16:20:44+00:00","story":"STORY-3","tokens_in":4303843,"tokens_out":23676,"duration_seconds":2684,"status":"failed"}
 {"iteration":5,"timestamp":"2026-03-23T16:35:01+00:00","story":"STORY-3","tokens_in":4768921,"tokens_out":15995,"duration_seconds":1969,"status":"failed"}
 {"iteration":3,"timestamp":"2026-03-23T16:37:53+00:00","story":"STORY-3","tokens_in":2749993,"tokens_out":8254,"duration_seconds":1478,"status":"failed"}
+{"iteration":6,"timestamp":"2026-03-23T16:56:17+00:00","story":"STORY-4","tokens_in":2604444,"tokens_out":14633,"duration_seconds":1276,"status":"failed"}
+{"iteration":5,"timestamp":"2026-03-23T16:59:26+00:00","story":"STORY-3","tokens_in":4621381,"tokens_out":20927,"duration_seconds":2321,"status":"failed"}
+{"iteration":4,"timestamp":"2026-03-23T17:11:26+00:00","story":"STORY-4","tokens_in":4519531,"tokens_out":20398,"duration_seconds":2011,"status":"failed"}
