@@ -42,6 +42,30 @@ class AsanaBoard extends Component
     /** @var array<int, array{id: int, name: string}> */
     public array $repositories = [];
 
+    /** @var array<int, array{gid: string, name: string}> */
+    public array $workspaceUsers = [];
+
+    // Inline quick-add properties
+    public ?string $inlineSectionId = null;
+
+    public string $inlineTitle = '';
+
+    // Full form modal properties
+    public bool $showCreateTaskModal = false;
+
+    public string $newTaskTitle = '';
+
+    public string $newTaskDescription = '';
+
+    public ?string $newTaskAssignee = null;
+
+    public ?string $newTaskDueDate = null;
+
+    public ?string $newTaskSectionId = null;
+
+    /** @var array<string, string> */
+    protected array $validationErrors = [];
+
     public function mount(): void
     {
         $this->loadWorkspaces();
@@ -318,6 +342,205 @@ class AsanaBoard extends Component
         $this->linkedRepositoryId = null;
         $this->testingSectionId = null;
         $this->success('Repository unlinked from project');
+    }
+
+    /**
+     * Show inline quick-add form for a section.
+     */
+    public function showInlineAdd(string $sectionId): void
+    {
+        $this->inlineSectionId = $sectionId;
+        $this->inlineTitle = '';
+    }
+
+    /**
+     * Hide inline quick-add form.
+     */
+    public function hideInlineAdd(): void
+    {
+        $this->inlineSectionId = null;
+        $this->inlineTitle = '';
+    }
+
+    /**
+     * Create a task using inline quick-add.
+     */
+    public function createInlineTask(): void
+    {
+        if (empty($this->inlineTitle)) {
+            $this->error('Task title is required');
+
+            return;
+        }
+
+        if (! $this->selectedProjectId || ! $this->inlineSectionId) {
+            $this->error('No project or section selected');
+
+            return;
+        }
+
+        $connection = Auth::user()?->asanaConnection()->first();
+
+        if (! $connection) {
+            $this->error('No Asana connection found');
+
+            return;
+        }
+
+        $service = app(AsanaService::class, ['personalAccessToken' => $connection->credentials]);
+
+        $result = $service->createTask($this->selectedProjectId, $this->inlineSectionId, [
+            'name' => $this->inlineTitle,
+        ]);
+
+        if ($result === null) {
+            $this->error('Failed to create task');
+
+            return;
+        }
+
+        // Clear cache to refresh board
+        $this->clearAsanaCache();
+
+        $this->hideInlineAdd();
+        $this->success('Task created successfully');
+
+        // Reload sections to show new task
+        $this->loadSections();
+    }
+
+    /**
+     * Open the full create task modal.
+     */
+    public function openCreateTaskModal(?string $sectionId = null): void
+    {
+        $this->resetValidation();
+        $this->newTaskTitle = '';
+        $this->newTaskDescription = '';
+        $this->newTaskAssignee = null;
+        $this->newTaskDueDate = null;
+        $this->newTaskSectionId = $sectionId ?? (array_key_first($this->sections) ?: null);
+        $this->showCreateTaskModal = true;
+
+        // Load workspace users for assignee dropdown
+        $this->loadWorkspaceUsers();
+    }
+
+    /**
+     * Close the create task modal.
+     */
+    public function closeCreateTaskModal(): void
+    {
+        $this->showCreateTaskModal = false;
+        $this->newTaskTitle = '';
+        $this->newTaskDescription = '';
+        $this->newTaskAssignee = null;
+        $this->newTaskDueDate = null;
+        $this->newTaskSectionId = null;
+    }
+
+    /**
+     * Create a task using the full form.
+     */
+    public function createFullTask(): void
+    {
+        $this->validate([
+            'newTaskTitle' => 'required|string|max:255',
+            'newTaskDueDate' => 'nullable|date_format:Y-m-d',
+        ]);
+
+        if (! $this->selectedProjectId || ! $this->newTaskSectionId) {
+            $this->error('No project or section selected');
+
+            return;
+        }
+
+        $connection = Auth::user()?->asanaConnection()->first();
+
+        if (! $connection) {
+            $this->error('No Asana connection found');
+
+            return;
+        }
+
+        $service = app(AsanaService::class, ['personalAccessToken' => $connection->credentials]);
+
+        $taskData = [
+            'name' => $this->newTaskTitle,
+            'notes' => $this->newTaskDescription,
+        ];
+
+        if ($this->newTaskAssignee) {
+            $taskData['assignee'] = $this->newTaskAssignee;
+        }
+
+        if ($this->newTaskDueDate) {
+            $taskData['due_on'] = $this->newTaskDueDate;
+        }
+
+        $result = $service->createTask($this->selectedProjectId, $this->newTaskSectionId, $taskData);
+
+        if ($result === null) {
+            $this->error('Failed to create task');
+
+            return;
+        }
+
+        // Clear cache to refresh board
+        $this->clearAsanaCache();
+
+        $this->closeCreateTaskModal();
+        $this->success('Task created successfully');
+
+        // Reload sections to show new task
+        $this->loadSections();
+    }
+
+    /**
+     * Load workspace users for assignee selection.
+     */
+    public function loadWorkspaceUsers(): void
+    {
+        if (! $this->selectedWorkspaceId) {
+            $this->workspaceUsers = [];
+
+            return;
+        }
+
+        $connection = Auth::user()?->asanaConnection()->first();
+
+        if (! $connection) {
+            $this->workspaceUsers = [];
+
+            return;
+        }
+
+        $service = app(AsanaService::class, ['personalAccessToken' => $connection->credentials]);
+        $users = $service->getWorkspaceUsers($this->selectedWorkspaceId);
+
+        $this->workspaceUsers = $users;
+    }
+
+    /**
+     * Clear Asana cache to refresh data.
+     */
+    protected function clearAsanaCache(): void
+    {
+        $connection = Auth::user()?->asanaConnection()->first();
+
+        if (! $connection) {
+            return;
+        }
+
+        // Clear sections cache for current project
+        if ($this->selectedProjectId) {
+            Cache::forget("asana.sections.{$connection->id}.{$this->selectedProjectId}");
+        }
+
+        // Clear other caches as needed
+        if ($this->selectedWorkspaceId) {
+            Cache::forget("asana.projects.{$connection->id}.{$this->selectedWorkspaceId}");
+        }
     }
 
     public function hasAsanaConnection(): bool

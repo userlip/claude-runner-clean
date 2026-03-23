@@ -11,6 +11,19 @@
             </div>
         </x-card>
     @else
+        {{-- Header with Create Task Button --}}
+        <div class="flex justify-between items-center mb-4">
+            <div></div>
+            @if($selectedProjectId)
+                <x-button
+                    label="Create Task"
+                    icon="o-plus"
+                    wire:click="openCreateTaskModal"
+                    class="btn-primary"
+                />
+            @endif
+        </div>
+
         {{-- Project Selection & Repository Linking --}}
         <x-card class="bg-base-100 mb-4">
             <div class="flex flex-wrap gap-4 items-end">
@@ -141,6 +154,40 @@
                                         No tasks in this section
                                     </div>
                                 @endforelse
+
+                                {{-- Inline Quick Add Form --}}
+                                @if($inlineSectionId === $sectionId)
+                                    <div class="bg-base-100 rounded-lg p-3 shadow-sm mt-2">
+                                        <x-input
+                                            wire:model="inlineTitle"
+                                            placeholder="Enter task title..."
+                                            wire:keydown.enter="createInlineTask"
+                                            wire:keydown.escape="hideInlineAdd"
+                                            autofocus
+                                        />
+                                        <div class="flex gap-2 mt-2">
+                                            <x-button
+                                                label="Add"
+                                                wire:click="createInlineTask"
+                                                class="btn-primary btn-sm"
+                                                spinner
+                                            />
+                                            <x-button
+                                                label="Cancel"
+                                                wire:click="hideInlineAdd"
+                                                class="btn-ghost btn-sm"
+                                            />
+                                        </div>
+                                    </div>
+                                @else
+                                    <button
+                                        wire:click="showInlineAdd('{{ $sectionId }}')"
+                                        class="w-full py-2 text-sm text-base-content/50 hover:text-base-content hover:bg-base-300/50 rounded-lg transition-colors flex items-center justify-center gap-1"
+                                    >
+                                        <x-icon name="o-plus" class="w-4 h-4" />
+                                        Add task
+                                    </button>
+                                @endif
                             </div>
                         </div>
                     @endforeach
@@ -286,6 +333,115 @@
                             Link a repository to start a Claude Runner task from this Asana task.
                         </div>
                     @endif
+                </div>
+            </div>
+        </div>
+    @endif
+
+    {{-- Create Task Modal --}}
+    @if($showCreateTaskModal)
+        <div class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+            {{-- Backdrop --}}
+            <div
+                class="fixed inset-0 bg-black/50 transition-opacity"
+                wire:click="closeCreateTaskModal"
+            ></div>
+
+            {{-- Modal Panel --}}
+            <div class="flex min-h-full items-center justify-center p-4">
+                <div class="relative w-full max-w-lg bg-base-100 rounded-lg shadow-xl">
+                    {{-- Header --}}
+                    <div class="flex items-center justify-between px-6 py-4 border-b border-base-300">
+                        <h3 class="text-lg font-semibold">Create New Task</h3>
+                        <button wire:click="closeCreateTaskModal" class="btn btn-ghost btn-sm btn-circle">
+                            <x-icon name="o-x-mark" class="w-5 h-5" />
+                        </button>
+                    </div>
+
+                    {{-- Form --}}
+                    <form wire:submit.prevent="createFullTask" class="p-6 space-y-4">
+                        {{-- Title --}}
+                        <div>
+                            <label class="label">
+                                <span class="label-text">Task Title <span class="text-error">*</span></span>
+                            </label>
+                            <x-input
+                                wire:model="newTaskTitle"
+                                placeholder="Enter task title..."
+                                class="w-full"
+                            />
+                            @error('newTaskTitle')
+                                <span class="text-error text-sm">{{ $message }}</span>
+                            @enderror
+                        </div>
+
+                        {{-- Section --}}
+                        <div>
+                            <label class="label">
+                                <span class="label-text">Section</span>
+                            </label>
+                            <x-select
+                                wire:model="newTaskSectionId"
+                                :options="collect($sections)->map(fn($s) => ['label' => $s['name'], 'value' => $s['gid']])->toArray()"
+                                class="w-full"
+                            />
+                        </div>
+
+                        {{-- Description --}}
+                        <div>
+                            <label class="label">
+                                <span class="label-text">Description</span>
+                            </label>
+                            <textarea
+                                wire:model="newTaskDescription"
+                                placeholder="Enter task description..."
+                                class="textarea textarea-bordered w-full h-24"
+                            ></textarea>
+                        </div>
+
+                        {{-- Assignee --}}
+                        <div>
+                            <label class="label">
+                                <span class="label-text">Assignee</span>
+                            </label>
+                            <x-select
+                                wire:model="newTaskAssignee"
+                                :options="collect($workspaceUsers)->map(fn($u) => ['label' => $u['name'], 'value' => $u['gid']])->toArray()"
+                                placeholder="Select assignee..."
+                                class="w-full"
+                            />
+                        </div>
+
+                        {{-- Due Date --}}
+                        <div>
+                            <label class="label">
+                                <span class="label-text">Due Date</span>
+                            </label>
+                            <x-input
+                                type="date"
+                                wire:model="newTaskDueDate"
+                                class="w-full"
+                            />
+                            @error('newTaskDueDate')
+                                <span class="text-error text-sm">{{ $message }}</span>
+                            @enderror
+                        </div>
+
+                        {{-- Actions --}}
+                        <div class="flex justify-end gap-2 pt-4 border-t border-base-300">
+                            <x-button
+                                label="Cancel"
+                                wire:click="closeCreateTaskModal"
+                                class="btn-ghost"
+                            />
+                            <x-button
+                                type="submit"
+                                label="Create Task"
+                                class="btn-primary"
+                                spinner
+                            />
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>

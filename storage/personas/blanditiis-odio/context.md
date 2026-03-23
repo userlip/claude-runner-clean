@@ -1,7 +1,7 @@
-# SEO Analyzer Context
+# Alpha Persona Context
 
 ## Overview
-Sequi quos facilis commodi placeat.
+Qui labore voluptatem quia aut.
 
 ## Key Learnings
 <!-- Accumulated learnings from analysis cycles will appear here -->

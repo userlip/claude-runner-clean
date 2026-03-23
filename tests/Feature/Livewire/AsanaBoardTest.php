@@ -551,3 +551,373 @@ it('returns false when user has no asana connection', function () {
 
     expect($component->instance()->hasAsanaConnection())->toBeFalse();
 });
+
+// --- Inline Task Creation ---
+
+it('shows inline add form when clicking add task button', function () {
+    $user = User::factory()->create();
+
+    Connection::factory()->asana()->create([
+        'user_id' => $user->id,
+        'credentials' => 'test_pat_token',
+    ]);
+
+    Http::fake([
+        'app.asana.com/api/1.0/workspaces' => Http::response(['data' => []], 200),
+    ]);
+
+    Livewire::actingAs($user)
+        ->test(AsanaBoard::class)
+        ->call('showInlineAdd', 'section_123')
+        ->assertSet('inlineSectionId', 'section_123')
+        ->assertSet('inlineTitle', '');
+});
+
+it('hides inline add form when clicking cancel', function () {
+    $user = User::factory()->create();
+
+    Connection::factory()->asana()->create([
+        'user_id' => $user->id,
+        'credentials' => 'test_pat_token',
+    ]);
+
+    Http::fake([
+        'app.asana.com/api/1.0/workspaces' => Http::response(['data' => []], 200),
+    ]);
+
+    Livewire::actingAs($user)
+        ->test(AsanaBoard::class)
+        ->call('showInlineAdd', 'section_123')
+        ->set('inlineTitle', 'Some Task')
+        ->call('hideInlineAdd')
+        ->assertSet('inlineSectionId', null)
+        ->assertSet('inlineTitle', '');
+});
+
+it('creates task using inline quick-add', function () {
+    $user = User::factory()->create();
+
+    Connection::factory()->asana()->create([
+        'user_id' => $user->id,
+        'credentials' => 'test_pat_token',
+    ]);
+
+    Http::fake([
+        'app.asana.com/api/1.0/workspaces' => Http::response(['data' => []], 200),
+        'app.asana.com/api/1.0/tasks' => Http::response([
+            'data' => [
+                'gid' => 'new_task_123',
+                'name' => 'Quick Task',
+            ],
+        ], 201),
+    ]);
+
+    Livewire::actingAs($user)
+        ->test(AsanaBoard::class)
+        ->set('selectedProjectId', 'proj_123')
+        ->set('sections', [
+            'section_1' => [
+                'gid' => 'section_1',
+                'name' => 'To Do',
+                'tasks' => [],
+            ],
+        ])
+        ->call('showInlineAdd', 'section_1')
+        ->set('inlineTitle', 'Quick Task')
+        ->call('createInlineTask');
+
+    Http::assertSent(function ($request) {
+        return $request->url() === 'https://app.asana.com/api/1.0/tasks'
+            && $request->data()['data']['name'] === 'Quick Task';
+    });
+});
+
+it('clears cache after inline task creation', function () {
+    $user = User::factory()->create();
+
+    Connection::factory()->asana()->create([
+        'user_id' => $user->id,
+        'credentials' => 'test_pat_token',
+    ]);
+
+    Http::fake([
+        'app.asana.com/api/1.0/workspaces' => Http::response(['data' => []], 200),
+        'app.asana.com/api/1.0/tasks' => Http::response([
+            'data' => [
+                'gid' => 'new_task_123',
+                'name' => 'Quick Task',
+            ],
+        ], 201),
+    ]);
+
+    Livewire::actingAs($user)
+        ->test(AsanaBoard::class)
+        ->set('selectedProjectId', 'proj_123')
+        ->set('sections', [
+            'section_1' => [
+                'gid' => 'section_1',
+                'name' => 'To Do',
+                'tasks' => [],
+            ],
+        ])
+        ->call('showInlineAdd', 'section_1')
+        ->set('inlineTitle', 'Quick Task')
+        ->call('createInlineTask')
+        ->assertSet('inlineSectionId', null)
+        ->assertSet('inlineTitle', '');
+});
+
+it('shows error when inline task title is empty', function () {
+    $user = User::factory()->create();
+
+    Connection::factory()->asana()->create([
+        'user_id' => $user->id,
+        'credentials' => 'test_pat_token',
+    ]);
+
+    Http::fake([
+        'app.asana.com/api/1.0/workspaces' => Http::response(['data' => []], 200),
+    ]);
+
+    Livewire::actingAs($user)
+        ->test(AsanaBoard::class)
+        ->set('selectedProjectId', 'proj_123')
+        ->set('sections', [
+            'section_1' => [
+                'gid' => 'section_1',
+                'name' => 'To Do',
+                'tasks' => [],
+            ],
+        ])
+        ->call('showInlineAdd', 'section_1')
+        ->set('inlineTitle', '')
+        ->call('createInlineTask')
+        ->assertSet('inlineSectionId', 'section_1'); // Form stays open
+});
+
+// --- Full Form Task Creation ---
+
+it('opens create task modal', function () {
+    $user = User::factory()->create();
+
+    Connection::factory()->asana()->create([
+        'user_id' => $user->id,
+        'credentials' => 'test_pat_token',
+    ]);
+
+    Http::fake([
+        'app.asana.com/api/1.0/workspaces' => Http::response(['data' => []], 200),
+    ]);
+
+    Livewire::actingAs($user)
+        ->test(AsanaBoard::class)
+        ->set('sections', [
+            'section_1' => [
+                'gid' => 'section_1',
+                'name' => 'To Do',
+                'tasks' => [],
+            ],
+        ])
+        ->call('openCreateTaskModal', 'section_1')
+        ->assertSet('showCreateTaskModal', true)
+        ->assertSet('newTaskSectionId', 'section_1');
+});
+
+it('closes create task modal', function () {
+    $user = User::factory()->create();
+
+    Connection::factory()->asana()->create([
+        'user_id' => $user->id,
+        'credentials' => 'test_pat_token',
+    ]);
+
+    Http::fake([
+        'app.asana.com/api/1.0/workspaces' => Http::response(['data' => []], 200),
+    ]);
+
+    Livewire::actingAs($user)
+        ->test(AsanaBoard::class)
+        ->set('showCreateTaskModal', true)
+        ->set('newTaskTitle', 'Test Task')
+        ->call('closeCreateTaskModal')
+        ->assertSet('showCreateTaskModal', false)
+        ->assertSet('newTaskTitle', '');
+});
+
+it('creates task using full form with all fields', function () {
+    $user = User::factory()->create();
+
+    Connection::factory()->asana()->create([
+        'user_id' => $user->id,
+        'credentials' => 'test_pat_token',
+    ]);
+
+    Http::fake([
+        'app.asana.com/api/1.0/workspaces' => Http::response(['data' => []], 200),
+        'app.asana.com/api/1.0/tasks' => Http::response([
+            'data' => [
+                'gid' => 'new_task_456',
+                'name' => 'Full Task',
+            ],
+        ], 201),
+    ]);
+
+    Livewire::actingAs($user)
+        ->test(AsanaBoard::class)
+        ->set('selectedProjectId', 'proj_123')
+        ->set('sections', [
+            'section_1' => [
+                'gid' => 'section_1',
+                'name' => 'To Do',
+                'tasks' => [],
+            ],
+        ])
+        ->call('openCreateTaskModal', 'section_1')
+        ->set('newTaskTitle', 'Full Task')
+        ->set('newTaskDescription', 'Task description')
+        ->set('newTaskAssignee', 'user_123')
+        ->set('newTaskDueDate', '2026-03-30')
+        ->call('createFullTask');
+
+    Http::assertSent(function ($request) {
+        $body = json_decode($request->body(), true);
+        $data = $body['data'] ?? [];
+
+        return $request->url() === 'https://app.asana.com/api/1.0/tasks'
+            && ($data['name'] ?? null) === 'Full Task'
+            && ($data['notes'] ?? null) === 'Task description'
+            && ($data['assignee'] ?? null) === 'user_123'
+            && ($data['due_on'] ?? null) === '2026-03-30';
+    });
+});
+
+it('validates title is required for full form', function () {
+    $user = User::factory()->create();
+
+    Connection::factory()->asana()->create([
+        'user_id' => $user->id,
+        'credentials' => 'test_pat_token',
+    ]);
+
+    Http::fake([
+        'app.asana.com/api/1.0/workspaces' => Http::response(['data' => []], 200),
+    ]);
+
+    Livewire::actingAs($user)
+        ->test(AsanaBoard::class)
+        ->set('selectedProjectId', 'proj_123')
+        ->set('sections', [
+            'section_1' => [
+                'gid' => 'section_1',
+                'name' => 'To Do',
+                'tasks' => [],
+            ],
+        ])
+        ->call('openCreateTaskModal', 'section_1')
+        ->set('newTaskTitle', '')
+        ->call('createFullTask')
+        ->assertHasErrors(['newTaskTitle' => 'required']);
+});
+
+it('validates due date format', function () {
+    $user = User::factory()->create();
+
+    Connection::factory()->asana()->create([
+        'user_id' => $user->id,
+        'credentials' => 'test_pat_token',
+    ]);
+
+    Http::fake([
+        'app.asana.com/api/1.0/workspaces' => Http::response(['data' => []], 200),
+    ]);
+
+    Livewire::actingAs($user)
+        ->test(AsanaBoard::class)
+        ->set('selectedProjectId', 'proj_123')
+        ->set('sections', [
+            'section_1' => [
+                'gid' => 'section_1',
+                'name' => 'To Do',
+                'tasks' => [],
+            ],
+        ])
+        ->call('openCreateTaskModal', 'section_1')
+        ->set('newTaskTitle', 'Test Task')
+        ->set('newTaskDueDate', 'invalid-date')
+        ->call('createFullTask')
+        ->assertHasErrors(['newTaskDueDate' => 'date_format']);
+});
+
+it('loads workspace users when opening create modal', function () {
+    $user = User::factory()->create();
+
+    Connection::factory()->asana()->create([
+        'user_id' => $user->id,
+        'credentials' => 'test_pat_token',
+    ]);
+
+    Http::fake([
+        'app.asana.com/api/1.0/workspaces' => Http::response([
+            'data' => [
+                ['gid' => 'ws_123', 'name' => 'My Workspace'],
+            ],
+        ], 200),
+        'app.asana.com/api/1.0/workspaces/ws_123/users*' => Http::response([
+            'data' => [
+                ['gid' => 'user_1', 'name' => 'John Doe'],
+                ['gid' => 'user_2', 'name' => 'Jane Smith'],
+            ],
+        ], 200),
+    ]);
+
+    Livewire::actingAs($user)
+        ->test(AsanaBoard::class)
+        ->set('selectedWorkspaceId', 'ws_123')
+        ->set('sections', [
+            'section_1' => [
+                'gid' => 'section_1',
+                'name' => 'To Do',
+                'tasks' => [],
+            ],
+        ])
+        ->call('openCreateTaskModal', 'section_1')
+        ->assertSet('workspaceUsers', [
+            ['gid' => 'user_1', 'name' => 'John Doe'],
+            ['gid' => 'user_2', 'name' => 'Jane Smith'],
+        ]);
+});
+
+it('clears cache after full form task creation', function () {
+    $user = User::factory()->create();
+
+    Connection::factory()->asana()->create([
+        'user_id' => $user->id,
+        'credentials' => 'test_pat_token',
+    ]);
+
+    Http::fake([
+        'app.asana.com/api/1.0/workspaces' => Http::response(['data' => []], 200),
+        'app.asana.com/api/1.0/tasks' => Http::response([
+            'data' => [
+                'gid' => 'new_task_789',
+                'name' => 'Cached Task',
+            ],
+        ], 201),
+    ]);
+
+    Livewire::actingAs($user)
+        ->test(AsanaBoard::class)
+        ->set('selectedProjectId', 'proj_123')
+        ->set('sections', [
+            'section_1' => [
+                'gid' => 'section_1',
+                'name' => 'To Do',
+                'tasks' => [],
+            ],
+        ])
+        ->call('openCreateTaskModal', 'section_1')
+        ->set('newTaskTitle', 'Cached Task')
+        ->call('createFullTask')
+        ->assertSet('showCreateTaskModal', false)
+        ->assertSet('newTaskTitle', '');
+});

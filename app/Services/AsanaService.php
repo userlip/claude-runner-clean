@@ -187,4 +187,70 @@ class AsanaService
 
         return null;
     }
+
+    /**
+     * Create a new task in Asana.
+     *
+     * @param  string  $projectId  The Asana project GID
+     * @param  string  $sectionId  The section GID to add the task to
+     * @param  array<string, mixed>  $data  Task data (name, notes, assignee, due_on, etc.)
+     * @return array{data: array{gid: string, name: string}}|null
+     */
+    public function createTask(string $projectId, string $sectionId, array $data): ?array
+    {
+        $payload = [
+            'data' => [
+                'name' => $data['name'],
+                'projects' => [$projectId],
+                'memberships' => [
+                    [
+                        'project' => $projectId,
+                        'section' => $sectionId,
+                    ],
+                ],
+            ],
+        ];
+
+        // Optional fields
+        if (! empty($data['notes'])) {
+            $payload['data']['notes'] = $data['notes'];
+        }
+
+        if (! empty($data['assignee'])) {
+            $payload['data']['assignee'] = $data['assignee'];
+        }
+
+        if (! empty($data['due_on'])) {
+            $payload['data']['due_on'] = $data['due_on'];
+        }
+
+        $response = Http::withToken($this->personalAccessToken)
+            ->post("{$this->baseUrl}/tasks", $payload);
+
+        if (! $response->successful()) {
+            return null;
+        }
+
+        return $response->json();
+    }
+
+    /**
+     * Get all users in a workspace for assignee selection.
+     *
+     * @param  string  $workspaceId  The Asana workspace GID
+     * @return array<int, array{gid: string, name: string, email?: string}>
+     */
+    public function getWorkspaceUsers(string $workspaceId): array
+    {
+        $response = Http::withToken($this->personalAccessToken)
+            ->get("{$this->baseUrl}/workspaces/{$workspaceId}/users", [
+                'opt_fields' => 'name,email',
+            ]);
+
+        if (! $response->successful()) {
+            return [];
+        }
+
+        return $response->json()['data'] ?? [];
+    }
 }

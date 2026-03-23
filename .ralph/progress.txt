@@ -40,6 +40,30 @@ Started: 2026-03-23 15:20:48
 **Verification**:
 - Feature tests cover: board renders, project selection, task card display, access control
 
+### 2026-03-23 - STORY-4: Create Asana tasks (inline + full form)
+**Status**: Completed
+**Tests**: 12 added, 32 total passed (61 assertions)
+
+**Key Implementation Details**:
+- Inline quick-add: "+ Add task" button at bottom of each Kanban column, shows input + buttons inline
+- Full form modal: "Create Task" button opens modal with title, description, section, assignee, due date fields
+- `showInlineAdd()` / `hideInlineAdd()` / `createInlineTask()` methods for inline flow
+- `openCreateTaskModal()` / `closeCreateTaskModal()` / `createFullTask()` methods for full form flow
+- `loadWorkspaceUsers()` fetches users for assignee dropdown
+- `clearAsanaCache()` busts cache after task creation to refresh board immediately
+- Validation: title required (`newTaskTitle` rules), due date format validated (`Y-m-d`)
+- Mary UI components used: `<x-input>`, `<x-select>`, `<x-textarea>`, `<x-button>`
+
+**Test Coverage**:
+- Inline create: shows/hides form, creates task, clears cache, validates empty title
+- Full form: opens/closes modal, creates with all fields, validates title required, validates date format
+- Workspace users loaded when opening modal
+- HTTP assertions use null coalescing (`$data['name'] ?? null`) to handle multiple requests in `Http::assertSent()`
+
+**Verification**:
+- All 32 AsanaBoard tests passing
+- Code style clean via `pint --dirty`
+
 ### 2026-03-23 - STORY-3: Repo-project linking + start CR task from Asana
 **Status**: Completed
 **Tests**: 20 passed, 39 assertions
@@ -81,6 +105,12 @@ Started: 2026-03-23 15:20:48
 - SearchConsoleSettings tests: 6 passed - disconnect removes from connections table
 - AsanaSettings tests: 10 passed - PAT validation and workspace fetching
 
+
+## Verification Failed
+
+```
+
+```
 
 ## Verification Failed
 

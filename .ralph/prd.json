@@ -69,7 +69,7 @@
             "title": "Create Asana tasks (inline + full form)",
             "githubIssue": 65,
             "priority": 4,
-            "passes": false,
+            "passes": true,
             "acceptanceCriteria": [
                 "Each column has a \"+ Add task\" button\/area at the bottom",
                 "Inline quick-add accepts a title and creates a task in that section",

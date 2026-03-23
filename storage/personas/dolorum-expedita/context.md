@@ -1,7 +1,7 @@
-# Code Quality Inspector Context
+# Security Auditor Context
 
 ## Overview
-Autem enim omnis ut odit vel.
+Maxime numquam dolores deleniti magnam.
 
 ## Key Learnings
 <!-- Accumulated learnings from analysis cycles will appear here -->

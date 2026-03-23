@@ -1,4 +1,4 @@
-# Performance Monitor Context
+# Dependency Checker Context
 
 ## Overview
 Growth analysis specialist
