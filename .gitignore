@@ -22,3 +22,10 @@ yarn-error.log
 api-docs/
 .playwright-mcp/
 .mcp.json
+
+# Root-level screenshots (temporary debug files)
+/*.png
+/*.jpg
+/*.jpeg
+/*.gif
+/*.webp
