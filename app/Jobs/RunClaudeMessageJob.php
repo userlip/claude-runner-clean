@@ -9,6 +9,7 @@ use App\Events\TaskChatUpdated;
 use App\Exceptions\RateLimitException;
 use App\Models\Message;
 use App\Models\Task;
+use App\Services\McpConfigService;
 use App\Services\TaskPullRequestDetectionService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -775,14 +776,12 @@ class RunClaudeMessageJob implements ShouldQueue
 
     protected function getMcpConfig(): ?string
     {
-        $mcpServers = [
+        return app(McpConfigService::class)->jsonForCli([
             'playwright' => [
                 'command' => 'npx',
                 'args' => ['@playwright/mcp@latest'],
             ],
-        ];
-
-        return json_encode(['mcpServers' => $mcpServers]);
+        ]);
     }
 
     /**

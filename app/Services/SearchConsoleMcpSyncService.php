@@ -10,8 +10,12 @@ use Illuminate\Support\Facades\File;
 
 class SearchConsoleMcpSyncService
 {
+    public function __construct(
+        private readonly McpConfigService $configService,
+    ) {}
+
     /**
-     * Sync all Search Console connections to disk credentials and .mcp.json.
+     * Sync all Search Console connections to disk credentials and the configured MCP config.
      */
     public function sync(): void
     {
@@ -22,7 +26,7 @@ class SearchConsoleMcpSyncService
     }
 
     /**
-     * Sync a single connection's credential file to disk and update .mcp.json.
+     * Sync a single connection's credential file to disk and update the configured MCP config.
      */
     public function syncConnection(SearchConsoleConnection|Connection $connection): void
     {
@@ -32,7 +36,7 @@ class SearchConsoleMcpSyncService
     }
 
     /**
-     * Remove a connection's credential file from disk and update .mcp.json.
+     * Remove a connection's credential file from disk and update the configured MCP config.
      */
     public function removeConnection(SearchConsoleConnection|Connection $connection): void
     {
@@ -68,13 +72,10 @@ class SearchConsoleMcpSyncService
 
     private function updateMcpConfig(): void
     {
-        $mcpPath = base_path('.mcp.json');
-        $config = json_decode(File::get($mcpPath), true);
-
         $connections = $this->getAllConnections();
 
         if ($connections->isEmpty()) {
-            unset($config['mcpServers']['search-console']);
+            $this->configService->forgetServer('search-console');
         } else {
             $env = [];
             foreach ($connections as $connection) {
@@ -82,16 +83,15 @@ class SearchConsoleMcpSyncService
                 $env[$key] = $connection->getCredentialsFilePath();
             }
 
-            $config['mcpServers']['search-console'] = [
+            $this->configService->putServer('search-console', [
+                'type' => 'stdio',
                 'command' => 'node',
                 'args' => [
                     base_path('mcp-servers/search-console-mcp/dist/index.js'),
                 ],
                 'env' => $env,
-            ];
+            ]);
         }
-
-        File::put($mcpPath, json_encode($config, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)."\n");
     }
 
     private function cleanupOrphanedFiles(): void

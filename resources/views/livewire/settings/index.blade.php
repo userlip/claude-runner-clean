@@ -2,6 +2,17 @@
     <x-header title="Settings" separator />
 
     <div class="flex flex-col gap-6">
+        @if(auth()->user()->hasRole('admin'))
+            <x-card shadow>
+                <x-header title="Admin Tools" subtitle="Shared system-level configuration for the workbench runtime." size="text-lg" class="mb-4" separator />
+
+                <div class="flex flex-wrap gap-2">
+                    <x-button label="AI Providers" icon="o-cpu-chip" link="{{ route('workbench.ai-providers.index') }}" class="btn-ghost btn-sm" />
+                    <x-button label="MCP Servers" icon="o-server-stack" link="{{ route('workbench.settings.mcp') }}" class="btn-primary btn-sm" />
+                </div>
+            </x-card>
+        @endif
+
         {{-- Sidebar Panels --}}
         <x-card shadow>
             <x-header title="Default Sidebar Panels" subtitle="Choose up to 3 panels to open by default when you enter a chat. Multiple panels split the sidebar vertically." size="text-lg" class="mb-4" separator />

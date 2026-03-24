@@ -22,6 +22,7 @@ use App\Livewire\Schedules\Form as ScheduleForm;
 use App\Livewire\Schedules\Index as SchedulesIndex;
 use App\Livewire\SecurityRuns\Index as SecurityRunsIndex;
 use App\Livewire\Settings\Index as SettingsIndex;
+use App\Livewire\Settings\Mcp as McpSettings;
 use App\Livewire\Sites\Form as SiteForm;
 use App\Livewire\Sites\Index as SitesIndex;
 use App\Livewire\Snippets\Form as SnippetForm;
@@ -104,6 +105,7 @@ Route::middleware(['auth'])->prefix('workbench')->group(function () {
     Route::get('/tasks/{uuid}', TaskShow::class)->name('workbench.tasks.show');
 
     Route::get('/settings', SettingsIndex::class)->name('workbench.settings.index');
+    Route::middleware(['role:admin'])->get('/settings/mcp', McpSettings::class)->name('workbench.settings.mcp');
     Route::get('/settings/ai-providers', AiProvidersIndex::class)->name('workbench.ai-providers.index');
     Route::get('/analytics', AnalyticsIndex::class)->name('workbench.analytics.index');
     Route::get('/asana', AsanaBoard::class)->name('workbench.asana.index');

@@ -51,6 +51,9 @@
 
                             <x-menu-item title="Analytics" icon="o-chart-bar" :link="route('workbench.analytics.index')" />
                             <x-menu-item title="AI Providers" icon="o-cpu-chip" :link="route('workbench.ai-providers.index')" />
+                            @if(auth()->user()->hasRole('admin'))
+                                <x-menu-item title="MCP Servers" icon="o-server-stack" :link="route('workbench.settings.mcp')" />
+                            @endif
                             <x-menu-item title="Settings" icon="o-adjustments-horizontal" :link="route('workbench.settings.index')" />
 
                             @if(auth()->user()->hasRole('admin'))

@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Models\Proposal;
+use App\Services\McpConfigService;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
@@ -188,13 +189,13 @@ class ObservabilityDashboard extends Page
 
     public function getMcpServersStatus(): array
     {
-        $mcpConfig = json_decode(file_get_contents(base_path('.mcp.json')), true);
         $servers = [];
+        $mcpConfig = app(McpConfigService::class)->read();
 
         foreach ($mcpConfig['mcpServers'] ?? [] as $name => $config) {
             $servers[$name] = [
                 'name' => $name,
-                'command' => $config['command'] ?? 'unknown',
+                'command' => $config['command'] ?? $config['url'] ?? 'unknown',
                 'configured' => true,
             ];
         }

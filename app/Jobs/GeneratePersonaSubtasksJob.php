@@ -7,6 +7,7 @@ use App\Enums\TaskStatus;
 use App\Models\Message;
 use App\Models\Proposal;
 use App\Models\Task;
+use App\Services\McpConfigService;
 use App\Services\PersonaStorageService;
 use App\Services\TelegramService;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -382,22 +383,10 @@ class GeneratePersonaSubtasksJob implements ShouldQueue
 
     protected function getMcpConfig(): ?string
     {
-        $mcpConfigPath = base_path('.mcp.json');
-
-        if (file_exists($mcpConfigPath)) {
-            $config = json_decode(file_get_contents($mcpConfigPath), true);
-
-            if (! empty($config)) {
-                return json_encode($config);
-            }
-        }
-
-        return json_encode([
-            'mcpServers' => [
-                'playwright' => [
-                    'command' => 'npx',
-                    'args' => ['@playwright/mcp@latest'],
-                ],
+        return app(McpConfigService::class)->jsonForCli([
+            'playwright' => [
+                'command' => 'npx',
+                'args' => ['@playwright/mcp@latest'],
             ],
         ]);
     }

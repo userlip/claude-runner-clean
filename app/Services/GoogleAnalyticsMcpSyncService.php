@@ -10,8 +10,12 @@ use Illuminate\Support\Facades\File;
 
 class GoogleAnalyticsMcpSyncService
 {
+    public function __construct(
+        private readonly McpConfigService $configService,
+    ) {}
+
     /**
-     * Sync all Google Analytics connections to disk credentials and .mcp.json.
+     * Sync all Google Analytics connections to disk credentials and the configured MCP config.
      */
     public function sync(): void
     {
@@ -22,7 +26,7 @@ class GoogleAnalyticsMcpSyncService
     }
 
     /**
-     * Sync a single connection's credential file to disk and update .mcp.json.
+     * Sync a single connection's credential file to disk and update the configured MCP config.
      */
     public function syncConnection(GoogleAnalyticsConnection|Connection $connection): void
     {
@@ -32,7 +36,7 @@ class GoogleAnalyticsMcpSyncService
     }
 
     /**
-     * Remove a connection's credential file from disk and update .mcp.json.
+     * Remove a connection's credential file from disk and update the configured MCP config.
      */
     public function removeConnection(GoogleAnalyticsConnection|Connection $connection): void
     {
@@ -68,13 +72,10 @@ class GoogleAnalyticsMcpSyncService
 
     private function updateMcpConfig(): void
     {
-        $mcpPath = base_path('.mcp.json');
-        $config = json_decode(File::get($mcpPath), true);
-
         $connections = $this->getAllConnections();
 
         if ($connections->isEmpty()) {
-            unset($config['mcpServers']['google-analytics']);
+            $this->configService->forgetServer('google-analytics');
         } else {
             $env = [];
             foreach ($connections as $connection) {
@@ -82,16 +83,15 @@ class GoogleAnalyticsMcpSyncService
                 $env[$key] = $connection->getCredentialsFilePath();
             }
 
-            $config['mcpServers']['google-analytics'] = [
+            $this->configService->putServer('google-analytics', [
+                'type' => 'stdio',
                 'command' => 'node',
                 'args' => [
                     base_path('mcp-servers/google-analytics-mcp/dist/index.js'),
                 ],
                 'env' => $env,
-            ];
+            ]);
         }
-
-        File::put($mcpPath, json_encode($config, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)."\n");
     }
 
     private function cleanupOrphanedFiles(): void

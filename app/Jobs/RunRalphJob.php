@@ -8,6 +8,7 @@ use App\Enums\MessageStatus;
 use App\Enums\TaskStatus;
 use App\Models\Message;
 use App\Models\Task;
+use App\Services\McpConfigService;
 use App\Services\RalphWorkspaceService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable as FoundationQueueable;
@@ -474,16 +475,16 @@ class RunRalphJob implements ShouldQueue
             $escapedPrompt = escapeshellarg($prompt);
 
             $agentCmd = "/usr/bin/claude -p {$escapedPrompt} --output-format stream-json --verbose --dangerously-skip-permissions --session-id {$sessionId} --max-turns 50";
-
-            // Add MCP servers (Playwright for browser automation)
-            $mcpServers = [
+            $mcpConfig = app(McpConfigService::class)->jsonForCli([
                 'playwright' => [
                     'command' => 'npx',
                     'args' => ['@playwright/mcp@latest'],
                 ],
-            ];
-            $mcpConfig = json_encode(['mcpServers' => $mcpServers]);
-            $agentCmd .= ' --mcp-config '.escapeshellarg($mcpConfig);
+            ]);
+
+            if ($mcpConfig) {
+                $agentCmd .= ' --mcp-config '.escapeshellarg($mcpConfig);
+            }
         }
 
         // Build isolated environment
