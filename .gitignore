@@ -23,9 +23,10 @@ api-docs/
 .playwright-mcp/
 .mcp.json
 
-# Root-level screenshots (temporary debug files)
+# Root-level temporary files (screenshots, exports, etc.)
 /*.png
 /*.jpg
 /*.jpeg
 /*.gif
 /*.webp
+/*.html
