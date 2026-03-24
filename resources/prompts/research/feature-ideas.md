@@ -7,7 +7,6 @@ Gather feature requests, pain points, and improvement ideas from developer commu
 
 ## Products to Research
 - **Scrappa** - API marketplace for web scraping
-- **LTO2** - Laravel deployment tool
 - **Rezensionsheld** - Review management platform
 
 ## Research Sources
@@ -38,12 +37,6 @@ Gather feature requests, pain points, and improvement ideas from developer commu
 - Documentation improvements
 - SDK/library requests
 
-### For LTO2
-- Deployment workflow improvements
-- CI/CD integration requests
-- Server management features
-- Laravel-specific needs
-- Monitoring and logging
 
 ### For Rezensionsheld
 - Review platform integrations
@@ -64,7 +57,7 @@ Gather feature requests, pain points, and improvement ideas from developer commu
 {
   "title": "Add [feature name]",
   "priority": "high|medium|low",
-  "product": "scrappa|lto2|rezensionsheld",
+  "product": "scrappa|rezensionsheld",
   "user_demand": "evidence of demand",
   "estimated_impact": "user retention|acquisition|revenue",
   "implementation_notes": "brief technical approach"

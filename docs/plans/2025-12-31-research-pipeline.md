@@ -244,7 +244,7 @@ return new class extends Migration
             $table->string('submission_type')->default('free'); // free, paid, invite_only
             $table->string('submission_url')->nullable();
             $table->json('requirements')->nullable(); // {needs_account, review_time, etc}
-            $table->json('suitable_products')->nullable(); // [scrappa, lto2, rezensionsheld]
+            $table->json('suitable_products')->nullable(); // [scrappa, rezensionsheld]
             $table->text('notes')->nullable();
             $table->timestamps();
 
@@ -296,7 +296,7 @@ return new class extends Migration
             $table->id();
             $table->uuid('uuid')->unique();
             $table->foreignId('directory_id')->constrained('promotion_directories')->cascadeOnDelete();
-            $table->string('product'); // scrappa, lto2, rezensionsheld
+            $table->string('product'); // scrappa, rezensionsheld
             $table->string('status')->default('not_submitted');
             $table->timestamp('submitted_at')->nullable();
             $table->timestamp('listed_at')->nullable();
@@ -769,14 +769,14 @@ class PromotionDirectorySeeder extends Seeder
                 'submission_type' => 'free',
                 'submission_url' => 'https://www.producthunt.com/posts/new',
                 'requirements' => ['needs_account' => true, 'review_time' => '1-2 days'],
-                'suitable_products' => ['scrappa', 'lto2', 'rezensionsheld'],
+                'suitable_products' => ['scrappa', 'rezensionsheld'],
             ],
             [
                 'name' => 'AlternativeTo',
                 'url' => 'https://alternativeto.net',
                 'category' => DirectoryCategory::ProductHunt,
                 'submission_type' => 'free',
-                'suitable_products' => ['scrappa', 'lto2', 'rezensionsheld'],
+                'suitable_products' => ['scrappa', 'rezensionsheld'],
             ],
             [
                 'name' => 'G2',
@@ -797,7 +797,7 @@ class PromotionDirectorySeeder extends Seeder
                 'url' => 'https://www.saashub.com',
                 'category' => DirectoryCategory::ProductHunt,
                 'submission_type' => 'free',
-                'suitable_products' => ['scrappa', 'lto2', 'rezensionsheld'],
+                'suitable_products' => ['scrappa', 'rezensionsheld'],
             ],
 
             // Startup Lists
@@ -807,28 +807,28 @@ class PromotionDirectorySeeder extends Seeder
                 'category' => DirectoryCategory::Startup,
                 'submission_type' => 'free',
                 'submission_url' => 'https://betalist.com/submit',
-                'suitable_products' => ['scrappa', 'lto2', 'rezensionsheld'],
+                'suitable_products' => ['scrappa', 'rezensionsheld'],
             ],
             [
                 'name' => 'Launching Next',
                 'url' => 'https://www.launchingnext.com',
                 'category' => DirectoryCategory::Startup,
                 'submission_type' => 'free',
-                'suitable_products' => ['scrappa', 'lto2', 'rezensionsheld'],
+                'suitable_products' => ['scrappa', 'rezensionsheld'],
             ],
             [
                 'name' => 'StartupStash',
                 'url' => 'https://startupstash.com',
                 'category' => DirectoryCategory::Startup,
                 'submission_type' => 'free',
-                'suitable_products' => ['scrappa', 'lto2', 'rezensionsheld'],
+                'suitable_products' => ['scrappa', 'rezensionsheld'],
             ],
             [
                 'name' => 'KillerStartups',
                 'url' => 'https://killerstartups.com',
                 'category' => DirectoryCategory::Startup,
                 'submission_type' => 'free',
-                'suitable_products' => ['scrappa', 'lto2', 'rezensionsheld'],
+                'suitable_products' => ['scrappa', 'rezensionsheld'],
             ],
 
             // Indie/Maker
@@ -838,21 +838,21 @@ class PromotionDirectorySeeder extends Seeder
                 'category' => DirectoryCategory::Indie,
                 'submission_type' => 'free',
                 'requirements' => ['needs_account' => true],
-                'suitable_products' => ['scrappa', 'lto2', 'rezensionsheld'],
+                'suitable_products' => ['scrappa', 'rezensionsheld'],
             ],
             [
                 'name' => 'SideProjectors',
                 'url' => 'https://www.sideprojectors.com',
                 'category' => DirectoryCategory::Indie,
                 'submission_type' => 'free',
-                'suitable_products' => ['scrappa', 'lto2'],
+                'suitable_products' => ['scrappa'],
             ],
             [
                 'name' => '1000 Tools',
                 'url' => 'https://1000.tools',
                 'category' => DirectoryCategory::Indie,
                 'submission_type' => 'free',
-                'suitable_products' => ['scrappa', 'lto2', 'rezensionsheld'],
+                'suitable_products' => ['scrappa', 'rezensionsheld'],
             ],
 
             // Technical Communities
@@ -862,28 +862,28 @@ class PromotionDirectorySeeder extends Seeder
                 'category' => DirectoryCategory::Community,
                 'submission_type' => 'free',
                 'requirements' => ['needs_account' => true, 'format' => 'Show HN: Title - Description'],
-                'suitable_products' => ['scrappa', 'lto2'],
+                'suitable_products' => ['scrappa'],
             ],
             [
                 'name' => 'Dev.to',
                 'url' => 'https://dev.to',
                 'category' => DirectoryCategory::Community,
                 'submission_type' => 'free',
-                'suitable_products' => ['scrappa', 'lto2'],
+                'suitable_products' => ['scrappa'],
             ],
             [
                 'name' => 'Hashnode',
                 'url' => 'https://hashnode.com',
                 'category' => DirectoryCategory::Community,
                 'submission_type' => 'free',
-                'suitable_products' => ['scrappa', 'lto2'],
+                'suitable_products' => ['scrappa'],
             ],
             [
                 'name' => 'Reddit r/SideProject',
                 'url' => 'https://www.reddit.com/r/SideProject',
                 'category' => DirectoryCategory::Community,
                 'submission_type' => 'free',
-                'suitable_products' => ['scrappa', 'lto2', 'rezensionsheld'],
+                'suitable_products' => ['scrappa', 'rezensionsheld'],
             ],
             [
                 'name' => 'Reddit r/webdev',
@@ -906,14 +906,14 @@ class PromotionDirectorySeeder extends Seeder
                 'url' => 'https://www.crunchbase.com',
                 'category' => DirectoryCategory::Seo,
                 'submission_type' => 'free',
-                'suitable_products' => ['scrappa', 'lto2', 'rezensionsheld'],
+                'suitable_products' => ['scrappa', 'rezensionsheld'],
             ],
             [
                 'name' => 'F6S',
                 'url' => 'https://www.f6s.com',
                 'category' => DirectoryCategory::Seo,
                 'submission_type' => 'free',
-                'suitable_products' => ['scrappa', 'lto2', 'rezensionsheld'],
+                'suitable_products' => ['scrappa', 'rezensionsheld'],
             ],
 
             // Free Tool Directories
@@ -1587,7 +1587,6 @@ class PromotionDirectoryResource extends Resource
                     Forms\Components\CheckboxList::make('suitable_products')
                         ->options([
                             'scrappa' => 'Scrappa',
-                            'lto2' => 'LTO2',
                             'rezensionsheld' => 'Rezensionsheld',
                         ]),
 

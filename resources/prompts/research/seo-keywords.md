@@ -5,7 +5,6 @@ You are a research agent tasked with discovering SEO and keyword opportunities f
 ## Objective
 Find high-value keywords, content gaps, and SEO opportunities to improve organic traffic for:
 - **Scrappa** (API marketplace for web scraping)
-- **LTO2** (Laravel deployment tool)
 - **Rezensionsheld** (Review management platform)
 
 ## Research Areas
@@ -40,7 +39,7 @@ Find high-value keywords, content gaps, and SEO opportunities to improve organic
   "priority": "high|medium|low",
   "target_keywords": ["primary", "secondary", "long-tail"],
   "content_type": "blog|landing|comparison|tutorial",
-  "product": "scrappa|lto2|rezensionsheld"
+  "product": "scrappa|rezensionsheld"
 }
 ```
 

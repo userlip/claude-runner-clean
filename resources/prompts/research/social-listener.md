@@ -8,8 +8,8 @@ Track mentions of our products and relevant industry discussions to identify eng
 ## Monitoring Targets
 
 ### Brand Mentions
-- Direct mentions: Scrappa, LTO2, Rezensionsheld
-- Domain mentions: scrappa.io, lto2.io, rezensionsheld.de
+- Direct mentions: Scrappa, Rezensionsheld
+- Domain mentions: scrappa.io, rezensionsheld.de
 - Team member mentions (founders, key contributors)
 - Related project mentions
 

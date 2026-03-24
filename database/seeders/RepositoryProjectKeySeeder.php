@@ -11,7 +11,6 @@ class RepositoryProjectKeySeeder extends Seeder
     {
         $mappings = [
             'scrappa' => ['scrappa', 'scrappa-api', 'scrappa.io'],
-            'lto2' => ['lto2', 'lto2-api', 'lto2-backend'],
             'rezensionsheld' => ['rezensionsheld', 'review-hero'],
             'claude_runner' => ['claude-runner', 'claude-runner.marin.sh'],
         ];

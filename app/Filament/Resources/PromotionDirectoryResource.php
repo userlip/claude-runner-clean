@@ -72,7 +72,6 @@ class PromotionDirectoryResource extends Resource
                             ->label('Suitable Products')
                             ->suggestions([
                                 'scrappa',
-                                'lto2',
                                 'rezensionsheld',
                                 'claude_runner',
                             ])

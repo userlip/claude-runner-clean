@@ -41,7 +41,6 @@ class AiProviderSeeder extends Seeder
             [
                 'display_name' => 'Kimi',
                 'base_url' => 'https://api.kimi.com/coding/',
-                'api_key' => 'env('KIMI_API_KEY')',
                 'model' => 'kimi-k2.5',
                 'context_window' => 262144,
                 'is_active' => true,

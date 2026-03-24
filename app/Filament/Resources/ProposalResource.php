@@ -63,7 +63,6 @@ class ProposalResource extends Resource
                         Forms\Components\Select::make('project')
                             ->options([
                                 'scrappa' => 'Scrappa',
-                                'lto2' => 'LTO2',
                                 'rezensionsheld' => 'Rezensionsheld',
                                 'claude_runner' => 'Claude Runner',
                             ])
@@ -145,7 +144,6 @@ class ProposalResource extends Resource
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'scrappa' => 'info',
-                        'lto2' => 'success',
                         'rezensionsheld' => 'warning',
                         'claude_runner' => 'primary',
                         default => 'gray',
@@ -209,7 +207,6 @@ class ProposalResource extends Resource
                 Tables\Filters\SelectFilter::make('project')
                     ->options([
                         'scrappa' => 'Scrappa',
-                        'lto2' => 'LTO2',
                         'rezensionsheld' => 'Rezensionsheld',
                         'claude_runner' => 'Claude Runner',
                     ]),

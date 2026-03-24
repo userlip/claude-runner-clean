@@ -7,7 +7,6 @@ Find directories, listing sites, and promotional platforms where we can submit o
 
 ## Products to Promote
 - **Scrappa** (scrappa.io) - API marketplace for web scraping
-- **LTO2** (lto2.io) - Laravel deployment tool
 - **Rezensionsheld** (rezensionsheld.de) - Review management platform (German market)
 
 ## Directory Categories to Search
@@ -66,7 +65,7 @@ Rate each directory on:
   "directory_url": "https://...",
   "submission_url": "https://...",
   "submission_type": "free|paid|invite_only",
-  "suitable_products": ["scrappa", "lto2", "rezensionsheld"],
+  "suitable_products": ["scrappa", "rezensionsheld"],
   "estimated_value": "SEO benefit assessment",
   "notes": "submission requirements or tips"
 }
@@ -91,7 +90,7 @@ When discovering new directories, format them for database insertion:
     'submission_type' => 'free|paid|invite_only',
     'submission_url' => 'https://submission-url.com',
     'requirements' => ['needs_account' => true, 'review_time' => '1-2 days'],
-    'suitable_products' => ['scrappa', 'lto2', 'rezensionsheld'],
+    'suitable_products' => ['scrappa', 'rezensionsheld'],
     'notes' => 'Additional notes about this directory',
 ]
 ```

@@ -50,14 +50,14 @@ class PromotionDirectorySeeder extends Seeder
                 'submission_type' => 'free',
                 'submission_url' => 'https://www.producthunt.com/posts/new',
                 'requirements' => ['needs_account' => true, 'review_time' => '1-2 days'],
-                'suitable_products' => ['scrappa', 'lto2', 'rezensionsheld'],
+                'suitable_products' => ['scrappa', 'rezensionsheld'],
             ],
             [
                 'name' => 'AlternativeTo',
                 'url' => 'https://alternativeto.net',
                 'category' => DirectoryCategory::ProductHunt,
                 'submission_type' => 'free',
-                'suitable_products' => ['scrappa', 'lto2', 'rezensionsheld'],
+                'suitable_products' => ['scrappa', 'rezensionsheld'],
             ],
             [
                 'name' => 'G2',
@@ -78,7 +78,7 @@ class PromotionDirectorySeeder extends Seeder
                 'url' => 'https://www.saashub.com',
                 'category' => DirectoryCategory::ProductHunt,
                 'submission_type' => 'free',
-                'suitable_products' => ['scrappa', 'lto2', 'rezensionsheld'],
+                'suitable_products' => ['scrappa', 'rezensionsheld'],
             ],
             // Startup Lists
             [
@@ -87,28 +87,28 @@ class PromotionDirectorySeeder extends Seeder
                 'category' => DirectoryCategory::Startup,
                 'submission_type' => 'free',
                 'submission_url' => 'https://betalist.com/submit',
-                'suitable_products' => ['scrappa', 'lto2', 'rezensionsheld'],
+                'suitable_products' => ['scrappa', 'rezensionsheld'],
             ],
             [
                 'name' => 'Launching Next',
                 'url' => 'https://www.launchingnext.com',
                 'category' => DirectoryCategory::Startup,
                 'submission_type' => 'free',
-                'suitable_products' => ['scrappa', 'lto2', 'rezensionsheld'],
+                'suitable_products' => ['scrappa', 'rezensionsheld'],
             ],
             [
                 'name' => 'StartupStash',
                 'url' => 'https://startupstash.com',
                 'category' => DirectoryCategory::Startup,
                 'submission_type' => 'free',
-                'suitable_products' => ['scrappa', 'lto2', 'rezensionsheld'],
+                'suitable_products' => ['scrappa', 'rezensionsheld'],
             ],
             [
                 'name' => 'KillerStartups',
                 'url' => 'https://killerstartups.com',
                 'category' => DirectoryCategory::Startup,
                 'submission_type' => 'free',
-                'suitable_products' => ['scrappa', 'lto2', 'rezensionsheld'],
+                'suitable_products' => ['scrappa', 'rezensionsheld'],
             ],
             // Indie/Maker
             [
@@ -117,21 +117,21 @@ class PromotionDirectorySeeder extends Seeder
                 'category' => DirectoryCategory::Indie,
                 'submission_type' => 'free',
                 'requirements' => ['needs_account' => true],
-                'suitable_products' => ['scrappa', 'lto2', 'rezensionsheld'],
+                'suitable_products' => ['scrappa', 'rezensionsheld'],
             ],
             [
                 'name' => 'SideProjectors',
                 'url' => 'https://www.sideprojectors.com',
                 'category' => DirectoryCategory::Indie,
                 'submission_type' => 'free',
-                'suitable_products' => ['scrappa', 'lto2'],
+                'suitable_products' => ['scrappa', 'rezensionsheld'],
             ],
             [
                 'name' => '1000 Tools',
                 'url' => 'https://1000.tools',
                 'category' => DirectoryCategory::Indie,
                 'submission_type' => 'free',
-                'suitable_products' => ['scrappa', 'lto2', 'rezensionsheld'],
+                'suitable_products' => ['scrappa', 'rezensionsheld'],
             ],
             // Technical Communities
             [
@@ -140,28 +140,28 @@ class PromotionDirectorySeeder extends Seeder
                 'category' => DirectoryCategory::Community,
                 'submission_type' => 'free',
                 'requirements' => ['needs_account' => true, 'format' => 'Show HN: Title - Description'],
-                'suitable_products' => ['scrappa', 'lto2'],
+                'suitable_products' => ['scrappa', 'rezensionsheld'],
             ],
             [
                 'name' => 'Dev.to',
                 'url' => 'https://dev.to',
                 'category' => DirectoryCategory::Community,
                 'submission_type' => 'free',
-                'suitable_products' => ['scrappa', 'lto2'],
+                'suitable_products' => ['scrappa', 'rezensionsheld'],
             ],
             [
                 'name' => 'Hashnode',
                 'url' => 'https://hashnode.com',
                 'category' => DirectoryCategory::Community,
                 'submission_type' => 'free',
-                'suitable_products' => ['scrappa', 'lto2'],
+                'suitable_products' => ['scrappa', 'rezensionsheld'],
             ],
             [
                 'name' => 'Reddit r/SideProject',
                 'url' => 'https://www.reddit.com/r/SideProject',
                 'category' => DirectoryCategory::Community,
                 'submission_type' => 'free',
-                'suitable_products' => ['scrappa', 'lto2', 'rezensionsheld'],
+                'suitable_products' => ['scrappa', 'rezensionsheld'],
             ],
             [
                 'name' => 'Reddit r/webdev',
@@ -183,14 +183,14 @@ class PromotionDirectorySeeder extends Seeder
                 'url' => 'https://www.crunchbase.com',
                 'category' => DirectoryCategory::Seo,
                 'submission_type' => 'free',
-                'suitable_products' => ['scrappa', 'lto2', 'rezensionsheld'],
+                'suitable_products' => ['scrappa', 'rezensionsheld'],
             ],
             [
                 'name' => 'F6S',
                 'url' => 'https://www.f6s.com',
                 'category' => DirectoryCategory::Seo,
                 'submission_type' => 'free',
-                'suitable_products' => ['scrappa', 'lto2', 'rezensionsheld'],
+                'suitable_products' => ['scrappa', 'rezensionsheld'],
             ],
             // Free Tool Directories
             [

@@ -54,7 +54,6 @@ class PlaybookResource extends Resource
                         Forms\Components\Select::make('project')
                             ->options([
                                 'scrappa' => 'Scrappa',
-                                'lto2' => 'LTO2',
                                 'rezensionsheld' => 'Rezensionsheld',
                                 'claude_runner' => 'Claude Runner',
                             ])

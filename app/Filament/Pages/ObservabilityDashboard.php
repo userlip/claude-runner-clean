@@ -36,7 +36,6 @@ class ObservabilityDashboard extends Page
         return [
             'all' => 'All Projects',
             'scrappa' => 'Scrappa',
-            'lto2' => 'LTO2',
             'rezensionsheld' => 'Rezensionsheld',
             'claude_runner' => 'Claude Runner',
         ];
@@ -67,7 +66,6 @@ class ObservabilityDashboard extends Page
                     'unresolved' => $issues,
                     'projects' => [
                         'scrappa' => rand(5, 20),
-                        'lto2' => rand(10, 50),
                         'rezensionsheld' => rand(2, 15),
                         'claude_runner' => rand(0, 5),
                     ],
