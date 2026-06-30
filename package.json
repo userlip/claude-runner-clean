@@ -6,11 +6,11 @@
         "build": "vite build"
     },
     "devDependencies": {
-        "@playwright/mcp": "^0.0.53",
-        "axios": "^1.6.4",
-        "laravel-vite-plugin": "^1.0",
-        "sharp": "^0.34.5",
-        "vite": "^5.0"
+        "@playwright/mcp": "^0.0.77",
+        "axios": "^1.18.1",
+        "laravel-vite-plugin": "^3.1",
+        "sharp": "^0.35.2",
+        "vite": "^8.1"
     },
     "dependencies": {
         "@sentry/browser": "^10.47.0",
