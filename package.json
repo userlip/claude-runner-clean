@@ -13,7 +13,7 @@
         "vite": "^5.0"
     },
     "dependencies": {
-        "@sentry/browser": "^10.47.0",
+        "@sentry/browser": "^10.62.0",
         "@tailwindcss/vite": "^4.0.0",
         "chart.js": "^4.5.1",
         "daisyui": "^5.5.19",
