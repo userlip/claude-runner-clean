@@ -14,7 +14,7 @@
     },
     "dependencies": {
         "@sentry/browser": "^10.47.0",
-        "@tailwindcss/vite": "^4.0.0",
+        "@tailwindcss/vite": "^4.3.3",
         "chart.js": "^4.5.1",
         "daisyui": "^5.5.19",
         "laravel-echo": "^2.4.0",
