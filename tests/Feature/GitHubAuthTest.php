@@ -1,6 +1,7 @@
 <?php
 
-use App\Models\GitHubConnection;
+use App\Enums\ConnectionType;
+use App\Models\Connection;
 use App\Models\User;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\User as SocialiteUser;
@@ -33,20 +34,24 @@ test('github callback creates connection', function () {
         ->get(route('github.callback'))
         ->assertRedirect('/admin');
 
-    $this->assertDatabaseHas('github_connections', [
+    $this->assertDatabaseHas('connections', [
         'user_id' => $user->id,
-        'github_user_id' => '12345',
-        'github_username' => 'testuser',
+        'type' => ConnectionType::GitHub->value,
+        'metadata->github_user_id' => '12345',
+        'metadata->github_username' => 'testuser',
     ]);
 });
 
 test('github disconnect removes connection', function () {
     $user = User::factory()->create();
-    GitHubConnection::factory()->create(['user_id' => $user->id]);
+    Connection::factory()->github()->create(['user_id' => $user->id]);
 
     $this->actingAs($user)
         ->delete(route('github.disconnect'))
         ->assertRedirect('/admin');
 
-    $this->assertDatabaseMissing('github_connections', ['user_id' => $user->id]);
+    $this->assertDatabaseMissing('connections', [
+        'user_id' => $user->id,
+        'type' => ConnectionType::GitHub->value,
+    ]);
 });

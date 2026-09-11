@@ -1,24 +1,27 @@
 {
     "private": true,
     "type": "module",
+    "engines": {
+        "node": "^20.19.0 || >=22.12.0"
+    },
     "scripts": {
         "dev": "vite",
-        "build": "vite build"
+        "build": "sh mcp-servers/build.sh && vite build"
     },
     "devDependencies": {
-        "@playwright/mcp": "^0.0.53",
-        "axios": "^1.6.4",
-        "laravel-vite-plugin": "^1.0",
-        "sharp": "^0.34.5",
-        "vite": "^5.0"
+        "@playwright/mcp": "^0.0.78",
+        "axios": "^1.18.1",
+        "laravel-vite-plugin": "^3.1",
+        "sharp": "^0.35.4",
+        "vite": "^8.1.5"
     },
     "dependencies": {
-        "@sentry/browser": "^10.47.0",
-        "@tailwindcss/vite": "^4.0.0",
+        "@sentry/browser": "^10.68.0",
+        "@tailwindcss/vite": "^4.3.3",
         "chart.js": "^4.5.1",
-        "daisyui": "^5.5.19",
+        "daisyui": "^5.7.4",
         "laravel-echo": "^2.4.0",
         "pusher-js": "^8.5.0",
-        "tailwindcss": "^4.0.0"
+        "tailwindcss": "^4.3.3"
     }
 }

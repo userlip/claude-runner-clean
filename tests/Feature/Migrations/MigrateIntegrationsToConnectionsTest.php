@@ -28,15 +28,19 @@ afterEach(function () {
     Schema::dropIfExists('search_console_connections');
 });
 
-function createLegacyTables(): void
+function createLegacyTables(bool $scopesAsText = false): void
 {
-    Schema::create('github_connections', function ($table) {
+    Schema::create('github_connections', function ($table) use ($scopesAsText) {
         $table->id();
         $table->foreignId('user_id')->constrained()->cascadeOnDelete();
         $table->text('access_token');
         $table->string('github_user_id')->nullable();
         $table->string('github_username')->nullable();
-        $table->json('scopes')->nullable();
+        if ($scopesAsText) {
+            $table->text('scopes')->nullable();
+        } else {
+            $table->json('scopes')->nullable();
+        }
         $table->timestamps();
     });
 
@@ -240,7 +244,7 @@ test('migration handles non-encrypted credentials gracefully', function () {
 });
 
 test('migration handles string scopes in legacy data', function () {
-    createLegacyTables();
+    createLegacyTables(scopesAsText: true);
     $user = User::factory()->create();
 
     DB::table('github_connections')->insert([

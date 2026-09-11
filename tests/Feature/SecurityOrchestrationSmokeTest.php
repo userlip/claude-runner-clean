@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Models\GitHubConnection;
+use App\Models\Connection;
 use App\Models\Repository;
 use App\Services\SecurityManagementService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -23,9 +23,9 @@ class SecurityOrchestrationSmokeTest extends TestCase
             'full_name' => 'org/repo',
         ]);
 
-        GitHubConnection::factory()->create([
+        Connection::factory()->github()->create([
             'user_id' => $repo->user_id,
-            'access_token' => 'token',
+            'credentials' => 'token',
         ]);
 
         Http::fake([

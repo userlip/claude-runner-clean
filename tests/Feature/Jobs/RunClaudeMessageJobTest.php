@@ -260,7 +260,11 @@ test('captureProcessDiagnostics returns stderr and exit code', function () {
         2 => ['pipe', 'w'],
     ];
 
-    $process = proc_open("bash -lc 'echo boom >&2; exit 17'", $descriptors, $pipes, base_path());
+    $process = proc_open([
+        PHP_BINARY,
+        '-r',
+        'fwrite(STDERR, "boom"); fclose(STDERR); usleep(100000); exit(17);',
+    ], $descriptors, $pipes, base_path());
 
     expect(is_resource($process))->toBeTrue();
 

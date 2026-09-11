@@ -549,7 +549,7 @@ class RunClaudeMessageJob implements ShouldQueue
 
         $closedExitCode = proc_close($process);
 
-        if ($exitCode === null && ($terminateRunning || ! $wasRunning) && $closedExitCode !== -1) {
+        if ($exitCode === null && $closedExitCode !== -1) {
             $exitCode = $closedExitCode;
         }
 

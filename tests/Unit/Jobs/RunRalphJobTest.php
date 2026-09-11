@@ -16,11 +16,20 @@ class RunRalphJobTest extends TestCase
 {
     use RefreshDatabase;
 
+    private string $workspacePath;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->workspacePath = sys_get_temp_dir().'/ralph-workspace-'.bin2hex(random_bytes(8));
+    }
+
     protected function tearDown(): void
     {
         // Clean up any test directories
-        if (File::exists('/tmp/test-workspace')) {
-            File::deleteDirectory('/tmp/test-workspace');
+        if (isset($this->workspacePath) && File::exists($this->workspacePath)) {
+            File::deleteDirectory($this->workspacePath);
         }
 
         parent::tearDown();
@@ -32,7 +41,7 @@ class RunRalphJobTest extends TestCase
         $task = Task::factory()->ralph()->create([
             'ai_provider_id' => $provider->id,
             'ralph_rotation_threshold' => 0.7,
-            'workspace_path' => '/tmp/test-workspace',
+            'workspace_path' => $this->workspacePath,
         ]);
 
         // Create messages using 75% of context
@@ -47,7 +56,7 @@ class RunRalphJobTest extends TestCase
 
     public function test_picks_highest_priority_unpassed_story(): void
     {
-        $task = Task::factory()->ralph()->create(['workspace_path' => '/tmp/test-workspace']);
+        $task = Task::factory()->ralph()->create(['workspace_path' => $this->workspacePath]);
 
         $prd = [
             'userStories' => [
@@ -70,7 +79,7 @@ class RunRalphJobTest extends TestCase
 
     public function test_detects_all_stories_passed(): void
     {
-        $task = Task::factory()->ralph()->create(['workspace_path' => '/tmp/test-workspace']);
+        $task = Task::factory()->ralph()->create(['workspace_path' => $this->workspacePath]);
 
         $prd = [
             'userStories' => [
@@ -112,7 +121,7 @@ class RunRalphJobTest extends TestCase
 
         $task = Task::factory()->ralph()->create([
             'ralph_max_iterations' => 10,
-            'workspace_path' => '/tmp/test-workspace',
+            'workspace_path' => $this->workspacePath,
         ]);
 
         app(RalphWorkspaceService::class)->initialize($task, [
@@ -131,7 +140,7 @@ class RunRalphJobTest extends TestCase
         $provider = AiProvider::factory()->codex()->create(['model' => 'o3']);
         $task = Task::factory()->ralph()->create([
             'ai_provider_id' => $provider->id,
-            'workspace_path' => '/tmp/test-workspace',
+            'workspace_path' => $this->workspacePath,
         ]);
 
         $job = new RunRalphJob($task, 1);
@@ -147,7 +156,7 @@ class RunRalphJobTest extends TestCase
     public function test_marks_story_passed_without_mutating_readonly_state(): void
     {
         $task = Task::factory()->ralph()->create([
-            'workspace_path' => '/tmp/test-workspace',
+            'workspace_path' => $this->workspacePath,
         ]);
 
         $service = app(RalphWorkspaceService::class);
@@ -177,7 +186,7 @@ class RunRalphJobTest extends TestCase
     public function test_complete_task_disables_ralph(): void
     {
         $task = Task::factory()->ralph()->running()->create([
-            'workspace_path' => '/tmp/test-workspace',
+            'workspace_path' => $this->workspacePath,
         ]);
 
         $service = app(RalphWorkspaceService::class);
@@ -204,7 +213,7 @@ class RunRalphJobTest extends TestCase
     public function test_fail_with_error_disables_ralph(): void
     {
         $task = Task::factory()->ralph()->running()->create([
-            'workspace_path' => '/tmp/test-workspace',
+            'workspace_path' => $this->workspacePath,
         ]);
 
         $job = new RunRalphJob($task, 2);
@@ -224,7 +233,7 @@ class RunRalphJobTest extends TestCase
         Queue::fake();
 
         $task = Task::factory()->ralph()->running()->create([
-            'workspace_path' => '/tmp/test-workspace',
+            'workspace_path' => $this->workspacePath,
             'ralph_enabled' => false,
         ]);
 
@@ -244,7 +253,7 @@ class RunRalphJobTest extends TestCase
     public function test_tracks_and_clears_active_ralph_process_metadata(): void
     {
         $task = Task::factory()->ralph()->create([
-            'workspace_path' => '/tmp/test-workspace',
+            'workspace_path' => $this->workspacePath,
         ]);
 
         $job = new RunRalphJob($task, 2);
@@ -266,7 +275,7 @@ class RunRalphJobTest extends TestCase
         Queue::fake();
 
         $task = Task::factory()->ralph()->running()->create([
-            'workspace_path' => '/tmp/test-workspace',
+            'workspace_path' => $this->workspacePath,
             'ralph_enabled' => true,
         ]);
 
