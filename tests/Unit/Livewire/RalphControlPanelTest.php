@@ -24,7 +24,7 @@ class RalphControlPanelTest extends TestCase
     protected function tearDown(): void
     {
         // Clean up any test directories
-        if (File::exists($this->workspacePath)) {
+        if (isset($this->workspacePath) && File::exists($this->workspacePath)) {
             File::deleteDirectory($this->workspacePath);
         }
 
