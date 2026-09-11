@@ -15,19 +15,22 @@ class RalphWorkspaceServiceTest extends TestCase
 
     private RalphWorkspaceService $service;
 
+    private string $workspacePath;
+
     protected function setUp(): void
     {
         parent::setUp();
 
-        // Use real filesystem but clean up after test
+        $this->workspacePath = sys_get_temp_dir().'/ralph-workspace-'.bin2hex(random_bytes(8));
+
         $this->service = app(RalphWorkspaceService::class);
     }
 
     protected function tearDown(): void
     {
         // Clean up any test directories
-        if (File::exists('/tmp/test-workspace')) {
-            File::deleteDirectory('/tmp/test-workspace');
+        if (File::exists($this->workspacePath)) {
+            File::deleteDirectory($this->workspacePath);
         }
 
         parent::tearDown();
@@ -36,7 +39,7 @@ class RalphWorkspaceServiceTest extends TestCase
     public function test_initializes_ralph_workspace(): void
     {
         $task = Task::factory()->create([
-            'workspace_path' => '/tmp/test-workspace',
+            'workspace_path' => $this->workspacePath,
         ]);
 
         $config = [
@@ -66,7 +69,7 @@ class RalphWorkspaceServiceTest extends TestCase
     public function test_reads_ralph_state(): void
     {
         $task = Task::factory()->create([
-            'workspace_path' => '/tmp/test-workspace',
+            'workspace_path' => $this->workspacePath,
         ]);
 
         $this->service->initialize($task, [
@@ -84,7 +87,7 @@ class RalphWorkspaceServiceTest extends TestCase
     public function test_reads_ralph_state_when_prd_is_missing(): void
     {
         $task = Task::factory()->create([
-            'workspace_path' => '/tmp/test-workspace',
+            'workspace_path' => $this->workspacePath,
         ]);
 
         File::ensureDirectoryExists($task->getRalphWorkspacePath());
@@ -99,7 +102,7 @@ class RalphWorkspaceServiceTest extends TestCase
 
     public function test_updates_prd_story_as_passed(): void
     {
-        $task = Task::factory()->create(['workspace_path' => '/tmp/test-workspace']);
+        $task = Task::factory()->create(['workspace_path' => $this->workspacePath]);
 
         $this->service->initialize($task, [
             'branch_name' => 'ralph/test',
@@ -120,7 +123,7 @@ class RalphWorkspaceServiceTest extends TestCase
 
     public function test_appends_progress_learnings(): void
     {
-        $task = Task::factory()->create(['workspace_path' => '/tmp/test-workspace']);
+        $task = Task::factory()->create(['workspace_path' => $this->workspacePath]);
 
         $this->service->initialize($task, ['branch_name' => 'ralph/test', 'stories' => []]);
 
@@ -133,7 +136,7 @@ class RalphWorkspaceServiceTest extends TestCase
 
     public function test_appends_guardrail(): void
     {
-        $task = Task::factory()->create(['workspace_path' => '/tmp/test-workspace']);
+        $task = Task::factory()->create(['workspace_path' => $this->workspacePath]);
 
         $this->service->initialize($task, ['branch_name' => 'ralph/test', 'stories' => []]);
 
@@ -146,7 +149,7 @@ class RalphWorkspaceServiceTest extends TestCase
 
     public function test_logs_activity(): void
     {
-        $task = Task::factory()->create(['workspace_path' => '/tmp/test-workspace']);
+        $task = Task::factory()->create(['workspace_path' => $this->workspacePath]);
 
         $this->service->initialize($task, ['branch_name' => 'ralph/test', 'stories' => []]);
 

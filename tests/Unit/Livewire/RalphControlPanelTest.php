@@ -12,11 +12,20 @@ class RalphControlPanelTest extends TestCase
 {
     use RefreshDatabase;
 
+    private string $workspacePath;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->workspacePath = sys_get_temp_dir().'/ralph-workspace-'.bin2hex(random_bytes(8));
+    }
+
     protected function tearDown(): void
     {
         // Clean up any test directories
-        if (File::exists('/tmp/test-workspace')) {
-            File::deleteDirectory('/tmp/test-workspace');
+        if (File::exists($this->workspacePath)) {
+            File::deleteDirectory($this->workspacePath);
         }
 
         parent::tearDown();
@@ -27,7 +36,7 @@ class RalphControlPanelTest extends TestCase
         $task = Task::factory()->ralph()->create([
             'ralph_enabled' => true,
             'ralph_max_iterations' => 50,
-            'workspace_path' => '/tmp/test-workspace',
+            'workspace_path' => $this->workspacePath,
         ]);
 
         $component = new RalphControlPanel;
@@ -41,7 +50,7 @@ class RalphControlPanelTest extends TestCase
     public function test_enables_ralph_mode(): void
     {
         $task = Task::factory()->create([
-            'workspace_path' => '/tmp/test-workspace',
+            'workspace_path' => $this->workspacePath,
         ]);
 
         $component = new RalphControlPanel;
@@ -72,7 +81,7 @@ class RalphControlPanelTest extends TestCase
     {
         $task = Task::factory()->ralph()->create([
             'ralph_enabled' => true,
-            'workspace_path' => '/tmp/test-workspace',
+            'workspace_path' => $this->workspacePath,
         ]);
 
         $component = new RalphControlPanel;
@@ -92,7 +101,7 @@ class RalphControlPanelTest extends TestCase
     public function test_starts_ralph_job(): void
     {
         $task = Task::factory()->ralph()->create([
-            'workspace_path' => '/tmp/test-workspace',
+            'workspace_path' => $this->workspacePath,
         ]);
 
         \Illuminate\Support\Facades\Bus::fake();
@@ -112,7 +121,7 @@ class RalphControlPanelTest extends TestCase
             'ralph_enabled' => true,
             'ralph_iteration' => 5,
             'ralph_max_iterations' => 25,
-            'workspace_path' => '/tmp/test-workspace',
+            'workspace_path' => $this->workspacePath,
         ]);
 
         app(\App\Services\RalphWorkspaceService::class)->initialize($task, [
@@ -135,7 +144,7 @@ class RalphControlPanelTest extends TestCase
     {
         $task = Task::factory()->create([
             'ralph_enabled' => false,
-            'workspace_path' => '/tmp/test-workspace',
+            'workspace_path' => $this->workspacePath,
         ]);
 
         $component = new RalphControlPanel;
@@ -148,7 +157,7 @@ class RalphControlPanelTest extends TestCase
     public function test_max_iterations_defaults_to_25(): void
     {
         $task = Task::factory()->create([
-            'workspace_path' => '/tmp/test-workspace',
+            'workspace_path' => $this->workspacePath,
         ]);
 
         $component = new RalphControlPanel;
