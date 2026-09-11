@@ -33,17 +33,17 @@ test('task chat keeps scroll stable during live updates when user is not near bo
     expect($css)->toContain('overflow-anchor: none;');
 });
 
-test('chat and sidebar refresh defines tokyo night palette tokens', function () {
+test('chat and sidebar dark palette follows the application theme', function () {
     $css = file_get_contents(resource_path('css/filament/chat.css'));
 
     expect($css)->not->toContain('radial-gradient(60rem 28rem at 110% -20%');
     expect($css)->not->toContain('backdrop-filter: blur(8px);');
-    expect($css)->toContain('--chat-tokyo-fg: #959cbd;');
-    expect($css)->toContain('--chat-tokyo-fg-active: #bdc7f0;');
-    expect($css)->toContain('--chat-tokyo-fg-inactive: #787c99;');
-    expect($css)->toContain('--chat-tokyo-fg-dim: #696d87;');
-    expect($css)->toContain('--chat-tokyo-border: #3d59a1;');
-    expect($css)->toContain('--chat-tokyo-bg: #202330;');
+    expect($css)->toContain('--chat-tokyo-fg: oklch(0.7 0.02 250);');
+    expect($css)->toContain('--chat-tokyo-fg-active: oklch(0.9 0.02 250);');
+    expect($css)->toContain('--chat-tokyo-fg-inactive: oklch(0.55 0.02 250);');
+    expect($css)->toContain('--chat-tokyo-fg-dim: oklch(0.5 0.015 250);');
+    expect($css)->toContain('--chat-tokyo-border: var(--color-base-300, oklch(0.31 0.02 254));');
+    expect($css)->toContain('--chat-tokyo-bg: var(--color-base-200, oklch(0.28 0.03 257));');
     expect($css)->toContain('--chat-bg-dark: var(--chat-tokyo-bg);');
     expect($css)->toContain('--chat-fg-dark: var(--chat-tokyo-fg);');
 });
@@ -71,7 +71,7 @@ test('chat dark mode applies tokyo night base palette to workspace wrappers', fu
 
     expect($css)->toContain(".dark .chat-page-main {\n    background: var(--chat-tokyo-bg-soft);");
     expect($css)->toContain(".dark .chat-container {\n    border-color: var(--chat-accent-border);");
-    expect($css)->toContain(".dark .chat-header {\n    background-color: var(--chat-tokyo-bg-elevated);");
+    expect($css)->toContain(".dark .chat-header {\n    background-color: var(--color-base-100, oklch(0.253267 0.015896 252.418));");
     expect($css)->toContain(".dark .chat-messages {\n    background: var(--chat-bg-dark);");
 });
 
@@ -85,7 +85,7 @@ test('dark chat workspace wrapper avoids black canvas with lifted panel surfaces
     expect($css)->toContain('.dark .chat-container {');
     expect($css)->toContain('border-color: var(--chat-accent-border);');
 
-    expect($css)->toContain(".dark .chat-header {\n    background-color: var(--chat-tokyo-bg-elevated);");
+    expect($css)->toContain(".dark .chat-header {\n    background-color: var(--color-base-100, oklch(0.253267 0.015896 252.418));");
     expect($css)->toContain(".dark .chat-messages {\n    background: var(--chat-bg-dark);");
 });
 

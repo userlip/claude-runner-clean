@@ -30,12 +30,13 @@ test('can render task chat component', function () {
         ->assertSee('Start a conversation');
 });
 
-test('chat prompt input is manually resizable', function () {
+test('chat prompt starts as a single-line textarea', function () {
     $repository = Repository::factory()->create(['user_id' => $this->user->id]);
     $task = Task::factory()->create(['repository_id' => $repository->id]);
 
     Livewire::test(TaskChat::class, ['task' => $task])
-        ->assertSeeHtml('chat-textarea-resizable');
+        ->assertSeeHtml('x-ref="promptInput"')
+        ->assertSeeHtml('rows="1"');
 });
 
 test('can send a message', function () {
@@ -516,5 +517,5 @@ test('keeps the main chat poll for active tasks', function () {
 
     $html = Livewire::test(TaskChat::class, ['task' => $task])->html();
 
-    expect($html)->toContain('wire:poll.2s.visible="checkPolling"');
+    expect($html)->toContain('wire:poll.30s.visible="checkPolling"');
 });
