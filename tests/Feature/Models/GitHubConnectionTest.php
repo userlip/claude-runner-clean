@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Connection;
 use App\Models\GitHubConnection;
 use App\Models\User;
 
@@ -11,7 +12,7 @@ test('github connection belongs to user', function () {
 
 test('user has one github connection', function () {
     $user = User::factory()->create();
-    $connection = GitHubConnection::factory()->create(['user_id' => $user->id]);
+    $connection = Connection::factory()->github()->create(['user_id' => $user->id]);
 
     expect($user->githubConnection->id)->toBe($connection->id);
 });

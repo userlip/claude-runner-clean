@@ -1,9 +1,12 @@
 <?php
 
+use App\Jobs\CloneRepositoryJob;
 use App\Livewire\Tasks\Form;
 use App\Livewire\Tasks\Index;
+use App\Models\Repository;
 use App\Models\Task;
 use App\Models\User;
+use Illuminate\Support\Facades\Queue;
 use Livewire\Livewire;
 use Spatie\Permission\Models\Role;
 
@@ -77,26 +80,30 @@ it('deletes a task', function () {
 // --- Create form ---
 
 it('creates a new task', function () {
+    Queue::fake();
     $this->actingAs($this->admin);
+    $repository = Repository::factory()->create(['user_id' => $this->admin->id]);
 
     Livewire::test(Form::class)
-        ->set('title', 'New Task Title')
-        ->set('status', 'pending')
-        ->call('save');
+        ->set('repositoryId', $repository->id)
+        ->call('save')
+        ->assertHasNoErrors();
 
     $this->assertDatabaseHas(Task::class, [
-        'title' => 'New Task Title',
+        'repository_id' => $repository->id,
+        'user_id' => $this->admin->id,
         'status' => 'pending',
     ]);
+
+    Queue::assertPushed(CloneRepositoryJob::class);
 });
 
 it('validates required fields on task create', function () {
     $this->actingAs($this->admin);
 
     Livewire::test(Form::class)
-        ->set('title', '')
         ->call('save')
-        ->assertHasErrors(['title']);
+        ->assertHasErrors(['repositoryId' => 'required']);
 });
 
 // --- Edit form ---

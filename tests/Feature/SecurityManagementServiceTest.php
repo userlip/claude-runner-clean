@@ -8,7 +8,7 @@ use App\Enums\SecurityRunStatus;
 use App\Enums\TaskStatus;
 use App\Jobs\RunCodexMessageJob;
 use App\Models\AiProvider;
-use App\Models\GitHubConnection;
+use App\Models\Connection;
 use App\Models\Message;
 use App\Models\Repository;
 use App\Models\SecurityRun;
@@ -36,7 +36,7 @@ class SecurityManagementServiceTest extends TestCase
             'security_management_enabled' => true,
             'full_name' => 'org/repo',
         ]);
-        GitHubConnection::factory()->create(['user_id' => $repo->user_id, 'access_token' => 'token']);
+        Connection::factory()->github()->create(['user_id' => $repo->user_id, 'credentials' => 'token']);
         $this->assertNotNull($repo->user->githubConnection);
 
         SecurityRun::create([
@@ -78,7 +78,7 @@ class SecurityManagementServiceTest extends TestCase
             'security_management_enabled' => true,
             'full_name' => 'org/repo',
         ]);
-        GitHubConnection::factory()->create(['user_id' => $repo->user_id, 'access_token' => 'token']);
+        Connection::factory()->github()->create(['user_id' => $repo->user_id, 'credentials' => 'token']);
 
         $run = SecurityRun::create([
             'repository_id' => $repo->id,
@@ -129,7 +129,7 @@ class SecurityManagementServiceTest extends TestCase
             'security_management_enabled' => true,
             'full_name' => 'org/repo',
         ]);
-        GitHubConnection::factory()->create(['user_id' => $repo->user_id, 'access_token' => 'token']);
+        Connection::factory()->github()->create(['user_id' => $repo->user_id, 'credentials' => 'token']);
 
         $run = SecurityRun::create([
             'repository_id' => $repo->id,
@@ -205,7 +205,7 @@ class SecurityManagementServiceTest extends TestCase
             'security_management_enabled' => true,
             'full_name' => 'org/repo',
         ]);
-        GitHubConnection::factory()->create(['user_id' => $repo->user_id, 'access_token' => 'token']);
+        Connection::factory()->github()->create(['user_id' => $repo->user_id, 'credentials' => 'token']);
 
         SecurityRun::create([
             'repository_id' => $repo->id,
@@ -263,7 +263,7 @@ class SecurityManagementServiceTest extends TestCase
             'security_management_enabled' => true,
             'full_name' => 'org/repo',
         ]);
-        GitHubConnection::factory()->create(['user_id' => $repo->user_id, 'access_token' => 'token']);
+        Connection::factory()->github()->create(['user_id' => $repo->user_id, 'credentials' => 'token']);
 
         $run = SecurityRun::create([
             'repository_id' => $repo->id,
@@ -332,7 +332,7 @@ class SecurityManagementServiceTest extends TestCase
             'ploi_site_id' => 99,
             'ploi_site_domain' => 'test-site.example.com',
         ]);
-        GitHubConnection::factory()->create(['user_id' => $repo->user_id, 'access_token' => 'token']);
+        Connection::factory()->github()->create(['user_id' => $repo->user_id, 'credentials' => 'token']);
 
         $run = SecurityRun::create([
             'repository_id' => $repo->id,
@@ -416,7 +416,7 @@ class SecurityManagementServiceTest extends TestCase
             'ploi_site_id' => 99,
             'ploi_site_domain' => 'test-site.example.com',
         ]);
-        GitHubConnection::factory()->create(['user_id' => $repo->user_id, 'access_token' => 'token']);
+        Connection::factory()->github()->create(['user_id' => $repo->user_id, 'credentials' => 'token']);
 
         $run = SecurityRun::create([
             'repository_id' => $repo->id,
@@ -485,7 +485,7 @@ class SecurityManagementServiceTest extends TestCase
             'security_management_enabled' => true,
             'full_name' => 'org/repo',
         ]);
-        GitHubConnection::factory()->create(['user_id' => $repo->user_id, 'access_token' => 'token']);
+        Connection::factory()->github()->create(['user_id' => $repo->user_id, 'credentials' => 'token']);
 
         $run = SecurityRun::create([
             'repository_id' => $repo->id,
@@ -554,7 +554,7 @@ class SecurityManagementServiceTest extends TestCase
             'ploi_site_id' => 99,
             'ploi_site_domain' => 'test-site.example.com',
         ]);
-        GitHubConnection::factory()->create(['user_id' => $repo->user_id, 'access_token' => 'token']);
+        Connection::factory()->github()->create(['user_id' => $repo->user_id, 'credentials' => 'token']);
 
         $run = SecurityRun::create([
             'repository_id' => $repo->id,
@@ -640,7 +640,7 @@ class SecurityManagementServiceTest extends TestCase
             'security_management_enabled' => true,
             'full_name' => 'org/repo',
         ]);
-        GitHubConnection::factory()->create(['user_id' => $repo->user_id, 'access_token' => 'token']);
+        Connection::factory()->github()->create(['user_id' => $repo->user_id, 'credentials' => 'token']);
 
         $run = SecurityRun::create([
             'repository_id' => $repo->id,
@@ -721,7 +721,7 @@ class SecurityManagementServiceTest extends TestCase
             'security_management_enabled' => true,
             'full_name' => 'org/repo',
         ]);
-        GitHubConnection::factory()->create(['user_id' => $repo->user_id, 'access_token' => 'token']);
+        Connection::factory()->github()->create(['user_id' => $repo->user_id, 'credentials' => 'token']);
 
         $run = SecurityRun::create([
             'repository_id' => $repo->id,
@@ -792,7 +792,7 @@ class SecurityManagementServiceTest extends TestCase
             'security_management_enabled' => true,
             'full_name' => 'org/repo',
         ]);
-        GitHubConnection::factory()->create(['user_id' => $repo->user_id, 'access_token' => 'token']);
+        Connection::factory()->github()->create(['user_id' => $repo->user_id, 'credentials' => 'token']);
 
         $run = SecurityRun::create([
             'repository_id' => $repo->id,
@@ -865,7 +865,7 @@ class SecurityManagementServiceTest extends TestCase
             'security_management_enabled' => true,
             'full_name' => 'org/repo',
         ]);
-        GitHubConnection::factory()->create(['user_id' => $repo->user_id, 'access_token' => 'token']);
+        Connection::factory()->github()->create(['user_id' => $repo->user_id, 'credentials' => 'token']);
 
         $run = SecurityRun::create([
             'repository_id' => $repo->id,

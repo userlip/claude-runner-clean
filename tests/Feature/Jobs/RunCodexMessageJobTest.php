@@ -17,7 +17,11 @@ test('captureProcessDiagnostics returns stderr and exit code for codex job', fun
         2 => ['pipe', 'w'],
     ];
 
-    $process = proc_open("bash -lc 'echo codex-boom >&2; exit 23'", $descriptors, $pipes, base_path());
+    $process = proc_open([
+        PHP_BINARY,
+        '-r',
+        'fwrite(STDERR, "codex-boom"); fclose(STDERR); usleep(100000); exit(23);',
+    ], $descriptors, $pipes, base_path());
 
     expect(is_resource($process))->toBeTrue();
 

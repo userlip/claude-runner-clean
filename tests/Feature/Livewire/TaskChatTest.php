@@ -437,6 +437,8 @@ test('can load older sent messages in 100 message batches', function () {
 });
 
 test('stopRunning disables Ralph even when the task is already marked completed', function () {
+    Process::fake();
+
     $provider = AiProvider::factory()->codex()->create();
     $repository = Repository::factory()->create(['user_id' => $this->user->id]);
     $task = Task::factory()->create([

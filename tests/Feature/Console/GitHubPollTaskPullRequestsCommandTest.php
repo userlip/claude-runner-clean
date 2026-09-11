@@ -5,7 +5,7 @@ namespace Tests\Feature\Console;
 use App\Enums\MessageRole;
 use App\Enums\MessageStatus;
 use App\Jobs\RunClaudeMessageJob;
-use App\Models\GitHubConnection;
+use App\Models\Connection;
 use App\Models\Message;
 use App\Models\Repository;
 use App\Models\Task;
@@ -25,7 +25,7 @@ class GitHubPollTaskPullRequestsCommandTest extends TestCase
         Queue::fake();
 
         $user = User::factory()->create();
-        GitHubConnection::factory()->create(['user_id' => $user->id, 'access_token' => 'token']);
+        Connection::factory()->github()->create(['user_id' => $user->id, 'credentials' => 'token']);
 
         $repo = Repository::factory()->create([
             'user_id' => $user->id,
@@ -105,7 +105,7 @@ class GitHubPollTaskPullRequestsCommandTest extends TestCase
         Queue::fake();
 
         $user = User::factory()->create();
-        GitHubConnection::factory()->create(['user_id' => $user->id, 'access_token' => 'token']);
+        Connection::factory()->github()->create(['user_id' => $user->id, 'credentials' => 'token']);
 
         $repo = Repository::factory()->create([
             'user_id' => $user->id,

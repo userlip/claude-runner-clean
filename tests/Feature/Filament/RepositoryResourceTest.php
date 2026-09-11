@@ -1,7 +1,7 @@
 <?php
 
 use App\Filament\Resources\RepositoryResource\Pages\ListRepositories;
-use App\Models\GitHubConnection;
+use App\Models\Connection;
 use App\Models\Repository;
 use App\Models\User;
 use App\Services\SecurityManagementService;
@@ -46,7 +46,7 @@ test('can sync repositories from github', function () {
         ]),
     ]);
 
-    GitHubConnection::factory()->create(['user_id' => $this->user->id]);
+    Connection::factory()->github()->create(['user_id' => $this->user->id]);
 
     Livewire::test(ListRepositories::class)
         ->callTableAction('sync')
@@ -63,7 +63,7 @@ test('shows error when github not connected', function () {
 
 test('run security action triggers processing using security management service', function () {
     $repo = Repository::factory()->create(['user_id' => $this->user->id]);
-    GitHubConnection::factory()->create(['user_id' => $this->user->id]);
+    Connection::factory()->github()->create(['user_id' => $this->user->id]);
 
     $service = \Mockery::mock(SecurityManagementService::class);
     $service->shouldReceive('processRepository')

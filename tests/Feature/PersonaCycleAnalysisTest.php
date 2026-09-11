@@ -24,6 +24,8 @@ beforeEach(function () {
     Filament::setCurrentPanel(Filament::getPanel('admin'));
     Queue::fake();
 
+    $this->mock(TelegramService::class);
+
     $this->user = User::factory()->create();
     $this->actingAs($this->user);
 
