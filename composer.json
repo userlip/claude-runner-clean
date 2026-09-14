@@ -23,7 +23,7 @@
         "robsontenorio/mary": "^2.8",
         "sentry/sentry-laravel": "^4.20",
         "spatie/laravel-permission": "^6.9",
-        "spatie/laravel-query-builder": "^6.2",
+        "spatie/laravel-query-builder": "^7.3",
         "stechstudio/filament-impersonate": "^5.0",
         "symfony/http-client": "^7.1.8",
         "symfony/postmark-mailer": "^7.1"
