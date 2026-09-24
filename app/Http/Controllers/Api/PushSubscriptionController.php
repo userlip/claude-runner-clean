@@ -56,6 +56,11 @@ class PushSubscriptionController extends Controller
     /**
      * Get the VAPID public key.
      */
+    #[\OpenApi\Attributes\Get(
+        path: '/api/push/vapid-public-key',
+        summary: 'Get the VAPID public key',
+        responses: [new \OpenApi\Attributes\Response(response: 200, description: 'VAPID public key')],
+    )]
     public function vapidPublicKey(): JsonResponse
     {
         return response()->json([
