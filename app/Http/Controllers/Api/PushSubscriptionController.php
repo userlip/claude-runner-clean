@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use OpenApi\Attributes\Get;
+use OpenApi\Attributes\Response;
 
 class PushSubscriptionController extends Controller
 {
@@ -56,6 +58,11 @@ class PushSubscriptionController extends Controller
     /**
      * Get the VAPID public key.
      */
+    #[Get(
+        path: '/push/vapid-public-key',
+        summary: 'Get the VAPID public key',
+        responses: [new Response(response: 200, description: 'VAPID public key')],
+    )]
     public function vapidPublicKey(): JsonResponse
     {
         return response()->json([
