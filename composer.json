@@ -18,7 +18,7 @@
         "laravel/telescope": "^5.1",
         "laravel/tinker": "^2.9",
         "livewire/livewire": "^4.0",
-        "minishlink/web-push": "^10.0",
+        "minishlink/web-push": "^11.0",
         "pestphp/pest-plugin-livewire": "^4.1",
         "robsontenorio/mary": "^2.8",
         "sentry/sentry-laravel": "^4.20",
